@@ -5,12 +5,12 @@ import (
 	"os"
 	"time"
 
-	"github.com/spf13/cobra"
 	"github.com/TheShiveshNetwork/dizz/internal/config"
 	"github.com/TheShiveshNetwork/dizz/internal/integrations"
 	"github.com/TheShiveshNetwork/dizz/internal/state"
 	"github.com/TheShiveshNetwork/dizz/internal/store"
 	"github.com/TheShiveshNetwork/dizz/internal/ui"
+	"github.com/spf13/cobra"
 )
 
 var resumeCmd = &cobra.Command{
@@ -26,7 +26,7 @@ Optimized for the "I haven't touched this in weeks" scenario.`,
 func runResume() {
 	cwd, _ := os.Getwd()
 	trackDir := config.TrackDirPath(cwd)
-	
+
 	// Load state
 	var projectState state.ProjectState
 	statePath := config.StateFilePath(trackDir)
@@ -42,7 +42,7 @@ func runResume() {
 
 	// Calculate time away
 	timeSince := time.Since(projectState.UpdatedAt)
-	
+
 	// Header
 	fmt.Println()
 	fmt.Println(ui.Header("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"))
@@ -69,9 +69,9 @@ func runResume() {
 		timeStr = fmt.Sprintf("%d months", months)
 		timeColor = ui.BrightRed
 	}
-	
+
 	fmt.Printf("  %s %s\n", ui.Muted("Last worked on:"), ui.Colorize(timeStr+" ago", timeColor))
-	
+
 	// Git context
 	if integrations.IsRepo() {
 		if branch, err := integrations.GetCurrentBranch(); err == nil {
@@ -84,12 +84,12 @@ func runResume() {
 	planned := projectState.GetSymbolsByState(state.Planned)
 	unstable := projectState.GetSymbolsByState(state.Unstable)
 	unused := projectState.GetSymbolsByState(state.Unused)
-	
+
 	// What you were working on
 	if len(planned) > 0 || len(unstable) > 0 {
 		fmt.Println(ui.Header("  📝 WHERE YOU LEFT OFF"))
 		fmt.Println()
-		
+
 		if len(planned) > 0 {
 			fmt.Printf("  %s You had %s planned work:\n", ui.Warning("⚠"), ui.Warning(fmt.Sprintf("%d", len(planned))))
 			limit := 3
@@ -105,7 +105,7 @@ func runResume() {
 			}
 			fmt.Println()
 		}
-		
+
 		if len(unstable) > 0 {
 			fmt.Printf("  %s Code with high churn:\n", ui.Error("🔥"))
 			for i := 0; i < len(unstable) && i < 3; i++ {
@@ -120,7 +120,7 @@ func runResume() {
 	summary := projectState.GetSummary()
 	active := summary.ByState[state.Active]
 	issues := len(planned) + len(unstable) + len(unused)
-	
+
 	fmt.Println(ui.Header("  📊 QUICK SUMMARY"))
 	fmt.Println()
 	fmt.Printf("  %s %s symbols working well\n", ui.Success("✓"), ui.Success(fmt.Sprintf("%d", active)))
@@ -134,17 +134,17 @@ func runResume() {
 	fmt.Println(ui.Header("  💡 WHAT TO DO NOW"))
 	fmt.Println(ui.Header("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"))
 	fmt.Println()
-	
+
 	if timeSince > 24*time.Hour {
 		fmt.Printf("  %s Re-analyze to get current state\n", ui.Highlight("1."))
 		fmt.Printf("     %s\n", ui.Muted("dizz whereami"))
 		fmt.Println()
 	}
-	
+
 	suggestion := state.SuggestNextAction(&projectState)
 	fmt.Printf("  %s %s\n", ui.Highlight("→"), suggestion)
 	fmt.Println()
-	
+
 	// Footer
 	if timeSince > 24*time.Hour {
 		fmt.Println(ui.Muted("  💡 Run 'dizz whereami' to refresh the analysis"))

@@ -2,10 +2,10 @@ package ui
 
 // ANSI color codes
 const (
-	Reset  = "\033[0m"
-	Bold   = "\033[1m"
-	Dim    = "\033[2m"
-	
+	Reset = "\033[0m"
+	Bold  = "\033[1m"
+	Dim   = "\033[2m"
+
 	// Foreground colors
 	Black   = "\033[30m"
 	Red     = "\033[31m"
@@ -16,7 +16,7 @@ const (
 	Cyan    = "\033[36m"
 	White   = "\033[37m"
 	Gray    = "\033[90m"
-	
+
 	// Bright colors
 	BrightRed     = "\033[91m"
 	BrightGreen   = "\033[92m"
@@ -26,6 +26,24 @@ const (
 	BrightCyan    = "\033[96m"
 	BrightWhite   = "\033[97m"
 )
+
+// Background colors
+const (
+	BgRed     = "\033[41m"
+	BgGreen   = "\033[42m"
+	BgYellow  = "\033[43m"
+	BgBlue    = "\033[44m"
+	BgMagenta = "\033[45m"
+	BgCyan    = "\033[46m"
+	BgGray    = "\033[100m"
+)
+
+func Bg(text, bg, fg string) string {
+	if fg == "" {
+		return bg + text + Reset
+	}
+	return fg + bg + text + Reset
+}
 
 func Colorize(text, color string) string {
 	return color + text + Reset
@@ -56,5 +74,5 @@ func Header(text string) string {
 }
 
 func Highlight(text string) string {
-	return Bold + BrightCyan + text + Reset
+	return Bold + BrightBlue + text + Reset
 }

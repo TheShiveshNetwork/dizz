@@ -3,18 +3,18 @@ package config
 import "path/filepath"
 
 const (
-	AppName				= "dizz"
+	AppName = "dizz"
 
-	TrackDirName	= ".dizz"
-	ObjectsDirName= "objects"
-	RefsDirName		= "refs"
-	GitRefDirName	= "refs/git"
+	TrackDirName   = ".dizz"
+	ObjectsDirName = "objects"
+	RefsDirName    = "refs"
+	GitRefDirName  = "refs/git"
 
-	ConfigFile		= "config.json"
-	StateFile			= "state.json"
-	HistoryDir		= "history"
+	ConfigFile = "config.json"
+	StateFile  = "state.json"
+	HistoryDir = "history"
 
-	DefaultBranch	= "main"
+	DefaultBranch = "main"
 )
 
 type Config struct {
@@ -64,4 +64,3 @@ func DefaultConfig(projectName string) *Config {
 		},
 	}
 }
-

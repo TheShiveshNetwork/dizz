@@ -8,12 +8,12 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/spf13/cobra"
 	"github.com/TheShiveshNetwork/dizz/internal/config"
 	"github.com/TheShiveshNetwork/dizz/internal/integrations"
 	"github.com/TheShiveshNetwork/dizz/internal/state"
 	"github.com/TheShiveshNetwork/dizz/internal/store"
 	"github.com/TheShiveshNetwork/dizz/internal/ui"
+	"github.com/spf13/cobra"
 )
 
 var (
@@ -39,7 +39,7 @@ func init() {
 func runSnapshot() {
 	cwd, _ := os.Getwd()
 	trackDir := config.TrackDirPath(cwd)
-	
+
 	// Load current state
 	var projectState state.ProjectState
 	statePath := config.StateFilePath(trackDir)
@@ -93,10 +93,10 @@ func runSnapshot() {
 			refsDir := config.RefsDirPath(trackDir)
 			gitRefDir := filepath.Join(refsDir, "git")
 			os.MkdirAll(gitRefDir, 0755)
-			
+
 			refPath := filepath.Join(gitRefDir, commit)
 			os.WriteFile(refPath, []byte(hashStr), 0644)
-			
+
 			if !autoSnapshot {
 				fmt.Printf(ui.Success("✓")+" Snapshot saved: %s\n", ui.Highlight(shortHash))
 				fmt.Printf("  %s %s\n", ui.Muted("Git commit:"), ui.Muted(commit[:7]))
@@ -109,7 +109,7 @@ func runSnapshot() {
 			fmt.Printf("  %s %s\n", ui.Muted("Object:"), ui.Muted(objectPath))
 		}
 	}
-	
+
 	if !autoSnapshot {
 		fmt.Println()
 		fmt.Println(ui.Muted("💡 Snapshots are immutable. Use them to track progress over time."))

@@ -6,9 +6,9 @@ import (
 	"path/filepath"
 	"time"
 
-	"github.com/spf13/cobra"
 	"github.com/TheShiveshNetwork/dizz/internal/state"
 	"github.com/TheShiveshNetwork/dizz/internal/store"
+	"github.com/spf13/cobra"
 )
 
 var commitCmd = &cobra.Command{

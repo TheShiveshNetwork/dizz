@@ -7,8 +7,8 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/TheShiveshNetwork/dizz/internal/analyzer"
-	"github.com/TheShiveshNetwork/dizz/internal/analyzer/regex"
 	"github.com/TheShiveshNetwork/dizz/internal/analyzer/ast"
+	"github.com/TheShiveshNetwork/dizz/internal/analyzer/regex"
 	"github.com/TheShiveshNetwork/dizz/internal/config"
 	"github.com/TheShiveshNetwork/dizz/internal/discover"
 	"github.com/TheShiveshNetwork/dizz/internal/integrations"
@@ -140,10 +140,6 @@ func printFocusedState(ps *state.ProjectState) {
 
 	// Header
 	fmt.Println()
-	fmt.Println(ui.Header("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"))
-	fmt.Println(ui.Header("  📍 WHERE YOU ARE"))
-	fmt.Println(ui.Header("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"))
-	fmt.Println()
 
 	// Quick summary with colors
 	fmt.Printf("  %s %s\n", ui.Success("✓ Active:"), ui.Success(fmt.Sprintf("%d", len(active))))
@@ -171,96 +167,63 @@ func printFocusedState(ps *state.ProjectState) {
 	}
 
 	// Print sections that need attention (in priority order)
-	
+
 	// 1. PLANNED - Highest priority
-	if len(planned) > 0 {
-		fmt.Println(ui.Warning("━━ ⚠ PLANNED") + ui.Muted(" (needs implementation)"))
-		for i, sym := range planned {
-			if i >= 5 && !showAll {
-				fmt.Printf(ui.Muted("     ... and %d more (use --all to show)\n"), len(planned)-5)
-				break
-			}
-			fmt.Printf("  %s\n", ui.Highlight(sym.Name))
-			fmt.Printf("     %s\n", ui.Muted(sym.File))
-		}
-		fmt.Println()
-	}
+	ui.RenderSymbolGroup(ui.RenderArgs{
+		Title:      "━━ ⚠ PLANNED",
+		Subtitle:   "needs implementation",
+		Symbols:    planned,
+		ShowAll:    showAll,
+		MaxPerFile: 3,
+		ShowChurn:  false,
+	})
 
 	// 2. UNSTABLE - High priority
-	if len(unstable) > 0 {
-		fmt.Println(ui.Error("━━ 🔥 UNSTABLE") + ui.Muted(" (changing too much)"))
-		for i, sym := range unstable {
-			if i >= 5 && !showAll {
-				fmt.Printf(ui.Muted("     ... and %d more (use --all to show)\n"), len(unstable)-5)
-				break
-			}
-			fmt.Printf("  %s ", ui.Highlight(sym.Name))
-			fmt.Printf(ui.Error("(churn: %d)\n"), sym.ChurnCount)
-			fmt.Printf("     %s\n", ui.Muted(sym.File))
-		}
-		fmt.Println()
-	}
+	ui.RenderSymbolGroup(ui.RenderArgs{
+		Title:      "━━ 🔥 UNSTABLE",
+		Subtitle:   "changing too much",
+		Symbols:    unstable,
+		ShowAll:    showAll,
+		MaxPerFile: 3,
+		ShowChurn:  true,
+	})
 
 	// 3. UNUSED - Medium priority
-	if len(unused) > 0 {
-		fmt.Println(ui.Info("━━ ⚪ UNUSED") + ui.Muted(" (not called anywhere)"))
-		for i, sym := range unused {
-			if i >= 5 && !showAll {
-				fmt.Printf(ui.Muted("     ... and %d more (use --all to show)\n"), len(unused)-5)
-				break
-			}
-			fmt.Printf("  %s\n", ui.Highlight(sym.Name))
-			fmt.Printf("     %s\n", ui.Muted(sym.File))
-		}
-		fmt.Println()
-	}
+	ui.RenderSymbolGroup(ui.RenderArgs{
+		Title:      "━━ ⚪ UNUSED",
+		Subtitle:   "not called anywhere",
+		Symbols:    unused,
+		ShowAll:    showAll,
+		MaxPerFile: 3,
+		ShowChurn:  false,
+	})
 
 	// 4. ABANDONED - Consider removal
-	if len(abandoned) > 0 {
-		fmt.Println(ui.Muted("━━ ❌ ABANDONED") + ui.Muted(" (old, not used)"))
-		for i, sym := range abandoned {
-			if i >= 3 && !showAll {
-				fmt.Printf(ui.Muted("     ... and %d more (use --all to show)\n"), len(abandoned)-3)
-				break
-			}
-			fmt.Printf("  %s ", ui.Muted(sym.Name))
-			fmt.Printf(ui.Muted("(churn: %d)\n"), sym.ChurnCount)
-			fmt.Printf("     %s\n", ui.Muted(sym.File))
-		}
-		fmt.Println()
-	}
+	ui.RenderSymbolGroup(ui.RenderArgs{
+		Title:      "━━ ❌ ABANDONED",
+		Subtitle:   "old, not used",
+		Symbols:    abandoned,
+		ShowAll:    showAll,
+		MaxPerFile: 2,
+		ShowChurn:  true,
+	})
 
 	activeTodos := ps.GetActiveTodos()
-	if len(activeTodos) > 0 {
-		fmt.Println(ui.Info("━━ 📝 TODOS"))
-		limit := 3
-		if len(activeTodos) < limit {
-			limit = len(activeTodos)
-		}
-		for i := 0; i < limit; i++ {
-			todo := activeTodos[i]
-			fmt.Printf("  %s\n", ui.Muted(fmt.Sprintf("%s:%d", todo.File, todo.Line)))
-			fmt.Printf("     %s\n", todo.Text)
-		}
-		if len(activeTodos) > 3 {
-			fmt.Printf(ui.Muted("     ... and %d more\n"), len(activeTodos)-3)
-		}
-		fmt.Println()
-	}
+	ui.RenderTodos(activeTodos)
 
 	// Show active if requested
 	if showAll && len(active) > 0 {
 		printActiveSymbols(active)
 	}
 
-	fmt.Println(ui.Header("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"))
+	fmt.Println()
 	fmt.Println(ui.Header("  💡 NEXT ACTION"))
-	fmt.Println(ui.Header("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"))
+	fmt.Println()
 	suggestion := state.SuggestNextAction(ps)
-	fmt.Printf("  %s\n", ui.Highlight("→ "+suggestion))
+	fmt.Printf("  %s\n", ui.Info("→ "+suggestion))
 	fmt.Println()
 
-	fmt.Printf(ui.Muted("  %d symbols · %d need attention · %d active\n"), 
+	fmt.Printf(ui.Muted("  %d symbols · %d need attention · %d active\n"),
 		summary.TotalSymbols, totalIssues, len(active))
 	if !showAll && totalIssues > 10 {
 		fmt.Printf(ui.Muted("  Use 'dizz whereami --all' to see everything\n"))
@@ -279,4 +242,3 @@ func printActiveSymbols(active []state.Symbol) {
 	}
 	fmt.Println()
 }
-

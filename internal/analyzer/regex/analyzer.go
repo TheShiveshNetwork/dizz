@@ -6,7 +6,7 @@ import (
 	"path/filepath"
 	"regexp"
 	"strings"
-	
+
 	"github.com/TheShiveshNetwork/dizz/internal/signals"
 )
 
@@ -19,13 +19,13 @@ type Analyzer struct {
 func NewAnalyzer() *Analyzer {
 	return &Analyzer{
 		patterns: map[string]*regexp.Regexp{
-			"function_js":     regexp.MustCompile(`function\s+(\w+)\s*\(`),
-			"function_py":     regexp.MustCompile(`def\s+(\w+)\s*\(`),
-			"function_rust":   regexp.MustCompile(`fn\s+(\w+)\s*\(`),
-			"function_c":      regexp.MustCompile(`\w+\s+(\w+)\s*\([^)]*\)\s*\{`),
-			"todo":            regexp.MustCompile(`(?i)(TODO|FIXME|XXX|HACK|NOTE):\s*(.+)`),
-			"intent_state":    regexp.MustCompile(`@dizz:state\s+(\w+)`),
-			"intent_feature":  regexp.MustCompile(`@dizz:feature\s+(\w+)`),
+			"function_js":    regexp.MustCompile(`function\s+(\w+)\s*\(`),
+			"function_py":    regexp.MustCompile(`def\s+(\w+)\s*\(`),
+			"function_rust":  regexp.MustCompile(`fn\s+(\w+)\s*\(`),
+			"function_c":     regexp.MustCompile(`\w+\s+(\w+)\s*\([^)]*\)\s*\{`),
+			"todo":           regexp.MustCompile(`(?i)(TODO|FIXME|XXX|HACK|NOTE):\s*(.+)`),
+			"intent_state":   regexp.MustCompile(`@dizz:state\s+(\w+)`),
+			"intent_feature": regexp.MustCompile(`@dizz:feature\s+(\w+)`),
 		},
 	}
 }
@@ -60,13 +60,13 @@ func (a *Analyzer) Supports(file string) bool {
 // Analyze extracts signals using regex patterns
 func (a *Analyzer) Analyze(files []string) (*signals.SignalSet, error) {
 	sigSet := &signals.SignalSet{}
-	
+
 	for _, filePath := range files {
 		if err := a.analyzeFile(filePath, sigSet); err != nil {
 			continue // Skip files with errors
 		}
 	}
-	
+
 	return sigSet, nil
 }
 
@@ -77,32 +77,29 @@ func (a *Analyzer) analyzeFile(filePath string, sigSet *signals.SignalSet) error
 		return err
 	}
 	defer file.Close()
-	
+
 	scanner := bufio.NewScanner(file)
 	lineNum := 0
 	lang := a.detectLanguage(filePath)
-	
+
 	for scanner.Scan() {
 		lineNum++
 		line := scanner.Text()
-		
-		// Extract function definitions
+
 		a.extractFunctions(line, filePath, lang, lineNum, sigSet)
-		
-		// Extract TODOs
+
 		a.extractTodos(line, filePath, lang, lineNum, sigSet)
-		
-		// Extract intent markers
+
 		a.extractIntents(line, filePath, lang, lineNum, sigSet)
 	}
-	
+
 	return scanner.Err()
 }
 
 // extractFunctions finds function definitions
 func (a *Analyzer) extractFunctions(line, filePath, lang string, lineNum int, sigSet *signals.SignalSet) {
 	patterns := []string{"function_js", "function_py", "function_rust", "function_c"}
-	
+
 	for _, patternName := range patterns {
 		if matches := a.patterns[patternName].FindStringSubmatch(line); matches != nil && len(matches) > 1 {
 			sig := signals.NewSignal(signals.FunctionDefined, filePath).
@@ -116,7 +113,6 @@ func (a *Analyzer) extractFunctions(line, filePath, lang string, lineNum int, si
 	}
 }
 
-// extractTodos finds TODO comments
 func (a *Analyzer) extractTodos(line, filePath, lang string, lineNum int, sigSet *signals.SignalSet) {
 	if matches := a.patterns["todo"].FindStringSubmatch(line); matches != nil && len(matches) > 2 {
 		sig := signals.NewSignal(signals.TodoFound, filePath).
@@ -138,7 +134,7 @@ func (a *Analyzer) extractIntents(line, filePath, lang string, lineNum int, sigS
 			WithMeta("value", matches[1])
 		sigSet.Add(*sig)
 	}
-	
+
 	if matches := a.patterns["intent_feature"].FindStringSubmatch(line); matches != nil && len(matches) > 1 {
 		sig := signals.NewSignal(signals.IntentMarker, filePath).
 			WithLine(lineNum).
@@ -167,7 +163,7 @@ func (a *Analyzer) detectLanguage(filePath string) string {
 		".rb":   "ruby",
 		".php":  "php",
 	}
-	
+
 	if lang, ok := langMap[ext]; ok {
 		return lang
 	}

@@ -5,12 +5,12 @@ import (
 	"os"
 	"time"
 
-	"github.com/spf13/cobra"
 	"github.com/TheShiveshNetwork/dizz/internal/config"
 	"github.com/TheShiveshNetwork/dizz/internal/integrations"
 	"github.com/TheShiveshNetwork/dizz/internal/state"
 	"github.com/TheShiveshNetwork/dizz/internal/store"
 	"github.com/TheShiveshNetwork/dizz/internal/ui"
+	"github.com/spf13/cobra"
 )
 
 var statusCmd = &cobra.Command{
@@ -26,7 +26,7 @@ Use this for a quick health check without full analysis.`,
 func runStatus() {
 	cwd, _ := os.Getwd()
 	trackDir := config.TrackDirPath(cwd)
-	
+
 	// Load state
 	var projectState state.ProjectState
 	statePath := config.StateFilePath(trackDir)
@@ -36,27 +36,22 @@ func runStatus() {
 	}
 
 	summary := projectState.GetSummary()
-	
+
 	// Calculate health score
 	totalSymbols := float64(summary.TotalSymbols)
 	if totalSymbols == 0 {
 		fmt.Println(ui.Warning("⚠ No symbols found. Run 'dizz whereami' to analyze."))
 		return
 	}
-	
+
 	activeCount := summary.ByState[state.Active]
-	issueCount := summary.ByState[state.Planned] + 
-	              summary.ByState[state.Unstable] + 
-	              summary.ByState[state.Unused] + 
-	              summary.ByState[state.Abandoned]
-	
+	issueCount := summary.ByState[state.Planned] +
+		summary.ByState[state.Unstable] +
+		summary.ByState[state.Unused] +
+		summary.ByState[state.Abandoned]
+
 	healthScore := int((float64(activeCount) / totalSymbols) * 100)
-	
-	// Header
-	fmt.Println()
-	fmt.Println(ui.Header("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"))
-	fmt.Println(ui.Header("  📊 PROJECT STATUS"))
-	fmt.Println(ui.Header("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"))
+
 	fmt.Println()
 
 	// Project info
@@ -65,7 +60,7 @@ func runStatus() {
 	if err := store.Load(configPath, &cfg); err == nil {
 		fmt.Printf("  %s %s\n", ui.Muted("Project:"), ui.Highlight(cfg.ProjectName))
 	}
-	
+
 	// Git info
 	if integrations.IsRepo() {
 		if branch, err := integrations.GetCurrentBranch(); err == nil {
@@ -79,7 +74,7 @@ func runStatus() {
 			fmt.Printf("  %s %s\n", ui.Muted("Commit:"), ui.Muted(shortCommit))
 		}
 	}
-	
+
 	// Last updated
 	timeSince := time.Since(projectState.UpdatedAt)
 	var timeStr string
@@ -108,63 +103,63 @@ func runStatus() {
 		healthColor = ui.BrightRed
 		healthIcon = "○"
 	}
-	
-	fmt.Printf("  %s %s %s\n", 
-		ui.Muted("Health:"), 
+
+	fmt.Printf("  %s %s %s\n",
+		ui.Muted("Health:"),
 		ui.Colorize(healthIcon, healthColor),
 		ui.Colorize(fmt.Sprintf("%d%%", healthScore), healthColor))
 	fmt.Println()
 
 	// Symbol breakdown
 	fmt.Println(ui.Muted("  Symbols:"))
-	
+
 	if activeCount > 0 {
 		bar := createBar(activeCount, summary.TotalSymbols, ui.BrightGreen)
-		fmt.Printf("    %s %-12s %s %s\n", 
-			ui.Success("✓"), 
-			"Active", 
+		fmt.Printf("    %s %-12s %s %s\n",
+			ui.Success("✓"),
+			"Active",
 			ui.Success(fmt.Sprintf("%3d", activeCount)),
 			bar)
 	}
-	
+
 	if summary.ByState[state.Planned] > 0 {
 		bar := createBar(summary.ByState[state.Planned], summary.TotalSymbols, ui.BrightYellow)
-		fmt.Printf("    %s %-12s %s %s\n", 
-			ui.Warning("⚠"), 
-			"Planned", 
+		fmt.Printf("    %s %-12s %s %s\n",
+			ui.Warning("⚠"),
+			"Planned",
 			ui.Warning(fmt.Sprintf("%3d", summary.ByState[state.Planned])),
 			bar)
 	}
-	
+
 	if summary.ByState[state.Unstable] > 0 {
 		bar := createBar(summary.ByState[state.Unstable], summary.TotalSymbols, ui.BrightRed)
-		fmt.Printf("    %s %-12s %s %s\n", 
-			ui.Error("🔥"), 
-			"Unstable", 
+		fmt.Printf("    %s %-12s %s %s\n",
+			ui.Error("🔥"),
+			"Unstable",
 			ui.Error(fmt.Sprintf("%3d", summary.ByState[state.Unstable])),
 			bar)
 	}
-	
+
 	if summary.ByState[state.Unused] > 0 {
 		bar := createBar(summary.ByState[state.Unused], summary.TotalSymbols, ui.BrightCyan)
-		fmt.Printf("    %s %-12s %s %s\n", 
-			ui.Info("⚪"), 
-			"Unused", 
+		fmt.Printf("    %s%-12s %s %s\n",
+			ui.Info("⚪"),
+			"Unused",
 			ui.Info(fmt.Sprintf("%3d", summary.ByState[state.Unused])),
 			bar)
 	}
-	
+
 	if summary.ByState[state.Abandoned] > 0 {
 		bar := createBar(summary.ByState[state.Abandoned], summary.TotalSymbols, ui.Gray)
-		fmt.Printf("    %s %-12s %s %s\n", 
-			ui.Muted("❌"), 
-			"Abandoned", 
+		fmt.Printf("    %s %-12s %s %s\n",
+			ui.Muted("❌"),
+			"Abandoned",
 			ui.Muted(fmt.Sprintf("%3d", summary.ByState[state.Abandoned])),
 			bar)
 	}
-	
+
 	fmt.Printf(ui.Muted("    ──────────────────────\n"))
-	fmt.Printf(ui.Muted("    Total        %3d\n"), summary.TotalSymbols)
+	fmt.Printf(ui.Muted("    Total          %3d\n"), summary.TotalSymbols)
 	fmt.Println()
 
 	if summary.ActiveTodos > 0 {
@@ -174,7 +169,7 @@ func runStatus() {
 
 	// Action items
 	if issueCount > 0 {
-		fmt.Println(ui.Header("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"))
+		fmt.Println()
 		fmt.Printf("  %s items need attention\n", ui.Warning(fmt.Sprintf("%d", issueCount)))
 		fmt.Println(ui.Muted("  Run 'dizz whereami' for details"))
 		fmt.Println()
@@ -189,10 +184,10 @@ func createBar(count, total int, color string) string {
 	if total == 0 {
 		return ""
 	}
-	
+
 	barWidth := 20
 	filled := int(float64(count) / float64(total) * float64(barWidth))
-	
+
 	bar := ""
 	for i := 0; i < barWidth; i++ {
 		if i < filled {
@@ -201,6 +196,6 @@ func createBar(count, total int, color string) string {
 			bar += ui.Muted("░")
 		}
 	}
-	
+
 	return bar
 }

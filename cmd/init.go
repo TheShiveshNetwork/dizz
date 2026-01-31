@@ -13,9 +13,9 @@ import (
 )
 
 var initCmd = &cobra.Command{
-	Use: "init",
+	Use:   "init",
 	Short: "Initialize dizz in current directory",
-	Run: func (cmd *cobra.Command, args []string) {
+	Run: func(cmd *cobra.Command, args []string) {
 		runInit()
 	},
 }
@@ -41,7 +41,7 @@ func runInit() {
 	trackDir := config.TrackDirPath(cwd)
 	objectsDir := config.ObjectsDirPath(trackDir)
 	refsDir := config.RefsDirPath(trackDir)
-	
+
 	// create all the necessary dirs
 	dirs := []string{
 		trackDir,
@@ -88,4 +88,3 @@ func runInit() {
 	fmt.Printf("  Project: %s\n", projectName)
 	fmt.Printf("\nNext: Run '%s whereami' to see your project state\n", config.AppName)
 }
-

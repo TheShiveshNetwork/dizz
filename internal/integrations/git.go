@@ -78,7 +78,7 @@ func GetFileChurn(filePath string, depth int) (int, error) {
 	} else {
 		args = append(args, filePath)
 	}
-	
+
 	cmd := exec.Command("git", args...)
 	output, err := cmd.Output()
 	if err != nil {
@@ -139,4 +139,3 @@ if [ -x "$DIZZ_BIN" ]; then
 fi
 `
 }
-

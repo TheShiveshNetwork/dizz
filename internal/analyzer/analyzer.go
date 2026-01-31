@@ -6,10 +6,10 @@ import "github.com/TheShiveshNetwork/dizz/internal/signals"
 type Analyzer interface {
 	// Language returns the language this analyzer supports
 	Language() string
-	
+
 	// Supports checks if this analyzer can handle the given file
 	Supports(file string) bool
-	
+
 	// Analyze extracts signals from the given files
 	Analyze(files []string) (*signals.SignalSet, error)
 }
@@ -45,30 +45,30 @@ func (r *Registry) FindAnalyzer(file string) Analyzer {
 func (r *Registry) AnalyzeFiles(files []string) (*signals.SignalSet, error) {
 	// Group files by analyzer
 	filesByAnalyzer := make(map[Analyzer][]string)
-	
+
 	for _, file := range files {
 		analyzer := r.FindAnalyzer(file)
 		if analyzer != nil {
 			filesByAnalyzer[analyzer] = append(filesByAnalyzer[analyzer], file)
 		}
 	}
-	
+
 	// Run each analyzer on its files
 	allSignals := &signals.SignalSet{}
-	
+
 	for analyzer, analyzerFiles := range filesByAnalyzer {
 		sigSet, err := analyzer.Analyze(analyzerFiles)
 		if err != nil {
 			return nil, err
 		}
-		
+
 		if sigSet != nil {
 			for _, sig := range sigSet.Signals {
 				allSignals.Add(sig)
 			}
 		}
 	}
-	
+
 	return allSignals, nil
 }
 
