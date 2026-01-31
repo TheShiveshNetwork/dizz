@@ -1,6 +1,7 @@
 package integrations
 
 import (
+	"os"
 	"os/exec"
 	"strconv"
 	"strings"
@@ -111,26 +112,30 @@ func GetFileLastModified(filePath string) (time.Time, error) {
 	return time.Unix(timestamp, 0), nil
 }
 
-func InstallPostCommitHook(hookContent string) error {
-	hookPath := ".git/hooks/post-commit"
-	
-	// Check if hook already exists
-	if _, err := exec.Command("test", "-f", hookPath).Output(); err == nil {
-		// Hook exists, append to it
-		cmd := exec.Command("bash", "-c", "echo '"+hookContent+"' >> "+hookPath)
-		return cmd.Run()
+func getPostCommitHookPath() (string, error) {
+	cmd := exec.Command("git", "rev-parse", "--git-path", "hooks/post-commit")
+	out, err := cmd.Output()
+	if err != nil {
+		return "", err
 	}
-	
-	// Create new hook
-	cmd := exec.Command("bash", "-c", "echo '#!/bin/bash\n"+hookContent+"' > "+hookPath+" && chmod +x "+hookPath)
-	return cmd.Run()
+	return strings.TrimSpace(string(out)), nil
+}
+
+func InstallPostCommitHook(hookContent string) error {
+	hookPath, err := getPostCommitHookPath()
+	if err != nil {
+		return err
+	}
+	content := "#!/bin/sh\n" + hookContent
+
+	return os.WriteFile(hookPath, []byte(content), 0755)
 }
 
 func GetHookContent(appName string) string {
 	return `
-# dizz automatic snapshot
-if command -v ` + appName + ` &> /dev/null; then
-    ` + appName + ` snapshot --auto > /dev/null 2>&1 &
+DIZZ_BIN="$(command -v ` + appName + ` || true)"
+if [ -x "$DIZZ_BIN" ]; then
+    "$DIZZ_BIN" snapshot --auto >/dev/null 2>&1 || true
 fi
 `
 }
