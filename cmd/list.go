@@ -1,0 +1,169 @@
+package cmd
+
+import (
+	"encoding/json"
+	"fmt"
+	"os"
+	"path/filepath"
+	"sort"
+	"time"
+
+	"github.com/spf13/cobra"
+	"github.com/TheShiveshNetwork/dizz/internal/config"
+	"github.com/TheShiveshNetwork/dizz/internal/state"
+	"github.com/TheShiveshNetwork/dizz/internal/ui"
+)
+
+var listCmd = &cobra.Command{
+	Use:   "list",
+	Short: "List saved snapshots",
+	Long: `Shows all saved snapshots with their timestamps and summary.
+Use this to see project history over time.`,
+	Run: func(cmd *cobra.Command, args []string) {
+		runList()
+	},
+}
+
+type SnapshotInfo struct {
+	Hash      string
+	Timestamp time.Time
+	GitCommit string
+	Summary   state.Summary
+}
+
+func runList() {
+	cwd, _ := os.Getwd()
+	trackDir := config.TrackDirPath(cwd)
+	objectsDir := config.ObjectsDirPath(trackDir)
+	
+	// Check if objects directory exists
+	if _, err := os.Stat(objectsDir); os.IsNotExist(err) {
+		fmt.Println(ui.Warning("⚠ No snapshots found"))
+		fmt.Println(ui.Muted("  Run 'dizz snapshot' to create your first snapshot"))
+		return
+	}
+
+	// Scan for snapshots
+	snapshots := []SnapshotInfo{}
+	
+	// Walk objects directory
+	filepath.Walk(objectsDir, func(path string, info os.FileInfo, err error) error {
+		if err != nil || info.IsDir() {
+			return nil
+		}
+		
+		if filepath.Ext(path) == ".json" {
+			// Load snapshot
+			var ps state.ProjectState
+			data, err := os.ReadFile(path)
+			if err != nil {
+				return nil
+			}
+			
+			if err := json.Unmarshal(data, &ps); err != nil {
+				return nil
+			}
+			
+			// Get hash from path
+			dir := filepath.Base(filepath.Dir(path))
+			file := filepath.Base(path)
+			hash := dir + file[:len(file)-5] // Remove .json
+			
+			snapshots = append(snapshots, SnapshotInfo{
+				Hash:      hash,
+				Timestamp: ps.UpdatedAt,
+				GitCommit: ps.GitCommit,
+				Summary:   ps.GetSummary(),
+			})
+		}
+		
+		return nil
+	})
+	
+	if len(snapshots) == 0 {
+		fmt.Println(ui.Warning("⚠ No snapshots found"))
+		return
+	}
+	
+	// Sort by timestamp (newest first)
+	sort.Slice(snapshots, func(i, j int) bool {
+		return snapshots[i].Timestamp.After(snapshots[j].Timestamp)
+	})
+	
+	// Display
+	fmt.Println()
+	fmt.Println(ui.Header("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"))
+	fmt.Println(ui.Header("  📜 SNAPSHOT HISTORY"))
+	fmt.Println(ui.Header("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"))
+	fmt.Println()
+	
+	for i, snap := range snapshots {
+		if i >= 10 {
+			fmt.Printf(ui.Muted("  ... and %d more snapshots\n"), len(snapshots)-10)
+			break
+		}
+		
+		// Time formatting
+		timeSince := time.Since(snap.Timestamp)
+		var timeStr string
+		if timeSince < time.Hour {
+			timeStr = fmt.Sprintf("%dm ago", int(timeSince.Minutes()))
+		} else if timeSince < 24*time.Hour {
+			timeStr = fmt.Sprintf("%dh ago", int(timeSince.Hours()))
+		} else if timeSince < 7*24*time.Hour {
+			timeStr = fmt.Sprintf("%dd ago", int(timeSince.Hours()/24))
+		} else {
+			timeStr = snap.Timestamp.Format("Jan 2, 2006")
+		}
+		
+		// Hash
+		shortHash := snap.Hash[:6]
+		fmt.Printf("  %s ", ui.Highlight(shortHash))
+		fmt.Printf("%s ", ui.Muted(timeStr))
+		
+		// Git commit
+		if snap.GitCommit != "" {
+			shortCommit := snap.GitCommit
+			if len(shortCommit) > 7 {
+				shortCommit = shortCommit[:7]
+			}
+			fmt.Printf(ui.Muted("("+shortCommit+")"))
+		}
+		fmt.Println()
+		
+		// Summary
+		active := snap.Summary.ByState[state.Active]
+		planned := snap.Summary.ByState[state.Planned]
+		unstable := snap.Summary.ByState[state.Unstable]
+		unused := snap.Summary.ByState[state.Unused]
+		
+		summary := ""
+		if active > 0 {
+			summary += ui.Success(fmt.Sprintf("%d✓", active))
+		}
+		if planned > 0 {
+			if summary != "" {
+				summary += " "
+			}
+			summary += ui.Warning(fmt.Sprintf("%d⚠", planned))
+		}
+		if unstable > 0 {
+			if summary != "" {
+				summary += " "
+			}
+			summary += ui.Error(fmt.Sprintf("%d🔥", unstable))
+		}
+		if unused > 0 {
+			if summary != "" {
+				summary += " "
+			}
+			summary += ui.Info(fmt.Sprintf("%d⚪", unused))
+		}
+		
+		fmt.Printf("     %s\n", summary)
+		fmt.Println()
+	}
+	
+	fmt.Printf(ui.Muted("  Total: %d snapshots\n"), len(snapshots))
+	fmt.Println()
+}

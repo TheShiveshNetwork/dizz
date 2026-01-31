@@ -2,11 +2,14 @@
   "project_name": "dizz",
   "root_path": ".",
   "include": [
-    "**/*.go"
+    "**/*"
   ],
   "exclude": [
     "vendor/**",
     "node_modules/**",
-    ".git/**"
+    ".git/**",
+    ".dizz/**",
+    "**/.DS_Store",
+    "**/Thumbs.db"
   ]
 }

@@ -4,6 +4,8 @@
 
 ## What is this?
 
+> **Git tracks truth. Dizz tracks understanding.**
+
 `dizz` analyzes your codebase to answer the most important development question:
 
 **"What should I work on next?"**
@@ -12,6 +14,148 @@ It does this by detecting:
 - ✓ Functions that are **used** (called somewhere)
 - ⚠ Functions that are **declared but unused** (potential dead code or unconnected)
 - ✗ Functions that are **planned** (have TODOs)
+
+# dizz Architecture 
+
+## The Four Dimensions of State
+
+Every project has four dimensions that dizz models:
+
+| Dimension | What it Tracks | How |
+|-----------|----------------|-----|
+| **Structure** | What exists | AST parsing, regex |
+| **Usage** | What's connected | Call graphs, imports |
+| **Intent** | What's planned | TODOs, @dizz markers |
+| **Time** | What's stable | Git churn, last touched |
+
+---
+
+## Architecture Layers
+
+```
+┌─────────────────────────────────────────────────────────┐
+│                    CLI Commands                         │
+│              (init, whereami, resume)                   │
+└───────────────────────┬─────────────────────────────────┘
+                        │
+                        ▼
+┌─────────────────────────────────────────────────────────┐
+│                  Orchestration                          │
+│         (Coordinates all other layers)                  │
+└───┬───────────┬─────────────┬────────────┬──────────────┘
+    │           │             │            │
+    ▼           ▼             ▼            ▼
+┌─────────┐ ┌──────────┐ ┌─────────┐ ┌─────────┐
+│ Discover│ │ Analyzer │ │   Git   │ │  Store  │
+│  Files  │ │ Registry │ │ Context │ │ Objects │
+└────┬────┘ └─────┬────┘ └────┬────┘ └────┬────┘
+     │            │           │           │
+     └────────────┴───────────┴───────────┘
+                   │
+                   ▼
+            ┌──────────────┐
+            │   Signals    │ (Universal facts)
+            └──────┬───────┘
+                   │
+                   ▼
+            ┌──────────────┐
+            │ State Engine │ (Interpretation)
+            └──────┬───────┘
+                   │
+                   ▼
+            ┌──────────────┐
+            │ Project State│ (Understanding)
+            └──────────────┘
+```
+
+---
+
+### What are Signals?
+
+Signals are **language-agnostic facts** extracted from code.
+
+Instead of:
+```go
+type Function struct {
+    Name string
+    File string
+}
+```
+
+We have:
+```go
+type Signal struct {
+    Type     SignalType  // "function_defined", "function_called", etc.
+    Name     string
+    File     string
+    Language string
+    Metadata map[string]interface{}
+}
+```
+
+### Why Signals?
+
+**Languages are adapters. State is universal.**
+
+A signal from Go:
+```json
+{"type": "function_defined", "name": "ValidateToken", "file": "auth.go"}
+```
+
+A signal from Python:
+```json
+{"type": "function_defined", "name": "validate_token", "file": "auth.py"}
+```
+
+Same format. Same interpretation. Different analyzers.
+
+### Signal Types
+
+```go
+const (
+    // Structure
+    FunctionDefined
+    FunctionCalled
+    ImportFound
+    
+    // Intent
+    TodoFound
+    TodoRemoved
+    IntentMarker
+    
+    // Time
+    FileTouched
+    FileModified
+)
+```
+
+---
+
+## Language Analyzers
+
+### Interface
+
+Every analyzer implements:
+```go
+type Analyzer interface {
+    Language() string
+    Supports(file string) bool
+    Analyze(files []string) (*signals.SignalSet, error)
+}
+```
+
+### Built-in Analyzers
+
+**Go Analyzer** (`analyzer/golang/`)
+- Uses Go's built-in AST parser
+- High confidence (0.9+)
+- Understands methods, interfaces, packages
+
+**Regex Analyzer** (`analyzer/regex/`)
+- Fallback for any language
+- Pattern-based extraction
+- Lower confidence (0.7)
+- Supports: JS, Python, Rust, C/C++, Java, Ruby, PHP
 
 ## Installation
 
@@ -201,3 +345,4 @@ Your Code ──▶ Static Analysis ──▶ Facts ──▶ State ──▶ Ou
 ---
 
 Built with ❤️ for developers who hate wasting time deciding what to work on.
+

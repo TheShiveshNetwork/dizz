@@ -7,8 +7,8 @@ import (
 	"time"
 
 	"github.com/spf13/cobra"
-	"dizz/internal/state"
-	"dizz/internal/store"
+	"github.com/TheShiveshNetwork/dizz/internal/state"
+	"github.com/TheShiveshNetwork/dizz/internal/store"
 )
 
 var commitCmd = &cobra.Command{
@@ -22,7 +22,7 @@ var commitCmd = &cobra.Command{
 func runCommit() {
 	// Load current state
 	var projectState state.ProjectState
-	if err := store.LoadJson(".dizz/state.json", &projectState); err != nil {
+	if err := store.Load(".dizz/state.json", &projectState); err != nil {
 		fmt.Fprintln(os.Stderr, "Error: No state found. Run 'dizz whereami' first.")
 		os.Exit(1)
 	}
@@ -31,7 +31,7 @@ func runCommit() {
 	timestamp := time.Now().Format("2006-01-02_15-04-05")
 	historyPath := filepath.Join(".dizz", "history", fmt.Sprintf("state_%s.json", timestamp))
 
-	if err := store.SaveJson(historyPath, projectState); err != nil {
+	if err := store.Save(historyPath, projectState); err != nil {
 		fmt.Fprintf(os.Stderr, "Error saving snapshot: %v\n", err)
 		os.Exit(1)
 	}

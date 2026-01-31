@@ -28,5 +28,8 @@ func init() {
 	rootCmd.AddCommand(whereamiCmd)
 	rootCmd.AddCommand(statusCmd)
 	rootCmd.AddCommand(commitCmd)
+	rootCmd.AddCommand(snapshotCmd)
+	rootCmd.AddCommand(listCmd)
+	rootCmd.AddCommand(resumeCmd)
 }
 
