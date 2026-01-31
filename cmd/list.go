@@ -33,7 +33,8 @@ type SnapshotInfo struct {
 
 func runList() {
 	cwd, _ := os.Getwd()
-	objectsDir := config.ObjectsDirPath(cwd)
+	trackDir := config.TrackDirPath(cwd)
+	objectsDir := config.ObjectsDirPath(trackDir)
 	
 	// Check if objects directory exists
 	if _, err := os.Stat(objectsDir); os.IsNotExist(err) {
