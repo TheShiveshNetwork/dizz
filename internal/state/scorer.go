@@ -144,18 +144,23 @@ func (s *Scorer) InterpretSignals(sigSet *signals.SignalSet) *ProjectState {
 		ps.AddTodo(todo)
 	}
 
-	// Mark symbols with Todos
+	// Mark symbols with Todos (function-level association)
 	for key, symbol := range symbolIndex {
-		if todos, exists := todosByFile[symbol.File]; exists && len(todos) > 0 {
-			symbolIndex[key].HasTodo = true
+		if todos, exists := todosByFile[symbol.File]; exists {
+			for _, todo := range todos {
+				if todo.Line >= symbol.Line && todo.Line <= symbol.EndLine {
+					symbolIndex[key].HasTodo = true
+					break
+				}
+			}
 		}
 	}
 
-	// Process intent markers
+	// Process intent markers (function-level association)
 	for _, sig := range sigSet.ByType(signals.IntentMarker) {
-		// Match to symbols in the same file
+		// Match to symbols in the same file and line range
 		for key, symbol := range symbolIndex {
-			if symbol.File == sig.File {
+			if symbol.File == sig.File && sig.Line >= symbol.Line && sig.Line <= symbol.EndLine {
 				if markerType, ok := sig.Metadata["marker_type"].(string); ok && markerType == "state" {
 					if value, ok := sig.Metadata["value"].(string); ok {
 						symbolIndex[key].IntentMarker = value

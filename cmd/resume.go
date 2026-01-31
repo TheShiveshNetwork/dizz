@@ -43,14 +43,9 @@ func runResume() {
 	// Calculate time away
 	timeSince := time.Since(projectState.UpdatedAt)
 
-	// Header
-	fmt.Println()
-	fmt.Println(ui.Header("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"))
-	fmt.Println(ui.Header("  🔄 RESUMING: " + cfg.ProjectName))
-	fmt.Println(ui.Header("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"))
 	fmt.Println()
 
-	// Time context
+	// TODO: abstraction needed
 	var timeStr string
 	var timeColor string
 	if timeSince < 24*time.Hour {
@@ -87,7 +82,6 @@ func runResume() {
 
 	// What you were working on
 	if len(planned) > 0 || len(unstable) > 0 {
-		fmt.Println(ui.Header("  📝 WHERE YOU LEFT OFF"))
 		fmt.Println()
 
 		if len(planned) > 0 {
@@ -121,18 +115,15 @@ func runResume() {
 	active := summary.ByState[state.Active]
 	issues := len(planned) + len(unstable) + len(unused)
 
-	fmt.Println(ui.Header("  📊 QUICK SUMMARY"))
+	fmt.Println(ui.Header("  QUICK SUMMARY"))
 	fmt.Println()
 	fmt.Printf("  %s %s symbols working well\n", ui.Success("✓"), ui.Success(fmt.Sprintf("%d", active)))
 	if issues > 0 {
 		fmt.Printf("  %s %s items need attention\n", ui.Warning("⚠"), ui.Warning(fmt.Sprintf("%d", issues)))
 	}
 	fmt.Println()
-
-	// Suggested next action
-	fmt.Println(ui.Header("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"))
+	fmt.Println()
 	fmt.Println(ui.Header("  💡 WHAT TO DO NOW"))
-	fmt.Println(ui.Header("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"))
 	fmt.Println()
 
 	if timeSince > 24*time.Hour {

@@ -23,7 +23,7 @@ func NewAnalyzer() *Analyzer {
 			"function_py":    regexp.MustCompile(`def\s+(\w+)\s*\(`),
 			"function_rust":  regexp.MustCompile(`fn\s+(\w+)\s*\(`),
 			"function_c":     regexp.MustCompile(`\w+\s+(\w+)\s*\([^)]*\)\s*\{`),
-			"todo":           regexp.MustCompile(`(?i)(TODO|FIXME|XXX|HACK|NOTE):\s*(.+)`),
+			"todo":           regexp.MustCompile(`(?i)^\s*(//|#|/\*|\*)\s*(TODO|FIXME|XXX|HACK|NOTE):\s*(.+)`),
 			"intent_state":   regexp.MustCompile(`@dizz:state\s+(\w+)`),
 			"intent_feature": regexp.MustCompile(`@dizz:feature\s+(\w+)`),
 		},

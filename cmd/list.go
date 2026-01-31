@@ -92,9 +92,8 @@ func runList() {
 
 	// Display
 	fmt.Println()
-	fmt.Println(ui.Header("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"))
-	fmt.Println(ui.Header("  📜 SNAPSHOT HISTORY"))
-	fmt.Println(ui.Header("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"))
+	fmt.Println()
+	fmt.Println(ui.Header("SNAPSHOT HISTORY"))
 	fmt.Println()
 
 	for i, snap := range snapshots {

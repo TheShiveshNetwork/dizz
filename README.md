@@ -35,7 +35,7 @@ Every project has four dimensions that dizz models:
 ```
 ┌─────────────────────────────────────────────────────────┐
 │                    CLI Commands                         │
-│              (init, whereami, resume)                   │
+│            (init, whereami, status, snapshot, list, resume)      │
 └───────────────────────┬─────────────────────────────────┘
                         │
                         ▼
@@ -187,7 +187,13 @@ dizz whereami
 dizz status
 
 # Save a snapshot
-dizz commit
+dizz snapshot
+
+# List all snapshots
+dizz list
+
+# Resume work after time away
+dizz resume
 ```
 
 ## Commands
@@ -198,11 +204,14 @@ Initializes dizz in the current directory.
 Creates:
 - `.dizz/` directory for state storage
 - `.dizz/config.json` with project settings
+- Git post-commit hook (if in a git repo)
 
 ```bash
 $ dizz init
-✓ Initialized dizz
+✓ Initialized my-awesome-project
   Created .dizz/
+✓ Installed git post-commit hook
+  Git integration: enabled
   Project: my-awesome-project
 
 Next: Run 'dizz whereami' to see your project state
@@ -210,83 +219,144 @@ Next: Run 'dizz whereami' to see your project state
 
 ### `dizz whereami` ⭐ **Most Important**
 
-Analyzes your entire codebase and tells you:
-1. Which functions are actively used
-2. Which are declared but never called (dead code?)
-3. What work is planned (TODOs)
-4. **What you should work on next**
+Analyzes your entire codebase and tells you what needs attention:
+- **Planned**: Functions with TODOs (needs implementation)
+- **Unstable**: Code changing too frequently (potential issues)
+- **Unused**: Functions declared but never called (dead code?)
+- **Abandoned**: Old, unused code (consider removal)
+- **Active**: Working well (hidden by default)
 
 ```bash
 $ dizz whereami
 🔍 Analyzing project...
 
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-📍 WHERE YOU ARE
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  ✓ Active: 15
+  ⚠ Planned: 2
+  🔥 Unstable: 1
+  ⚪ Unused: 3
 
-✓ USED FUNCTIONS
+━━ ⚠ PLANNED ━━ needs implementation
+  EnforceRBAC
+    internal/auth/rbac.go:45
+  AddRateLimiting
+    cmd/api.go:12
+
+━━ 🔥 UNSTABLE ━━ changing too much
   ValidateToken
-    internal/auth/token.go
-  ProcessRequest
-    internal/api/handler.go
+    internal/auth/token.go (24 changes)
 
-⚠ UNUSED FUNCTIONS (declared but not called)
+━━ ⚪ UNUSED ━━ not called anywhere
   CheckUserRole
     internal/auth/rbac.go
 
-✗ PLANNED (TODOs found)
-  EnforceRBAC
-    internal/auth/rbac.go
-
-📝 TODOs: 3 found
-  • internal/auth/rbac.go:45: // TODO: implement role checking
-  • cmd/api.go:12: // TODO: add rate limiting
-  • README.md:89: // TODO: add deployment docs
-
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-💡 NEXT SUGGESTED ACTION
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+💡 NEXT ACTION
 → Implement EnforceRBAC
 
-Summary: 4 functions analyzed (2 used, 1 unused, 1 planned)
+15 symbols · 6 need attention · 15 active
 ```
+
+**Flags:**
+- `--all, -a`: Show all symbols including active ones
+- `--verbose, -v`: Show detailed analysis info
 
 ### `dizz status`
 
-Quick summary of your project state.
+Quick project health check with visual indicators.
 
 ```bash
 $ dizz status
-📊 Project Status
+  Project: my-awesome-project
+  Branch: main
+  Commit: a1b2c3d
+  Updated: 2 hours ago
 
-Last updated: 2026-01-31T10:30:00Z
+  Health: ● 75%
 
-Functions:
-  ✓ Used:    15
-  ⚠ Unused:  3
-  ✗ Planned: 2
-  ─────────────
-  Total:     20
+  Symbols:
+    ✓ Active         15 ████████████████████
+    ⚠ Planned         2 ██░░░░░░░░░░░░░░░░░
+    🔥 Unstable        1 █░░░░░░░░░░░░░░░░░░░
+    ⚪ Unused          3 ███░░░░░░░░░░░░░░░░
+    ──────────────────────
+    Total          21
 
-TODOs: 7
+  📝 TODOs: 7
 
-💡 Tip: Run 'dizz whereami' for detailed analysis
+  6 items need attention
+  Run 'dizz whereami' for details
 ```
 
-### `dizz commit`
+### `dizz snapshot`
 
-Saves a timestamped snapshot of your current state to `.dizz/history/`.
-
-Useful for:
-- Tracking progress over time
-- Comparing states before/after refactoring
-- Generating metrics
+Creates an immutable snapshot of current project state.
+Snapshots are content-addressed (like git objects) and stored in `.dizz/objects/`.
 
 ```bash
-$ dizz commit
-✓ Saved snapshot: .dizz/history/state_2026-01-31_10-30-00.json
+$ dizz snapshot
+✓ Snapshot saved: a1b2c3
+  Git commit: a1b2c3d
+  Object: .dizz/objects/a1/b2c3d4.json
 
-💡 Use this to track progress over time
+💡 Snapshots are immutable. Use them to track progress over time.
+```
+
+**Flags:**
+- `--auto`: Automatic snapshot (called by git hook)
+
+### `dizz list`
+
+Shows all saved snapshots with timestamps and project history.
+
+```bash
+$ dizz list
+
+SNAPSHOT HISTORY
+
+  a1b2c3 2h ago (a1b2c3d)
+     15✓ 2⚠ 1🔥 3⚪
+
+  d4e5f6 3d ago (d4e5f67)
+     13✓ 3⚠ 2🔥 4⚪
+
+  g7h8i9 1w ago (g7h8i9j)
+     11✓ 5⚠ 1🔥 6⚪
+
+Total: 3 snapshots
+```
+
+### `dizz resume`
+
+Quick context after being away from the project.
+Optimized for the "I haven't touched this in weeks" scenario.
+
+```bash
+$ dizz resume
+
+  Last worked on: 2 weeks ago
+  Current branch: main
+
+  ⚠ You had 2 planned work:
+    • EnforceRBAC
+      internal/auth/rbac.go:45
+    • AddRateLimiting
+      cmd/api.go:12
+
+  🔥 Code with high churn:
+    • ValidateToken (24 changes)
+
+  QUICK SUMMARY
+
+  ✓ 15 symbols working well
+  ⚠ 6 items need attention
+
+  💡 WHAT TO DO NOW
+
+  1. Re-analyze to get current state
+     dizz whereami
+
+  → Implement EnforceRBAC
+
+💡 Run 'dizz whereami' to refresh the analysis
 ```
 
 ## How It Works
@@ -316,23 +386,25 @@ Your Code ──▶ Static Analysis ──▶ Facts ──▶ State ──▶ Ou
 {
   "project_name": "my-project",
   "root_path": ".",
-  "include": ["**/*.go"],
-  "exclude": ["vendor/**", "node_modules/**", ".git/**"]
+  "exclude": ["vendor/**", "node_modules/**", ".git/**", ".dizz/**"]
 }
 ```
 
 ## State Storage
 
-`.dizz/state.json` contains:
+`.dizz/state.json` contains the current project state:
 ```json
 {
   "updated_at": "2026-01-31T10:30:00Z",
-  "functions": [
+  "git_commit": "a1b2c3d4e5f6...",
+  "symbols": [
     {
       "name": "ValidateToken",
       "file": "internal/auth/token.go",
-      "state": "used",
-      "confidence": 0.9
+      "state": "active",
+      "confidence": 0.9,
+      "churn_count": 12,
+      "last_touched": "2026-01-30T15:20:00Z"
     }
   ],
   "todos": [
@@ -340,6 +412,30 @@ Your Code ──▶ Static Analysis ──▶ Facts ──▶ State ──▶ Ou
   ]
 }
 ```
+
+### Symbol States
+
+- **`active`**: Used and stable
+- **`planned`**: Has TODO markers, needs implementation  
+- **`unstable`**: High churn, changing too frequently
+- **`unused`**: Declared but never called
+- **`abandoned`**: Old, unused, and stale
+
+## Snapshot Storage
+
+Snapshots are stored in `.dizz/objects/` using content-addressed storage:
+```
+.dizz/objects/
+├── a1/
+│   └── b2c3d4.json      # Full state snapshot
+├── d4/
+│   └── e5f67a.json      # Another snapshot
+└── refs/
+    └── git/
+        └── a1b2c3d      # Links git commit to snapshot
+```
+
+Each snapshot is immutable and contains the complete project state at that moment.
 
 
 ---
