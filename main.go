@@ -1,7 +1,7 @@
 package main
 
 import (
-	"dizz/cmd"
+	"github.com/TheShiveshNetwork/dizz/cmd"
 )
 
 func main() {

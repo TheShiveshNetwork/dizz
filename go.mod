@@ -1,4 +1,4 @@
-module dizz
+module github.com/TheShiveshNetwork/dizz
 
 go 1.25.5
 

@@ -5,7 +5,7 @@ import (
 	"os"
 )
 
-func SaveJson(path string, v any) error {
+func Save(path string, v any) error {
 	data, err := json.MarshalIndent(v, "", "  ")
 	if err != nil {
 		return err
@@ -13,7 +13,7 @@ func SaveJson(path string, v any) error {
 	return os.WriteFile(path, data, 0644)
 }
 
-func LoadJson(path string, v any) error {
+func Load(path string, v any) error {
 	data, err := os.ReadFile(path)
 	if err != nil {
 		return err

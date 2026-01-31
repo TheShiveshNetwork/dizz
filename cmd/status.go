@@ -3,61 +3,204 @@ package cmd
 import (
 	"fmt"
 	"os"
+	"time"
 
 	"github.com/spf13/cobra"
-	"dizz/internal/state"
-	"dizz/internal/store"
+	"github.com/TheShiveshNetwork/dizz/internal/config"
+	"github.com/TheShiveshNetwork/dizz/internal/integrations"
+	"github.com/TheShiveshNetwork/dizz/internal/state"
+	"github.com/TheShiveshNetwork/dizz/internal/store"
+	"github.com/TheShiveshNetwork/dizz/internal/ui"
 )
 
 var statusCmd = &cobra.Command{
 	Use:   "status",
-	Short: "Show quick status summary",
+	Short: "Quick project health check",
+	Long: `Shows a compact summary of your project state.
+Use this for a quick health check without full analysis.`,
 	Run: func(cmd *cobra.Command, args []string) {
 		runStatus()
 	},
 }
 
 func runStatus() {
+	cwd, _ := os.Getwd()
+	trackDir := config.TrackDirPath(cwd)
+	
 	// Load state
 	var projectState state.ProjectState
-	if err := store.LoadJson(".dizz/state.json", &projectState); err != nil {
-		fmt.Fprintln(os.Stderr, "Error: No state found. Run 'dizz whereami' first.")
+	statePath := config.StateFilePath(trackDir)
+	if err := store.Load(statePath, &projectState); err != nil {
+		fmt.Fprintln(os.Stderr, ui.Error("✗")+" No state found. Run 'dizz whereami' first.")
 		os.Exit(1)
 	}
 
-	// Count by state
-	used := 0
-	unused := 0
-	planned := 0
+	summary := projectState.GetSummary()
+	
+	// Calculate health score
+	totalSymbols := float64(summary.TotalSymbols)
+	if totalSymbols == 0 {
+		fmt.Println(ui.Warning("⚠ No symbols found. Run 'dizz whereami' to analyze."))
+		return
+	}
+	
+	activeCount := summary.ByState[state.Active]
+	issueCount := summary.ByState[state.Planned] + 
+	              summary.ByState[state.Unstable] + 
+	              summary.ByState[state.Unused] + 
+	              summary.ByState[state.Abandoned]
+	
+	healthScore := int((float64(activeCount) / totalSymbols) * 100)
+	
+	// Header
+	fmt.Println()
+	fmt.Println(ui.Header("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"))
+	fmt.Println(ui.Header("  📊 PROJECT STATUS"))
+	fmt.Println(ui.Header("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"))
+	fmt.Println()
 
-	for _, fn := range projectState.Functions {
-		switch fn.State {
-		case state.Used:
-			used++
-		case state.Unused:
-			unused++
-		case state.Planned:
-			planned++
+	// Project info
+	var cfg config.Config
+	configPath := config.ConfigFilePath(trackDir)
+	if err := store.Load(configPath, &cfg); err == nil {
+		fmt.Printf("  %s %s\n", ui.Muted("Project:"), ui.Highlight(cfg.ProjectName))
+	}
+	
+	// Git info
+	if integrations.IsRepo() {
+		if branch, err := integrations.GetCurrentBranch(); err == nil {
+			fmt.Printf("  %s %s\n", ui.Muted("Branch:"), ui.Info(branch))
+		}
+		if projectState.GitCommit != "" {
+			shortCommit := projectState.GitCommit
+			if len(shortCommit) > 7 {
+				shortCommit = shortCommit[:7]
+			}
+			fmt.Printf("  %s %s\n", ui.Muted("Commit:"), ui.Muted(shortCommit))
 		}
 	}
-
-	total := len(projectState.Functions)
-
-	fmt.Println("Project Status")
-	fmt.Println()
-	fmt.Printf("Last updated: %s\n", projectState.UpdatedAt)
-	fmt.Println()
-	fmt.Printf("Functions:\n")
-	fmt.Printf("  ✓ Used:    %d\n", used)
-	fmt.Printf("  ⚠ Unused:  %d\n", unused)
-	fmt.Printf("  ✗ Planned: %d\n", planned)
-	fmt.Printf("  ─────────────\n")
-	fmt.Printf("  Total:     %d\n", total)
-	fmt.Println()
-	fmt.Printf("TODOs: %d\n", len(projectState.Todos))
-
-	if unused > 0 {
-		fmt.Println()
-		fmt.Println("💡 Tip: Run 'dizz whereami' for detailed analysis")
+	
+	// Last updated
+	timeSince := time.Since(projectState.UpdatedAt)
+	var timeStr string
+	if timeSince < time.Minute {
+		timeStr = "just now"
+	} else if timeSince < time.Hour {
+		timeStr = fmt.Sprintf("%d minutes ago", int(timeSince.Minutes()))
+	} else if timeSince < 24*time.Hour {
+		timeStr = fmt.Sprintf("%d hours ago", int(timeSince.Hours()))
+	} else {
+		timeStr = fmt.Sprintf("%d days ago", int(timeSince.Hours()/24))
 	}
+	fmt.Printf("  %s %s\n", ui.Muted("Updated:"), ui.Muted(timeStr))
+	fmt.Println()
+
+	// Health indicator
+	var healthColor string
+	var healthIcon string
+	if healthScore >= 80 {
+		healthColor = ui.BrightGreen
+		healthIcon = "●"
+	} else if healthScore >= 60 {
+		healthColor = ui.BrightYellow
+		healthIcon = "◐"
+	} else {
+		healthColor = ui.BrightRed
+		healthIcon = "○"
+	}
+	
+	fmt.Printf("  %s %s %s\n", 
+		ui.Muted("Health:"), 
+		ui.Colorize(healthIcon, healthColor),
+		ui.Colorize(fmt.Sprintf("%d%%", healthScore), healthColor))
+	fmt.Println()
+
+	// Symbol breakdown
+	fmt.Println(ui.Muted("  Symbols:"))
+	
+	if activeCount > 0 {
+		bar := createBar(activeCount, summary.TotalSymbols, ui.BrightGreen)
+		fmt.Printf("    %s %-12s %s %s\n", 
+			ui.Success("✓"), 
+			"Active", 
+			ui.Success(fmt.Sprintf("%3d", activeCount)),
+			bar)
+	}
+	
+	if summary.ByState[state.Planned] > 0 {
+		bar := createBar(summary.ByState[state.Planned], summary.TotalSymbols, ui.BrightYellow)
+		fmt.Printf("    %s %-12s %s %s\n", 
+			ui.Warning("⚠"), 
+			"Planned", 
+			ui.Warning(fmt.Sprintf("%3d", summary.ByState[state.Planned])),
+			bar)
+	}
+	
+	if summary.ByState[state.Unstable] > 0 {
+		bar := createBar(summary.ByState[state.Unstable], summary.TotalSymbols, ui.BrightRed)
+		fmt.Printf("    %s %-12s %s %s\n", 
+			ui.Error("🔥"), 
+			"Unstable", 
+			ui.Error(fmt.Sprintf("%3d", summary.ByState[state.Unstable])),
+			bar)
+	}
+	
+	if summary.ByState[state.Unused] > 0 {
+		bar := createBar(summary.ByState[state.Unused], summary.TotalSymbols, ui.BrightCyan)
+		fmt.Printf("    %s %-12s %s %s\n", 
+			ui.Info("⚪"), 
+			"Unused", 
+			ui.Info(fmt.Sprintf("%3d", summary.ByState[state.Unused])),
+			bar)
+	}
+	
+	if summary.ByState[state.Abandoned] > 0 {
+		bar := createBar(summary.ByState[state.Abandoned], summary.TotalSymbols, ui.Gray)
+		fmt.Printf("    %s %-12s %s %s\n", 
+			ui.Muted("❌"), 
+			"Abandoned", 
+			ui.Muted(fmt.Sprintf("%3d", summary.ByState[state.Abandoned])),
+			bar)
+	}
+	
+	fmt.Printf(ui.Muted("    ──────────────────────\n"))
+	fmt.Printf(ui.Muted("    Total        %3d\n"), summary.TotalSymbols)
+	fmt.Println()
+
+	if summary.ActiveTodos > 0 {
+		fmt.Printf("  %s %s\n", ui.Info("📝 TODOs:"), ui.Info(fmt.Sprintf("%d", summary.ActiveTodos)))
+		fmt.Println()
+	}
+
+	// Action items
+	if issueCount > 0 {
+		fmt.Println(ui.Header("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"))
+		fmt.Printf("  %s items need attention\n", ui.Warning(fmt.Sprintf("%d", issueCount)))
+		fmt.Println(ui.Muted("  Run 'dizz whereami' for details"))
+		fmt.Println()
+	} else {
+		fmt.Println(ui.Success("  🎉 Everything looks good!"))
+		fmt.Println()
+	}
+}
+
+// createBar creates a simple progress bar
+func createBar(count, total int, color string) string {
+	if total == 0 {
+		return ""
+	}
+	
+	barWidth := 20
+	filled := int(float64(count) / float64(total) * float64(barWidth))
+	
+	bar := ""
+	for i := 0; i < barWidth; i++ {
+		if i < filled {
+			bar += ui.Colorize("█", color)
+		} else {
+			bar += ui.Muted("░")
+		}
+	}
+	
+	return bar
 }
