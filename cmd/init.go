@@ -67,6 +67,12 @@ func runInit() {
 		os.Exit(1)
 	}
 
+	// TODO: add unused files in .dizz to .gitignore
+	// the idea is if there's smth that can be
+	// regenerated at low cost, it should not be pushed
+	// so just keep the config and ignore all
+	// add post-update hooks for git (pull, rebase)
+
 	// finalization
 	fmt.Printf("✓ Initialized %s\n", projectName)
 	// install post-commit hook

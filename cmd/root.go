@@ -10,9 +10,7 @@ import (
 var rootCmd = &cobra.Command{
 	Use:   "dizz",
 	Short: "Progress-aware dev CLI - know what to work on next",
-	Long: `dizz analyzes your codebase to show what's used, unused, and planned.
-	
-No magic. Just facts from your code.`,
+	Long: `dizz analyzes your codebase to show what's used, unused, and planned.`,
 }
 
 func Execute() {

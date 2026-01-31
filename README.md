@@ -1,6 +1,6 @@
 # dizz - Progress-aware Dev CLI
 
-> Know what to work on next. No AI. No tokens. Just facts from your code.
+> Know what to work on next.
 
 ## What is this?
 
