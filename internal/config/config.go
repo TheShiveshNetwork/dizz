@@ -12,7 +12,6 @@ const (
 
 	ConfigFile = "config.json"
 	StateFile  = "state.json"
-	HistoryDir = "history"
 
 	DefaultBranch = "main"
 )
@@ -42,10 +41,6 @@ func ConfigFilePath(root string) string {
 
 func StateFilePath(root string) string {
 	return filepath.Join(root, StateFile)
-}
-
-func HistoryDirPath(root string) string {
-	return filepath.Join(root, HistoryDir)
 }
 
 // return a sensible default configuration usable in any project

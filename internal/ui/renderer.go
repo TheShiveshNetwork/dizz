@@ -56,9 +56,10 @@ func RenderSymbolGroup(args RenderArgs) {
 				break
 			}
 			fmt.Printf(
-				"     • %s %d",
+				"     • %s %d:%d",
 				ColorByState(sym.Name, sym.State),
 				sym.Line,
+				sym.Column,
 			)
 
 			if args.ShowChurn {
@@ -206,4 +207,3 @@ func normalizeTodoText(text string) string {
 
 	return t
 }
-

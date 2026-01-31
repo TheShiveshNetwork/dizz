@@ -95,6 +95,10 @@ func (s *Scorer) InterpretSignals(sigSet *signals.SignalSet) *ProjectState {
 			symbolIndex[key] = &Symbol{
 				Name:       sig.Name,
 				File:       sig.File,
+				Line:       sig.Line,
+				Column:     sig.Column,
+				EndLine:    sig.EndLine,
+				EndColumn:  sig.EndColumn,
 				Type:       "function",
 				Language:   sig.Language,
 				IsDefined:  true,

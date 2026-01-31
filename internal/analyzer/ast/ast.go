@@ -21,7 +21,7 @@ func (a *Analyzer) Language() string {
 
 // Supports checks if file is a Go file
 func (a *Analyzer) Supports(file string) bool {
-	return filepath.Ext(file) == ".go" && !strings.HasSuffix(file, "_test.go")
+	return IsGoFile(file)
 }
 
 func (a *Analyzer) Analyze(files []string) (*signals.SignalSet, error) {
@@ -53,7 +53,7 @@ func (a *Analyzer) extractDefinitions(file *ast.File, filePath string, fset *tok
 
 			sig := signals.NewSignal(signals.FunctionDefined, filePath).
 				WithName(fn.Name.Name).
-				WithLanguage("go").
+				WithLanguage(a.Language()).
 				WithRange(
 					start.Line,
 					start.Column,
@@ -94,7 +94,7 @@ func (a *Analyzer) extractCalls(file *ast.File, filePath string, fset *token.Fil
 			if name != "" {
 				sig := signals.NewSignal(signals.FunctionCalled, filePath).
 					WithName(name).
-					WithLanguage("go").
+					WithLanguage(a.Language()).
 					WithRange(
 						start.Line,
 						start.Column,
@@ -118,7 +118,7 @@ func (a *Analyzer) extractImports(file *ast.File, filePath string, fset *token.F
 			path := strings.Trim(imp.Path.Value, `"`)
 			sig := signals.NewSignal(signals.ImportFound, filePath).
 				WithName(path).
-				WithLanguage("go").
+				WithLanguage(a.Language()).
 				WithRange(
 					start.Line,
 					start.Column,
@@ -139,7 +139,7 @@ func (a *Analyzer) extractTodos(file *ast.File, filePath string, fset *token.Fil
 				pos := fset.Position(comment.Pos())
 				sig := signals.NewSignal(signals.TodoFound, filePath).
 					WithLine(pos.Line).
-					WithLanguage("go").
+					WithLanguage(a.Language()).
 					WithMeta("text", strings.TrimSpace(text))
 				sigSet.Add(*sig)
 			}
@@ -157,7 +157,7 @@ func (a *Analyzer) extractIntents(file *ast.File, filePath string, sigSet *signa
 			if strings.Contains(text, "@dizz:state") {
 				state := extractMarkerValue(text, "@dizz:state")
 				sig := signals.NewSignal(signals.IntentMarker, filePath).
-					WithLanguage("go").
+					WithLanguage(a.Language()).
 					WithMeta("marker_type", "state").
 					WithMeta("value", state)
 				sigSet.Add(*sig)
@@ -166,7 +166,7 @@ func (a *Analyzer) extractIntents(file *ast.File, filePath string, sigSet *signa
 			if strings.Contains(text, "@dizz:feature") {
 				feature := extractMarkerValue(text, "@dizz:feature")
 				sig := signals.NewSignal(signals.IntentMarker, filePath).
-					WithLanguage("go").
+					WithLanguage(a.Language()).
 					WithMeta("marker_type", "feature").
 					WithMeta("value", feature)
 				sigSet.Add(*sig)

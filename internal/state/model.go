@@ -89,11 +89,6 @@ func (ps *ProjectState) AddTodo(todo Todo) {
 	ps.Todos = append(ps.Todos, todo)
 }
 
-// AddFile adds file context
-func (ps *ProjectState) AddFile(file FileContext) {
-	ps.Files = append(ps.Files, file)
-}
-
 // GetSymbolsByState returns all symbols in a given state
 func (ps *ProjectState) GetSymbolsByState(state SymbolState) []Symbol {
 	var result []Symbol

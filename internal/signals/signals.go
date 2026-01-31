@@ -52,11 +52,11 @@ func (s *Signal) WithName(name string) *Signal {
 func (s *Signal) WithRange(
 	line, col, endLine, endCol int,
 ) *Signal {
-	s.Line = line
-	s.Column = col
-	s.EndLine = endLine
-	s.EndColumn = endCol
-	return s
+	return s.
+			WithLine(line).
+			WithColumn(col).
+			WithEndLine(endLine).
+			WithEndColumn(endCol)
 }
 
 // WithLine sets the line number
