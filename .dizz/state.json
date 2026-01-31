@@ -1,0 +1,168 @@
+{
+  "updated_at": "2026-01-31T16:06:53+05:30",
+  "functions": [
+    {
+      "name": "TrackDirPath",
+      "file": "internal/config/config.go",
+      "state": "used",
+      "confidence": 0.9
+    },
+    {
+      "name": "ScoreFunction",
+      "file": "internal/state/scorer.go",
+      "state": "used",
+      "confidence": 0.9
+    },
+    {
+      "name": "PrintProjectState",
+      "file": "internal/ui/printer.go",
+      "state": "used",
+      "confidence": 0.9
+    },
+    {
+      "name": "AnalyzeFunctions",
+      "file": "internal/analyzer/ast.go",
+      "state": "used",
+      "confidence": 0.9
+    },
+    {
+      "name": "SaveJson",
+      "file": "internal/store/filestore.go",
+      "state": "used",
+      "confidence": 0.9
+    },
+    {
+      "name": "LoadJson",
+      "file": "internal/store/filestore.go",
+      "state": "used",
+      "confidence": 0.9
+    },
+    {
+      "name": "PrintCompact",
+      "file": "internal/ui/printer.go",
+      "state": "unused",
+      "confidence": 0.6
+    },
+    {
+      "name": "main",
+      "file": "main.go",
+      "state": "unused",
+      "confidence": 0.6
+    },
+    {
+      "name": "runCommit",
+      "file": "cmd/commit.go",
+      "state": "used",
+      "confidence": 0.9
+    },
+    {
+      "name": "containsFunction",
+      "file": "cmd/whereami.go",
+      "state": "used",
+      "confidence": 0.9
+    },
+    {
+      "name": "StateFilePath",
+      "file": "internal/config/config.go",
+      "state": "unused",
+      "confidence": 0.6
+    },
+    {
+      "name": "Execute",
+      "file": "cmd/root.go",
+      "state": "used",
+      "confidence": 0.9
+    },
+    {
+      "name": "init",
+      "file": "cmd/root.go",
+      "state": "unused",
+      "confidence": 0.6
+    },
+    {
+      "name": "runStatus",
+      "file": "cmd/status.go",
+      "state": "used",
+      "confidence": 0.9
+    },
+    {
+      "name": "GetFunctionBody",
+      "file": "internal/analyzer/ast.go",
+      "state": "unused",
+      "confidence": 0.6
+    },
+    {
+      "name": "FindAllTodos",
+      "file": "internal/analyzer/todo.go",
+      "state": "used",
+      "confidence": 0.9
+    },
+    {
+      "name": "ConfigFilePath",
+      "file": "internal/config/config.go",
+      "state": "used",
+      "confidence": 0.9
+    },
+    {
+      "name": "HistoryDirPath",
+      "file": "internal/config/config.go",
+      "state": "unused",
+      "confidence": 0.6
+    },
+    {
+      "name": "SuggestNextAction",
+      "file": "internal/state/scorer.go",
+      "state": "used",
+      "confidence": 0.9
+    },
+    {
+      "name": "runInit",
+      "file": "cmd/init.go",
+      "state": "used",
+      "confidence": 0.9
+    },
+    {
+      "name": "runWhereami",
+      "file": "cmd/whereami.go",
+      "state": "used",
+      "confidence": 0.9
+    },
+    {
+      "name": "formatTodos",
+      "file": "cmd/whereami.go",
+      "state": "used",
+      "confidence": 0.9
+    },
+    {
+      "name": "ParseIntentTags",
+      "file": "internal/analyzer/intent.go",
+      "state": "unused",
+      "confidence": 0.6
+    },
+    {
+      "name": "FindTodos",
+      "file": "internal/analyzer/todo.go",
+      "state": "used",
+      "confidence": 0.9
+    }
+  ],
+  "todos": [
+    "cmd/status.go:57: fmt.Printf(\"TODOs: %d\\n\", len(projectState.Todos))",
+    "cmd/whereami.go:21: - What's planned (TODOs)",
+    "cmd/whereami.go:48: // Check if this function has a TODO tag",
+    "internal/analyzer/ast.go:12: // TODO: make this analyzer language agnostic",
+    "internal/analyzer/ast.go:71: // TODO: Inplement for deeper analysis",
+    "internal/analyzer/intent.go:18: // Example: // @intent:planned",
+    "internal/analyzer/intent.go:36: if strings.Contains(line, \"@intent:planned\") {",
+    "internal/analyzer/todo.go:31: if strings.Contains(line, \"TODO\") ||",
+    "internal/analyzer/todo.go:32: strings.Contains(line, \"FIXME\") ||",
+    "internal/analyzer/todo.go:33: strings.Contains(line, \"@intent:planned\") {",
+    "internal/analyzer/todo.go:69: // TODO: scan other files including markdown and all that might be relevant",
+    "internal/state/scorer.go:6: // Priority: TODO \u003e Called \u003e Declared",
+    "internal/state/scorer.go:9: // Function has a TODO - it's planned work",
+    "internal/state/scorer.go:18: // Function exists but isn't called and has no TODO",
+    "internal/ui/printer.go:57: fmt.Println(\"✗ PLANNED (TODOs found)\")",
+    "internal/ui/printer.go:65: // Print TODO summary",
+    "internal/ui/printer.go:67: fmt.Printf(\"📝 TODOs: %d found\\n\", len(ps.Todos))"
+  ]
+}
