@@ -43,29 +43,3 @@ func StateFilePath(root string) string {
 	return filepath.Join(root, StateFile)
 }
 
-// return a sensible default configuration usable in any project
-func DefaultConfig(projectName string) *Config {
-	return &Config{
-		ProjectName: projectName,
-		RootPath:    ".",
-		Include:     []string{"**/*"},
-		Exclude: []string{
-			"vendor/**",
-			"node_modules/**",
-			".git/**",
-			".dizz/**",
-			"**/.DS_Store",
-			"**/Thumbs.db",
-		},
-	}
-}
-
-
-func GitignoreContent() string {
-	return `# Ignore everything by default
-*
-
-# Keep config
-!config.json
-!.gitignore`
-}

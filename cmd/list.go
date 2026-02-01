@@ -7,11 +7,13 @@ import (
 	"path/filepath"
 	"sort"
 	"time"
+	
+	"github.com/spf13/cobra"
 
 	"github.com/TheShiveshNetwork/dizz/internal/config"
 	"github.com/TheShiveshNetwork/dizz/internal/state"
 	"github.com/TheShiveshNetwork/dizz/internal/ui"
-	"github.com/spf13/cobra"
+	"github.com/TheShiveshNetwork/dizz/internal/utils"
 )
 
 var listCmd = &cobra.Command{
@@ -102,23 +104,12 @@ func runList() {
 			break
 		}
 
-		// Time formatting
 		timeSince := time.Since(snap.Timestamp)
-		var timeStr string
-		if timeSince < time.Hour {
-			timeStr = fmt.Sprintf("%dm ago", int(timeSince.Minutes()))
-		} else if timeSince < 24*time.Hour {
-			timeStr = fmt.Sprintf("%dh ago", int(timeSince.Hours()))
-		} else if timeSince < 7*24*time.Hour {
-			timeStr = fmt.Sprintf("%dd ago", int(timeSince.Hours()/24))
-		} else {
-			timeStr = snap.Timestamp.Format("Jan 2, 2006")
-		}
+		timeDisplay := utils.FormatTime(timeSince)
 
-		// Hash
 		shortHash := snap.Hash[:6]
 		fmt.Printf("  %s ", ui.Highlight(shortHash))
-		fmt.Printf("%s ", ui.Muted(timeStr))
+		fmt.Printf("%s ", ui.Muted(timeDisplay.Text))
 
 		// Git commit
 		if snap.GitCommit != "" {

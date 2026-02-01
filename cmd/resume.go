@@ -5,12 +5,14 @@ import (
 	"os"
 	"time"
 
+	"github.com/spf13/cobra"
+
 	"github.com/TheShiveshNetwork/dizz/internal/config"
 	"github.com/TheShiveshNetwork/dizz/internal/integrations"
 	"github.com/TheShiveshNetwork/dizz/internal/state"
 	"github.com/TheShiveshNetwork/dizz/internal/store"
 	"github.com/TheShiveshNetwork/dizz/internal/ui"
-	"github.com/spf13/cobra"
+	"github.com/TheShiveshNetwork/dizz/internal/utils"
 )
 
 var resumeCmd = &cobra.Command{
@@ -45,27 +47,8 @@ func runResume() {
 
 	fmt.Println()
 
-	// TODO: abstraction needed
-	var timeStr string
-	var timeColor string
-	if timeSince < 24*time.Hour {
-		timeStr = "Less than a day"
-		timeColor = ui.BrightGreen
-	} else if timeSince < 7*24*time.Hour {
-		days := int(timeSince.Hours() / 24)
-		timeStr = fmt.Sprintf("%d days", days)
-		timeColor = ui.BrightYellow
-	} else if timeSince < 30*24*time.Hour {
-		weeks := int(timeSince.Hours() / 24 / 7)
-		timeStr = fmt.Sprintf("%d weeks", weeks)
-		timeColor = ui.BrightYellow
-	} else {
-		months := int(timeSince.Hours() / 24 / 30)
-		timeStr = fmt.Sprintf("%d months", months)
-		timeColor = ui.BrightRed
-	}
-
-	fmt.Printf("  %s %s\n", ui.Muted("Last worked on:"), ui.Colorize(timeStr+" ago", timeColor))
+	timeDisplay := utils.FormatTime(timeSince)
+	fmt.Printf("  %s %s\n", ui.Muted("Last worked on:"), ui.Colorize(timeDisplay.Text, timeDisplay.Color))
 
 	// Git context
 	if integrations.IsRepo() {

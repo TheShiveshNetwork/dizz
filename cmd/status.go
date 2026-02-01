@@ -5,12 +5,14 @@ import (
 	"os"
 	"time"
 
+	"github.com/spf13/cobra"
+
 	"github.com/TheShiveshNetwork/dizz/internal/config"
 	"github.com/TheShiveshNetwork/dizz/internal/integrations"
 	"github.com/TheShiveshNetwork/dizz/internal/state"
 	"github.com/TheShiveshNetwork/dizz/internal/store"
 	"github.com/TheShiveshNetwork/dizz/internal/ui"
-	"github.com/spf13/cobra"
+	"github.com/TheShiveshNetwork/dizz/internal/utils"
 )
 
 var statusCmd = &cobra.Command{
@@ -77,17 +79,8 @@ func runStatus() {
 
 	// Last updated
 	timeSince := time.Since(projectState.UpdatedAt)
-	var timeStr string
-	if timeSince < time.Minute {
-		timeStr = "just now"
-	} else if timeSince < time.Hour {
-		timeStr = fmt.Sprintf("%d minutes ago", int(timeSince.Minutes()))
-	} else if timeSince < 24*time.Hour {
-		timeStr = fmt.Sprintf("%d hours ago", int(timeSince.Hours()))
-	} else {
-		timeStr = fmt.Sprintf("%d days ago", int(timeSince.Hours()/24))
-	}
-	fmt.Printf("  %s %s\n", ui.Muted("Updated:"), ui.Muted(timeStr))
+	timeDisplay := utils.FormatTime(timeSince)
+	fmt.Printf("  %s %s\n", ui.Muted("Updated:"), ui.Muted(timeDisplay.Text))
 	fmt.Println()
 
 	// Health indicator

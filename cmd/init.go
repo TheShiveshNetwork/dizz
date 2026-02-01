@@ -9,6 +9,7 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/TheShiveshNetwork/dizz/internal/config"
+	"github.com/TheShiveshNetwork/dizz/internal/defaults"
 	"github.com/TheShiveshNetwork/dizz/internal/integrations"
 )
 
@@ -21,6 +22,19 @@ var initCmd = &cobra.Command{
 }
 
 func runInit() {
+	cwd, _ := os.Getwd()
+	projectName := filepath.Base(cwd)
+	trackDir := config.TrackDirPath(cwd)
+	dizzConfigPath := config.ConfigFilePath(trackDir)
+	
+	// return if dizz config already exists
+	if _, err := os.Stat(dizzConfigPath); err == nil {
+		fmt.Println("✓ dizz already initialized")
+		fmt.Printf("  Project: %s\n", projectName)
+		fmt.Printf("  Path: %s\n", trackDir)
+		return
+	}
+
 	// check git status
 	isGitRepo := integrations.IsRepo()
 	if !isGitRepo {
@@ -34,11 +48,7 @@ func runInit() {
 			os.Exit(0)
 		}
 	}
-
-	// Create .dizz directory to store the states
-	cwd, _ := os.Getwd()
-	projectName := filepath.Base(cwd)
-	trackDir := config.TrackDirPath(cwd)
+	
 	objectsDir := config.ObjectsDirPath(trackDir)
 	refsDir := config.RefsDirPath(trackDir)
 
@@ -46,8 +56,6 @@ func runInit() {
 	dirs := []string{
 		trackDir,
 		objectsDir,
-		filepath.Join(objectsDir, "00"),
-		filepath.Join(objectsDir, "01"),
 		refsDir,
 		filepath.Join(refsDir, "git"),
 	}
@@ -59,8 +67,7 @@ func runInit() {
 	}
 
 	// create dizz config
-	dizzConfig := config.DefaultConfig(projectName)
-	dizzConfigPath := config.ConfigFilePath(trackDir)
+	dizzConfig := defaults.DefaultConfig(projectName)
 	data, _ := json.MarshalIndent(dizzConfig, "", "  ")
 	if err := os.WriteFile(dizzConfigPath, data, 0644); err != nil {
 		fmt.Fprintf(os.Stderr, "Error writing config file: %v\n", err)
@@ -69,13 +76,12 @@ func runInit() {
 
 	// add not needed files to gitignore (which can be regenerated)
 	gitignorePath := filepath.Join(trackDir, ".gitignore")
-	gitignoreContent := config.GitignoreContent()
+	gitignoreContent := defaults.GitignoreContent()
 	if err := os.WriteFile(gitignorePath, []byte(gitignoreContent), 0644); err != nil {
 		fmt.Fprintf(os.Stderr, "Error writing gitignore file: %v\n", err)
 		os.Exit(1)
 	}
 
-	// finalization
 	fmt.Printf("✓ Initialized %s\n", projectName)
 	// install post-commit hook
 	if isGitRepo {

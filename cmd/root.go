@@ -20,6 +20,7 @@ func Execute() {
 	}
 }
 
+// TODO: add ignore tags to these functions
 func init() {
 	// initialize all the subcommands
 	rootCmd.AddCommand(initCmd)

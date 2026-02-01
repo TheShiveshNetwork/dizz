@@ -15,6 +15,7 @@ import (
 	"github.com/TheShiveshNetwork/dizz/internal/state"
 	"github.com/TheShiveshNetwork/dizz/internal/store"
 	"github.com/TheShiveshNetwork/dizz/internal/ui"
+	"github.com/TheShiveshNetwork/dizz/internal/ui/render"
 )
 
 var (
@@ -42,7 +43,6 @@ func init() {
 }
 
 func runWhereami() {
-	// Check if initialized
 	cwd, _ := os.Getwd()
 	trackDir := config.TrackDirPath(cwd)
 	if _, err := os.Stat(trackDir); os.IsNotExist(err) {
@@ -55,7 +55,6 @@ func runWhereami() {
 		fmt.Println()
 	}
 
-	// Load config
 	var cfg config.Config
 	configPath := config.ConfigFilePath(trackDir)
 	if err := store.Load(configPath, &cfg); err != nil {
@@ -138,7 +137,6 @@ func printFocusedState(ps *state.ProjectState) {
 	summary := ps.GetSummary()
 	totalIssues := len(planned) + len(unstable) + len(unused) + len(abandoned)
 
-	// Header
 	fmt.Println()
 
 	// Quick summary with colors
@@ -169,7 +167,7 @@ func printFocusedState(ps *state.ProjectState) {
 	// Print sections that need attention (in priority order)
 
 	// 1. PLANNED - Highest priority
-	ui.RenderSymbolGroup(ui.RenderArgs{
+	render.RenderSymbolGroup(render.RenderArgs{
 		Title:      "━━ ⚠ PLANNED",
 		Subtitle:   "needs implementation",
 		Symbols:    planned,
@@ -179,7 +177,7 @@ func printFocusedState(ps *state.ProjectState) {
 	})
 
 	// 2. UNSTABLE - High priority
-	ui.RenderSymbolGroup(ui.RenderArgs{
+	render.RenderSymbolGroup(render.RenderArgs{
 		Title:      "━━ 🔥 UNSTABLE",
 		Subtitle:   "changing too much",
 		Symbols:    unstable,
@@ -189,7 +187,7 @@ func printFocusedState(ps *state.ProjectState) {
 	})
 
 	// 3. UNUSED - Medium priority
-	ui.RenderSymbolGroup(ui.RenderArgs{
+	render.RenderSymbolGroup(render.RenderArgs{
 		Title:      "━━ ⚪ UNUSED",
 		Subtitle:   "not called anywhere",
 		Symbols:    unused,
@@ -199,7 +197,7 @@ func printFocusedState(ps *state.ProjectState) {
 	})
 
 	// 4. ABANDONED - Consider removal
-	ui.RenderSymbolGroup(ui.RenderArgs{
+	render.RenderSymbolGroup(render.RenderArgs{
 		Title:      "━━ ❌ ABANDONED",
 		Subtitle:   "old, not used",
 		Symbols:    abandoned,
@@ -209,7 +207,7 @@ func printFocusedState(ps *state.ProjectState) {
 	})
 
 	activeTodos := ps.GetActiveTodos()
-	ui.RenderTodos(activeTodos)
+	render.RenderTodos(activeTodos)
 
 	// Show active if requested
 	if showAll && len(active) > 0 {
