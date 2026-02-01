@@ -67,11 +67,13 @@ func runInit() {
 		os.Exit(1)
 	}
 
-	// TODO: add unused files in .dizz to .gitignore
-	// the idea is if there's smth that can be
-	// regenerated at low cost, it should not be pushed
-	// so just keep the config and ignore all
-	// add post-update hooks for git (pull, rebase)
+	// add not needed files to gitignore (which can be regenerated)
+	gitignorePath := filepath.Join(trackDir, ".gitignore")
+	gitignoreContent := config.GitignoreContent()
+	if err := os.WriteFile(gitignorePath, []byte(gitignoreContent), 0644); err != nil {
+		fmt.Fprintf(os.Stderr, "Error writing gitignore file: %v\n", err)
+		os.Exit(1)
+	}
 
 	// finalization
 	fmt.Printf("✓ Initialized %s\n", projectName)
@@ -94,3 +96,4 @@ func runInit() {
 	fmt.Printf("  Project: %s\n", projectName)
 	fmt.Printf("\nNext: Run '%s whereami' to see your project state\n", config.AppName)
 }
+

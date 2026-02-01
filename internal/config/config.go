@@ -59,3 +59,12 @@ func DefaultConfig(projectName string) *Config {
 		},
 	}
 }
+
+
+func GitignoreContent() string {
+	return `# Ignore everything by default
+*
+
+# Keep config
+!config.json`
+}
