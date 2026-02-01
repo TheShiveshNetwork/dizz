@@ -6,11 +6,14 @@ import (
 	"time"
 
 	"github.com/spf13/cobra"
+
+	commonPkg "github.com/TheShiveshNetwork/dizz/internal/common"
 	"github.com/TheShiveshNetwork/dizz/internal/config"
 	"github.com/TheShiveshNetwork/dizz/internal/integrations"
 	"github.com/TheShiveshNetwork/dizz/internal/state"
 	"github.com/TheShiveshNetwork/dizz/internal/store"
 	"github.com/TheShiveshNetwork/dizz/internal/ui"
+	"github.com/TheShiveshNetwork/dizz/internal/utils"
 )
 
 var resumeCmd = &cobra.Command{
@@ -24,54 +27,28 @@ Optimized for the "I haven't touched this in weeks" scenario.`,
 }
 
 func runResume() {
-	cwd, _ := os.Getwd()
-	trackDir := config.TrackDirPath(cwd)
-	
-	// Load state
-	var projectState state.ProjectState
-	statePath := config.StateFilePath(trackDir)
-	if err := store.Load(statePath, &projectState); err != nil {
-		fmt.Fprintln(os.Stderr, ui.Error("✗")+" No state found. Run 'dizz whereami' first.")
+	// Ensure we have current project state
+	projectState, err := commonPkg.EnsureCurrentState()
+	if err != nil {
+		fmt.Fprintln(os.Stderr, ui.Error("✗")+" "+err.Error())
 		os.Exit(1)
 	}
 
 	// Load config
+	cwd, _ := os.Getwd()
+	trackDir := config.TrackDirPath(cwd)
 	var cfg config.Config
 	configPath := config.ConfigFilePath(trackDir)
 	store.Load(configPath, &cfg)
 
 	// Calculate time away
 	timeSince := time.Since(projectState.UpdatedAt)
-	
-	// Header
-	fmt.Println()
-	fmt.Println(ui.Header("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"))
-	fmt.Println(ui.Header("  🔄 RESUMING: " + cfg.ProjectName))
-	fmt.Println(ui.Header("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"))
+
 	fmt.Println()
 
-	// Time context
-	var timeStr string
-	var timeColor string
-	if timeSince < 24*time.Hour {
-		timeStr = "Less than a day"
-		timeColor = ui.BrightGreen
-	} else if timeSince < 7*24*time.Hour {
-		days := int(timeSince.Hours() / 24)
-		timeStr = fmt.Sprintf("%d days", days)
-		timeColor = ui.BrightYellow
-	} else if timeSince < 30*24*time.Hour {
-		weeks := int(timeSince.Hours() / 24 / 7)
-		timeStr = fmt.Sprintf("%d weeks", weeks)
-		timeColor = ui.BrightYellow
-	} else {
-		months := int(timeSince.Hours() / 24 / 30)
-		timeStr = fmt.Sprintf("%d months", months)
-		timeColor = ui.BrightRed
-	}
-	
-	fmt.Printf("  %s %s\n", ui.Muted("Last worked on:"), ui.Colorize(timeStr+" ago", timeColor))
-	
+	timeDisplay := utils.FormatTime(timeSince)
+	fmt.Printf("  %s %s\n", ui.Muted("Last worked on:"), ui.Colorize(timeDisplay.Text, timeDisplay.Color))
+
 	// Git context
 	if integrations.IsRepo() {
 		if branch, err := integrations.GetCurrentBranch(); err == nil {
@@ -84,12 +61,11 @@ func runResume() {
 	planned := projectState.GetSymbolsByState(state.Planned)
 	unstable := projectState.GetSymbolsByState(state.Unstable)
 	unused := projectState.GetSymbolsByState(state.Unused)
-	
+
 	// What you were working on
 	if len(planned) > 0 || len(unstable) > 0 {
-		fmt.Println(ui.Header("  📝 WHERE YOU LEFT OFF"))
 		fmt.Println()
-		
+
 		if len(planned) > 0 {
 			fmt.Printf("  %s You had %s planned work:\n", ui.Warning("⚠"), ui.Warning(fmt.Sprintf("%d", len(planned))))
 			limit := 3
@@ -105,7 +81,7 @@ func runResume() {
 			}
 			fmt.Println()
 		}
-		
+
 		if len(unstable) > 0 {
 			fmt.Printf("  %s Code with high churn:\n", ui.Error("🔥"))
 			for i := 0; i < len(unstable) && i < 3; i++ {
@@ -120,34 +96,31 @@ func runResume() {
 	summary := projectState.GetSummary()
 	active := summary.ByState[state.Active]
 	issues := len(planned) + len(unstable) + len(unused)
-	
-	fmt.Println(ui.Header("  📊 QUICK SUMMARY"))
+
+	fmt.Println(ui.Header("  QUICK SUMMARY"))
 	fmt.Println()
 	fmt.Printf("  %s %s symbols working well\n", ui.Success("✓"), ui.Success(fmt.Sprintf("%d", active)))
 	if issues > 0 {
 		fmt.Printf("  %s %s items need attention\n", ui.Warning("⚠"), ui.Warning(fmt.Sprintf("%d", issues)))
 	}
 	fmt.Println()
-
-	// Suggested next action
-	fmt.Println(ui.Header("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"))
-	fmt.Println(ui.Header("  💡 WHAT TO DO NOW"))
-	fmt.Println(ui.Header("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"))
 	fmt.Println()
-	
+	fmt.Println(ui.Header("  💡 WHAT TO DO NOW"))
+	fmt.Println()
+
 	if timeSince > 24*time.Hour {
 		fmt.Printf("  %s Re-analyze to get current state\n", ui.Highlight("1."))
-		fmt.Printf("     %s\n", ui.Muted("dizz whereami"))
+		fmt.Printf("     %s\n", ui.Muted("dizz log"))
 		fmt.Println()
 	}
-	
-	suggestion := state.SuggestNextAction(&projectState)
+
+	suggestion := state.SuggestNextAction(projectState)
 	fmt.Printf("  %s %s\n", ui.Highlight("→"), suggestion)
 	fmt.Println()
-	
+
 	// Footer
 	if timeSince > 24*time.Hour {
-		fmt.Println(ui.Muted("  💡 Run 'dizz whereami' to refresh the analysis"))
+		fmt.Println(ui.Muted("  💡 Run 'dizz log' to refresh the analysis"))
 	} else {
 		fmt.Println(ui.Muted("  💡 Run 'dizz status' for a quick health check"))
 	}

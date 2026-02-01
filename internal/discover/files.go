@@ -51,7 +51,7 @@ func CodeFiles(root string, exclude []string) ([]string, error) {
 		"**/*.rb",
 		"**/*.php",
 	}
-	
+
 	return Files(root, codeExtensions, exclude)
 }
 
@@ -64,18 +64,18 @@ func matchPattern(path, pattern string) bool {
 	// Convert glob pattern to simple matching
 	// ** means any directory depth
 	// * means any characters in segment
-	
+
 	// Handle ** (recursive)
 	if strings.Contains(pattern, "**") {
 		parts := strings.Split(pattern, "**")
 		if len(parts) == 2 {
 			prefix := strings.TrimSuffix(parts[0], "/")
 			suffix := strings.TrimPrefix(parts[1], "/")
-			
+
 			if prefix != "" && !strings.HasPrefix(path, prefix) {
 				return false
 			}
-			
+
 			if suffix != "" && !strings.HasSuffix(path, suffix) {
 				// Check if suffix is an extension pattern
 				if strings.HasPrefix(suffix, "*") {
@@ -84,11 +84,11 @@ func matchPattern(path, pattern string) bool {
 				}
 				return false
 			}
-			
+
 			return true
 		}
 	}
-	
+
 	// Handle simple wildcard
 	if strings.Contains(pattern, "*") {
 		// Simple extension matching
@@ -96,14 +96,14 @@ func matchPattern(path, pattern string) bool {
 			ext := strings.TrimPrefix(pattern, "*")
 			return strings.HasSuffix(path, ext)
 		}
-		
+
 		// Simple prefix matching
 		if strings.HasSuffix(pattern, "*") {
 			prefix := strings.TrimSuffix(pattern, "*")
 			return strings.HasPrefix(path, prefix)
 		}
 	}
-	
+
 	return false
 }
 
@@ -119,19 +119,18 @@ func shouldInclude(path, root string, patterns []string) bool {
 			return true
 		}
 	}
-	
+
 	return false
 }
 
 func shouldExclude(path, root string, patterns []string) bool {
 	relPath, _ := filepath.Rel(root, path)
-	
+
 	for _, pattern := range patterns {
 		if matchPattern(relPath, pattern) {
 			return true
 		}
 	}
-	
+
 	return false
 }
-

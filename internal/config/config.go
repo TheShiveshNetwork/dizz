@@ -3,18 +3,17 @@ package config
 import "path/filepath"
 
 const (
-	AppName				= "dizz"
+	AppName = "dizz"
 
-	TrackDirName	= ".dizz"
-	ObjectsDirName= "objects"
-	RefsDirName		= "refs"
-	GitRefDirName	= "refs/git"
+	TrackDirName   = ".dizz"
+	ObjectsDirName = "objects"
+	RefsDirName    = "refs"
+	GitRefDirName  = "refs/git"
 
-	ConfigFile		= "config.json"
-	StateFile			= "state.json"
-	HistoryDir		= "history"
+	ConfigFile = "config.json"
+	StateFile  = "state.json"
 
-	DefaultBranch	= "main"
+	DefaultBranch = "main"
 )
 
 type Config struct {
@@ -42,26 +41,5 @@ func ConfigFilePath(root string) string {
 
 func StateFilePath(root string) string {
 	return filepath.Join(root, StateFile)
-}
-
-func HistoryDirPath(root string) string {
-	return filepath.Join(root, HistoryDir)
-}
-
-// return a sensible default configuration usable in any project
-func DefaultConfig(projectName string) *Config {
-	return &Config{
-		ProjectName: projectName,
-		RootPath:    ".",
-		Include:     []string{"**/*"},
-		Exclude: []string{
-			"vendor/**",
-			"node_modules/**",
-			".git/**",
-			".dizz/**",
-			"**/.DS_Store",
-			"**/Thumbs.db",
-		},
-	}
 }
 

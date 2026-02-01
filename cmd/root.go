@@ -8,11 +8,9 @@ import (
 )
 
 var rootCmd = &cobra.Command{
-	Use: "dizz",
+	Use:   "dizz",
 	Short: "Progress-aware dev CLI - know what to work on next",
-	Long: `dizz analyzes your codebase to show what's used, unused, and planned.
-	
-No magic. Just facts from your code.`,
+	Long: `dizz analyzes your codebase to show what's used, unused, and planned.`,
 }
 
 func Execute() {
@@ -22,14 +20,15 @@ func Execute() {
 	}
 }
 
+// @ignore-unused
 func init() {
 	// initialize all the subcommands
 	rootCmd.AddCommand(initCmd)
-	rootCmd.AddCommand(whereamiCmd)
+	rootCmd.AddCommand(versionCmd)
+	rootCmd.AddCommand(upgradeCmd)
+	rootCmd.AddCommand(logCmd)
 	rootCmd.AddCommand(statusCmd)
-	rootCmd.AddCommand(commitCmd)
 	rootCmd.AddCommand(snapshotCmd)
 	rootCmd.AddCommand(listCmd)
 	rootCmd.AddCommand(resumeCmd)
 }
-

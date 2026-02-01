@@ -1,8 +1,10 @@
 package integrations
 
 import (
+	"fmt"
 	"os"
 	"os/exec"
+	"regexp"
 	"strconv"
 	"strings"
 	"time"
@@ -35,41 +37,6 @@ func GetCurrentBranch() (string, error) {
 	return strings.TrimSpace(string(output)), nil
 }
 
-// @returns list of modified files since last commit
-func GetChangedFiles() ([]string, error) {
-	cmd := exec.Command("git", "diff", "--name-only", "HEAD")
-	output, err := cmd.Output()
-	if err != nil {
-		return nil, err
-	}
-
-	lines := strings.Split(string(output), "\n")
-	var files []string
-	for _, line := range lines {
-		if line != "" {
-			files = append(files, line)
-		}
-	}
-
-	return files, nil
-}
-
-// @returns the timestamp of the last commit
-func GetLastCommitTime() (time.Time, error) {
-	cmd := exec.Command("git", "log", "-1", "--format=%ct")
-	output, err := cmd.Output()
-	if err != nil {
-		return time.Time{}, err
-	}
-
-	timestamp, err := strconv.ParseInt(strings.TrimSpace(string(output)), 10, 64)
-	if err != nil {
-		return time.Time{}, err
-	}
-
-	return time.Unix(timestamp, 0), nil
-}
-
 // @returns how many times a file has been modified
 func GetFileChurn(filePath string, depth int) (int, error) {
 	args := []string{"log", "--oneline", "--follow", "--"}
@@ -78,7 +45,7 @@ func GetFileChurn(filePath string, depth int) (int, error) {
 	} else {
 		args = append(args, filePath)
 	}
-	
+
 	cmd := exec.Command("git", args...)
 	output, err := cmd.Output()
 	if err != nil {
@@ -94,6 +61,154 @@ func GetFileChurn(filePath string, depth int) (int, error) {
 	}
 
 	return count, nil
+}
+
+// @returns how many times a function/symbol has been modified
+func GetFunctionChurn(filePath string, functionName string, startLine, endLine int, depth int) (int, error) {
+	// Use git log with line-level tracking for the specific function range
+	args := []string{"log", "--oneline", "-L"}
+	if depth > 0 {
+		args = []string{"log", "-" + strconv.Itoa(depth), "--oneline", "-L"}
+	}
+
+	// Format: -L startLine,endLine:filePath
+	lineRange := fmt.Sprintf("%d,%d:%s", startLine, endLine, filePath)
+	args = append(args, lineRange)
+
+	cmd := exec.Command("git", args...)
+	output, err := cmd.Output()
+	if err != nil {
+		return 0, nil // Function might not be trackable, return 0
+	}
+
+	lines := strings.Split(string(output), "\n")
+	count := 0
+	commitHashRegex := regexp.MustCompile(`^[a-f0-9]{7,}`)
+	for _, line := range lines {
+		if commitHashRegex.MatchString(strings.TrimSpace(line)) {
+			count++
+		}
+	}
+
+	return count, nil
+}
+
+// Commit represents a git commit with metadata
+type Commit struct {
+	Hash       string
+	Time       time.Time
+	ChangeSize int
+}
+
+// @returns detailed commit history for a function with change sizes
+func GetFunctionCommits(filePath string, startLine, endLine int, depth int) ([]Commit, error) {
+	args := []string{"log", "--format=%H %ct", "-L"}
+	if depth > 0 {
+		args = []string{"log", "-" + strconv.Itoa(depth), "--format=%H %ct", "-L"}
+	}
+
+	lineRange := fmt.Sprintf("%d,%d:%s", startLine, endLine, filePath)
+	args = append(args, lineRange)
+
+	cmd := exec.Command("git", args...)
+	output, err := cmd.Output()
+	if err != nil {
+		return nil, nil // Function might not be trackable, return empty
+	}
+
+	lines := strings.Split(string(output), "\n")
+	var commits []Commit
+	commitHashRegex := regexp.MustCompile(`^([a-f0-9]{7,}) (\d+)`)
+
+	for _, line := range lines {
+		matches := commitHashRegex.FindStringSubmatch(strings.TrimSpace(line))
+		if len(matches) == 3 {
+			hash := matches[1]
+			timestamp, _ := strconv.ParseInt(matches[2], 10, 64)
+			time := time.Unix(timestamp, 0)
+
+			// Get change size for this commit
+			changeSize := getCommitChangeSize(hash, filePath, startLine, endLine)
+
+			commits = append(commits, Commit{
+				Hash:       hash,
+				Time:       time,
+				ChangeSize: changeSize,
+			})
+		}
+	}
+
+	return commits, nil
+}
+
+// @returns the number of lines changed in a specific commit for the function range
+func getCommitChangeSize(commitHash, filePath string, startLine, endLine int) int {
+	args := []string{"show", commitHash, "--format=", "--unified=0", "--", filePath}
+	cmd := exec.Command("git", args...)
+	output, err := cmd.Output()
+	if err != nil {
+		return 1 // Default to 1 if we can't determine size
+	}
+
+	// Check if this is a file creation commit (new file mode)
+	if strings.Contains(string(output), "new file mode") {
+		// For file creation, use a more reasonable change size
+		return min(10, endLine-startLine+1)
+	}
+
+	lines := strings.Split(string(output), "\n")
+	changes := 0
+	inFunctionRange := false
+
+	for _, line := range lines {
+		if strings.HasPrefix(line, "@@") {
+			// Parse line numbers from hunk header
+			if start := parseHunkHeader(line, startLine, endLine); start != -1 {
+				inFunctionRange = true
+			} else {
+				inFunctionRange = false
+			}
+		} else if inFunctionRange && (strings.HasPrefix(line, "+") || strings.HasPrefix(line, "-")) {
+			changes++
+		}
+	}
+
+	// Cap the change size to avoid extremely large values from file creation
+	if changes == 0 {
+		return 1 // At least 1 change if this commit touched the function
+	}
+	return min(changes, 20) // Cap at 20 lines per commit
+}
+
+func min(a, b int) int {
+	if a < b {
+		return a
+	}
+	return b
+}
+
+// @returns whether a hunk overlaps with the function range
+func parseHunkHeader(hunkLine string, funcStart, funcEnd int) int {
+	// Format: @@ -start,count +start,count @@
+	re := regexp.MustCompile(`@@ -\d+,?\d* \+(\d+),?(\d*) @@`)
+	matches := re.FindStringSubmatch(hunkLine)
+	if len(matches) < 2 {
+		return -1
+	}
+
+	start, _ := strconv.Atoi(matches[1])
+	count := 1
+	if len(matches) > 2 && matches[2] != "" {
+		count, _ = strconv.Atoi(matches[2])
+	}
+	end := start + count - 1
+
+	// Check if this hunk overlaps with our function range
+	if start > funcEnd || end < funcStart {
+		return -1 // No overlap
+	}
+
+	return start // Only return start since end not used
 }
 
 // @returns when a file was last modified in git
@@ -139,4 +254,3 @@ if [ -x "$DIZZ_BIN" ]; then
 fi
 `
 }
-

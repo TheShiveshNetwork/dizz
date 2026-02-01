@@ -8,12 +8,13 @@ const (
 	FunctionDefined SignalType = "function_defined"
 	FunctionCalled  SignalType = "function_called"
 	ImportFound     SignalType = "import_found"
-	
+
 	// Intent signals
 	TodoFound    SignalType = "todo_found"
 	TodoRemoved  SignalType = "todo_removed"
 	IntentMarker SignalType = "intent_marker"
-	
+	IntentIgnore SignalType = "intent_ignore"
+
 	// Time signals
 	FileTouched  SignalType = "file_touched"
 	FileModified SignalType = "file_modified"
@@ -25,6 +26,9 @@ type Signal struct {
 	Name       string                 `json:"name,omitempty"`
 	File       string                 `json:"file"`
 	Line       int                    `json:"line,omitempty"`
+	Column     int                    `json:"column,omitempty"`
+	EndLine    int                    `json:"end_line,omitempty"`
+	EndColumn  int                    `json:"end_column,omitempty"`
 	Language   string                 `json:"language,omitempty"`
 	Metadata   map[string]interface{} `json:"metadata,omitempty"`
 	Confidence float64                `json:"confidence,omitempty"`
@@ -46,9 +50,37 @@ func (s *Signal) WithName(name string) *Signal {
 	return s
 }
 
+func (s *Signal) WithRange(
+	line, col, endLine, endCol int,
+) *Signal {
+	return s.
+		WithLine(line).
+		WithColumn(col).
+		WithEndLine(endLine).
+		WithEndColumn(endCol)
+}
+
 // WithLine sets the line number
 func (s *Signal) WithLine(line int) *Signal {
 	s.Line = line
+	return s
+}
+
+// WithColumn sets the column number
+func (s *Signal) WithColumn(col int) *Signal {
+	s.Column = col
+	return s
+}
+
+// WithEndLine sets the ending line number
+func (s *Signal) WithEndLine(line int) *Signal {
+	s.EndLine = line
+	return s
+}
+
+// WithEndColumn sets the ending column number
+func (s *Signal) WithEndColumn(col int) *Signal {
+	s.EndColumn = col
 	return s
 }
 
@@ -95,12 +127,5 @@ func (ss *SignalSet) Filter(predicate func(Signal) bool) []Signal {
 func (ss *SignalSet) ByType(sigType SignalType) []Signal {
 	return ss.Filter(func(s Signal) bool {
 		return s.Type == sigType
-	})
-}
-
-// ByFile returns all signals from a specific file
-func (ss *SignalSet) ByFile(file string) []Signal {
-	return ss.Filter(func(s Signal) bool {
-		return s.File == file
 	})
 }
