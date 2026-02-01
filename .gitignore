@@ -1,4 +1,6 @@
 dizz
 dizz-debug
 
-bin
+bin/
+
+dist/
