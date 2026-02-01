@@ -66,5 +66,6 @@ func GitignoreContent() string {
 *
 
 # Keep config
-!config.json`
+!config.json
+!.gitignore`
 }
