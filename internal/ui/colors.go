@@ -38,13 +38,6 @@ const (
 	BgGray    = "\033[100m"
 )
 
-func Bg(text, bg, fg string) string {
-	if fg == "" {
-		return bg + text + Reset
-	}
-	return fg + bg + text + Reset
-}
-
 func Colorize(text, color string) string {
 	return color + text + Reset
 }

@@ -20,11 +20,13 @@ func Execute() {
 	}
 }
 
-// TODO: add ignore tags to these functions
+// @ignore-unused
 func init() {
 	// initialize all the subcommands
 	rootCmd.AddCommand(initCmd)
-	rootCmd.AddCommand(whereamiCmd)
+	rootCmd.AddCommand(versionCmd)
+	rootCmd.AddCommand(upgradeCmd)
+	rootCmd.AddCommand(logCmd)
 	rootCmd.AddCommand(statusCmd)
 	rootCmd.AddCommand(snapshotCmd)
 	rootCmd.AddCommand(listCmd)

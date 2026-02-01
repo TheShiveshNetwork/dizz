@@ -13,6 +13,7 @@ const (
 	TodoFound    SignalType = "todo_found"
 	TodoRemoved  SignalType = "todo_removed"
 	IntentMarker SignalType = "intent_marker"
+	IntentIgnore SignalType = "intent_ignore"
 
 	// Time signals
 	FileTouched  SignalType = "file_touched"
@@ -53,10 +54,10 @@ func (s *Signal) WithRange(
 	line, col, endLine, endCol int,
 ) *Signal {
 	return s.
-			WithLine(line).
-			WithColumn(col).
-			WithEndLine(endLine).
-			WithEndColumn(endCol)
+		WithLine(line).
+		WithColumn(col).
+		WithEndLine(endLine).
+		WithEndColumn(endCol)
 }
 
 // WithLine sets the line number
@@ -126,12 +127,5 @@ func (ss *SignalSet) Filter(predicate func(Signal) bool) []Signal {
 func (ss *SignalSet) ByType(sigType SignalType) []Signal {
 	return ss.Filter(func(s Signal) bool {
 		return s.Type == sigType
-	})
-}
-
-// ByFile returns all signals from a specific file
-func (ss *SignalSet) ByFile(file string) []Signal {
-	return ss.Filter(func(s Signal) bool {
-		return s.File == file
 	})
 }

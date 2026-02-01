@@ -6,12 +6,8 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"github.com/TheShiveshNetwork/dizz/internal/analyzer"
-	"github.com/TheShiveshNetwork/dizz/internal/analyzer/ast"
-	"github.com/TheShiveshNetwork/dizz/internal/analyzer/regex"
+	commonPkg "github.com/TheShiveshNetwork/dizz/internal/common"
 	"github.com/TheShiveshNetwork/dizz/internal/config"
-	"github.com/TheShiveshNetwork/dizz/internal/discover"
-	"github.com/TheShiveshNetwork/dizz/internal/integrations"
 	"github.com/TheShiveshNetwork/dizz/internal/state"
 	"github.com/TheShiveshNetwork/dizz/internal/store"
 	"github.com/TheShiveshNetwork/dizz/internal/ui"
@@ -23,23 +19,28 @@ var (
 	verboseOut bool
 )
 
-var whereamiCmd = &cobra.Command{
-	Use:   "whereami",
+var logCmd = &cobra.Command{
+	Use:   "log",
 	Short: "Show what needs your attention",
 	Long: `Analyzes your code and shows:
 - What needs to be implemented (planned)
 - What's changing too much (unstable)
 - What's not being used (unused/abandoned)
 
-Focus on what matters. Active code is hidden by default.`,
+Focus on what matters. Active code is hidden by default.
+
+Flags:
+  -a, --all     Show all symbols including active ones
+  -v, --verbose   Show detailed analysis info`,
 	Run: func(cmd *cobra.Command, args []string) {
 		runWhereami()
 	},
 }
 
+// @ignore-unused
 func init() {
-	whereamiCmd.Flags().BoolVarP(&showAll, "all", "a", false, "Show all symbols including active ones")
-	whereamiCmd.Flags().BoolVarP(&verboseOut, "verbose", "v", false, "Show detailed analysis info")
+	logCmd.Flags().BoolVarP(&showAll, "all", "a", false, "Show all symbols including active ones")
+	logCmd.Flags().BoolVarP(&verboseOut, "verbose", "v", false, "Show detailed analysis info")
 }
 
 func runWhereami() {
@@ -55,75 +56,25 @@ func runWhereami() {
 		fmt.Println()
 	}
 
-	var cfg config.Config
-	configPath := config.ConfigFilePath(trackDir)
-	if err := store.Load(configPath, &cfg); err != nil {
-		fmt.Fprintf(os.Stderr, ui.Error("Error loading config: %v\n"), err)
-		os.Exit(1)
-	}
-
-	// Step 1: Discover files
-	files, err := discover.CodeFiles(cfg.RootPath, cfg.Exclude)
-	if err != nil {
-		fmt.Fprintf(os.Stderr, ui.Error("Error discovering files: %v\n"), err)
-		os.Exit(1)
-	}
-
-	if verboseOut {
-		fmt.Printf(ui.Muted("Found %d code files\n"), len(files))
-	}
-
-	// Step 2: Build analyzer registry
-	registry := analyzer.NewRegistry()
-	registry.Register(&ast.Analyzer{})
-	registry.Register(regex.NewAnalyzer())
-
-	// Step 3: Analyze files to extract signals
-	sigSet, err := registry.AnalyzeFiles(files)
+	// Always analyze with current project state
+	projectState, err := commonPkg.EnsureCurrentStateWithAnalysis(nil)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, ui.Error("Error analyzing files: %v\n"), err)
 		os.Exit(1)
 	}
 
 	if verboseOut {
-		fmt.Printf(ui.Muted("Extracted %d signals\n"), len(sigSet.Signals))
+		fmt.Printf(ui.Muted("Extracted %d signals\n"), len(projectState.Symbols))
 		fmt.Println()
 	}
 
-	// Step 4: Interpret signals into state
-	scorer := state.NewScorer()
-	projectState := scorer.InterpretSignals(sigSet)
-
-	// Step 5: Enrich with git context if available
-	if integrations.IsRepo() {
-		if commit, err := integrations.GetCurrentCommit(); err == nil {
-			projectState.GitCommit = commit
-		}
-
-		// Add churn data to symbols
-		for i := range projectState.Symbols {
-			symbol := &projectState.Symbols[i]
-			if churn, err := integrations.GetFileChurn(symbol.File, 20); err == nil {
-				symbol.ChurnCount = churn
-			}
-			if lastMod, err := integrations.GetFileLastModified(symbol.File); err == nil {
-				symbol.LastTouched = &lastMod
-			}
-		}
-
-		// Re-score with churn data
-		for i := range projectState.Symbols {
-			scorer.Score(&projectState.Symbols[i])
-		}
-	}
-
-	// Step 6: Save state
+	// Save state
 	statePath := config.StateFilePath(trackDir)
 	if err := store.Save(statePath, projectState); err != nil {
 		fmt.Fprintf(os.Stderr, ui.Warning("Warning: Could not save state: %v\n"), err)
 	}
 
-	// Step 7: Display results
+	// Display results
 	printFocusedState(projectState)
 }
 
@@ -224,7 +175,7 @@ func printFocusedState(ps *state.ProjectState) {
 	fmt.Printf(ui.Muted("  %d symbols · %d need attention · %d active\n"),
 		summary.TotalSymbols, totalIssues, len(active))
 	if !showAll && totalIssues > 10 {
-		fmt.Printf(ui.Muted("  Use 'dizz whereami --all' to see everything\n"))
+		fmt.Printf(ui.Muted("  Use 'dizz log --all' to see everything\n"))
 	}
 	fmt.Println()
 }

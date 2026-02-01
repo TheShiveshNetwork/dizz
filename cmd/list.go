@@ -129,25 +129,25 @@ func runList() {
 
 		summary := ""
 		if active > 0 {
-			summary += ui.Success(fmt.Sprintf("%d✓", active))
+			summary += ui.Success(fmt.Sprintf("Act %d", active))
 		}
 		if planned > 0 {
 			if summary != "" {
 				summary += " "
 			}
-			summary += ui.Warning(fmt.Sprintf("%d⚠", planned))
+			summary += ui.Warning(fmt.Sprintf("Pln %d", planned))
 		}
 		if unstable > 0 {
 			if summary != "" {
 				summary += " "
 			}
-			summary += ui.Error(fmt.Sprintf("%d🔥", unstable))
+			summary += ui.Error(fmt.Sprintf("Uns %d", unstable))
 		}
 		if unused > 0 {
 			if summary != "" {
 				summary += " "
 			}
-			summary += ui.Info(fmt.Sprintf("%d⚪", unused))
+			summary += ui.Info(fmt.Sprintf("Use %d", unused))
 		}
 
 		fmt.Printf("     %s\n", summary)

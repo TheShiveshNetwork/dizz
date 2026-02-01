@@ -7,6 +7,7 @@ import (
 
 	"github.com/spf13/cobra"
 
+	commonPkg "github.com/TheShiveshNetwork/dizz/internal/common"
 	"github.com/TheShiveshNetwork/dizz/internal/config"
 	"github.com/TheShiveshNetwork/dizz/internal/integrations"
 	"github.com/TheShiveshNetwork/dizz/internal/state"
@@ -26,18 +27,16 @@ Optimized for the "I haven't touched this in weeks" scenario.`,
 }
 
 func runResume() {
-	cwd, _ := os.Getwd()
-	trackDir := config.TrackDirPath(cwd)
-
-	// Load state
-	var projectState state.ProjectState
-	statePath := config.StateFilePath(trackDir)
-	if err := store.Load(statePath, &projectState); err != nil {
-		fmt.Fprintln(os.Stderr, ui.Error("✗")+" No state found. Run 'dizz whereami' first.")
+	// Ensure we have current project state
+	projectState, err := commonPkg.EnsureCurrentState()
+	if err != nil {
+		fmt.Fprintln(os.Stderr, ui.Error("✗")+" "+err.Error())
 		os.Exit(1)
 	}
 
 	// Load config
+	cwd, _ := os.Getwd()
+	trackDir := config.TrackDirPath(cwd)
 	var cfg config.Config
 	configPath := config.ConfigFilePath(trackDir)
 	store.Load(configPath, &cfg)
@@ -111,17 +110,17 @@ func runResume() {
 
 	if timeSince > 24*time.Hour {
 		fmt.Printf("  %s Re-analyze to get current state\n", ui.Highlight("1."))
-		fmt.Printf("     %s\n", ui.Muted("dizz whereami"))
+		fmt.Printf("     %s\n", ui.Muted("dizz log"))
 		fmt.Println()
 	}
 
-	suggestion := state.SuggestNextAction(&projectState)
+	suggestion := state.SuggestNextAction(projectState)
 	fmt.Printf("  %s %s\n", ui.Highlight("→"), suggestion)
 	fmt.Println()
 
 	// Footer
 	if timeSince > 24*time.Hour {
-		fmt.Println(ui.Muted("  💡 Run 'dizz whereami' to refresh the analysis"))
+		fmt.Println(ui.Muted("  💡 Run 'dizz log' to refresh the analysis"))
 	} else {
 		fmt.Println(ui.Muted("  💡 Run 'dizz status' for a quick health check"))
 	}

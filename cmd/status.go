@@ -7,6 +7,7 @@ import (
 
 	"github.com/spf13/cobra"
 
+	commonPkg "github.com/TheShiveshNetwork/dizz/internal/common"
 	"github.com/TheShiveshNetwork/dizz/internal/config"
 	"github.com/TheShiveshNetwork/dizz/internal/integrations"
 	"github.com/TheShiveshNetwork/dizz/internal/state"
@@ -26,14 +27,10 @@ Use this for a quick health check without full analysis.`,
 }
 
 func runStatus() {
-	cwd, _ := os.Getwd()
-	trackDir := config.TrackDirPath(cwd)
-
-	// Load state
-	var projectState state.ProjectState
-	statePath := config.StateFilePath(trackDir)
-	if err := store.Load(statePath, &projectState); err != nil {
-		fmt.Fprintln(os.Stderr, ui.Error("✗")+" No state found. Run 'dizz whereami' first.")
+	// Always analyze with current project state
+	projectState, err := commonPkg.EnsureCurrentStateWithAnalysis(nil)
+	if err != nil {
+		fmt.Fprintln(os.Stderr, ui.Error("✗")+" "+err.Error())
 		os.Exit(1)
 	}
 
@@ -42,7 +39,7 @@ func runStatus() {
 	// Calculate health score
 	totalSymbols := float64(summary.TotalSymbols)
 	if totalSymbols == 0 {
-		fmt.Println(ui.Warning("⚠ No symbols found. Run 'dizz whereami' to analyze."))
+		fmt.Println(ui.Warning("⚠ No symbols found. Run 'dizz log' to analyze."))
 		return
 	}
 
@@ -57,6 +54,8 @@ func runStatus() {
 	fmt.Println()
 
 	// Project info
+	cwd, _ := os.Getwd()
+	trackDir := config.TrackDirPath(cwd)
 	var cfg config.Config
 	configPath := config.ConfigFilePath(trackDir)
 	if err := store.Load(configPath, &cfg); err == nil {
@@ -164,7 +163,7 @@ func runStatus() {
 	if issueCount > 0 {
 		fmt.Println()
 		fmt.Printf("  %s items need attention\n", ui.Warning(fmt.Sprintf("%d", issueCount)))
-		fmt.Println(ui.Muted("  Run 'dizz whereami' for details"))
+		fmt.Println(ui.Muted("  Run 'dizz log' for details"))
 		fmt.Println()
 	} else {
 		fmt.Println(ui.Success("  🎉 Everything looks good!"))
@@ -191,4 +190,9 @@ func createBar(count, total int, color string) string {
 	}
 
 	return bar
+}
+
+// @ignore-unstable - this function is intentionally excluded from instability analysis
+func anotherFunction() {
+	// This function would be excluded from instability analysis
 }

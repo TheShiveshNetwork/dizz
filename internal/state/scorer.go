@@ -170,9 +170,82 @@ func (s *Scorer) InterpretSignals(sigSet *signals.SignalSet) *ProjectState {
 		}
 	}
 
+	// Process intent ignore markers (before final scoring)
+	ignoreSignals := sigSet.ByType(signals.IntentIgnore)
+	for _, sig := range ignoreSignals {
+		// Match to symbols by name first, then by location as fallback
+		for key, symbol := range symbolIndex {
+			// Only match symbols in the same file
+			if symbol.File != sig.File {
+				continue
+			}
+
+			matched := false
+
+			// Primary match: by symbol name
+			if symbolName, ok := sig.Metadata["symbol_name"].(string); ok && symbolName == symbol.Name {
+				matched = true
+			} else if sig.Line >= symbol.Line && sig.Line <= symbol.EndLine {
+				// Fallback: by location range (same file already checked)
+				matched = true
+			}
+
+			if matched {
+				if ignoreType, ok := sig.Metadata["ignore_type"].(string); ok {
+					// Apply ignore logic - override to Active state
+					switch ignoreType {
+					case "unstable", "unused", "abandoned":
+						symbolIndex[key].State = Active
+						symbolIndex[key].Confidence = 1.0         // High confidence for explicit ignore
+						symbolIndex[key].IntentMarker = "ignored" // Mark as explicitly ignored
+					}
+				}
+				break // Only apply to the first matching symbol
+			}
+		}
+	}
+
 	// Score all symbols
 	for _, symbol := range symbolIndex {
 		s.Score(symbol)
+	}
+
+	// Process intent ignore markers (after scoring to override final states)
+	for _, sig := range ignoreSignals {
+		// Match to symbols by name first, then by location as fallback
+		for key, symbol := range symbolIndex {
+			// Only match symbols in the same file
+			if symbol.File != sig.File {
+				continue
+			}
+
+			matched := false
+
+			// Primary match: by symbol name
+			if symbolName, ok := sig.Metadata["symbol_name"].(string); ok && symbolName == symbol.Name {
+				matched = true
+			} else if sig.Line >= symbol.Line && sig.Line <= symbol.EndLine {
+				// Fallback: by location range (same file already checked)
+				matched = true
+			}
+
+			if matched {
+				if ignoreType, ok := sig.Metadata["ignore_type"].(string); ok {
+					// Apply ignore logic - override to Active state
+					switch ignoreType {
+					case "unstable", "unused", "abandoned":
+						symbolIndex[key].State = Active
+						symbolIndex[key].Confidence = 1.0         // High confidence for explicit ignore
+						symbolIndex[key].IntentMarker = "ignored" // Mark as explicitly ignored
+					}
+				}
+				break // Only apply to the first matching symbol
+			}
+		}
+	}
+
+	// Add all symbols to project state
+	for _, symbol := range symbolIndex {
 		ps.AddSymbol(*symbol)
 	}
 

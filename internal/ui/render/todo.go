@@ -8,28 +8,6 @@ import (
 	"github.com/TheShiveshNetwork/dizz/internal/state"
 )
 
-func colorizeTodoText(text string) string {
-	upper := strings.ToUpper(text)
-
-	switch {
-	case strings.Contains(upper, "FIX"),
-		strings.Contains(upper, "BUG"),
-		strings.Contains(upper, "HACK"):
-		return ui.Error(text)
-
-	case strings.Contains(upper, "TODO"),
-		strings.Contains(upper, "TBD"):
-		return ui.Warning(text)
-
-	case strings.Contains(upper, "NOTE"),
-		strings.Contains(upper, "INFO"):
-		return ui.Info(text)
-
-	default:
-		return ui.Highlight(text)
-	}
-}
-
 func RenderTodos(todos []state.Todo) {
 	if len(todos) == 0 {
 		return

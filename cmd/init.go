@@ -100,6 +100,6 @@ func runInit() {
 		fmt.Println("  Git integration: disabled")
 	}
 	fmt.Printf("  Project: %s\n", projectName)
-	fmt.Printf("\nNext: Run '%s whereami' to see your project state\n", config.AppName)
+	fmt.Printf("\nNext: Run '%s log' to see your project state\n", config.AppName)
 }
 

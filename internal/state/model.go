@@ -15,16 +15,16 @@ const (
 
 // Symbol represents a tracked code symbol (function, class, etc.)
 type Symbol struct {
-	Name				string			`json:"name"`
-	File				string			`json:"file"`
-	Line				int					`json:"line"`
-	Column			int					`json:"column"`
-	EndLine			int					`json:"end_line,omitempty"` // end of symbol
-	EndColumn		int					`json:"end_column,omitempty"`
-	Type				string			`json:"type"` // "function", "class", "module"
-	Language		string			`json:"language"`
-	State				SymbolState	`json:"state"`
-	Confidence	float64			`json:"confidence"`
+	Name       string      `json:"name"`
+	File       string      `json:"file"`
+	Line       int         `json:"line"`
+	Column     int         `json:"column"`
+	EndLine    int         `json:"end_line,omitempty"` // end of symbol
+	EndColumn  int         `json:"end_column,omitempty"`
+	Type       string      `json:"type"` // "function", "class", "module"
+	Language   string      `json:"language"`
+	State      SymbolState `json:"state"`
+	Confidence float64     `json:"confidence"`
 
 	// Context
 	IsDefined bool `json:"is_defined"`
@@ -32,8 +32,9 @@ type Symbol struct {
 	HasTodo   bool `json:"has_todo"`
 
 	// Time dimension
-	LastTouched *time.Time `json:"last_touched,omitempty"`
-	ChurnCount  int        `json:"churn_count,omitempty"`
+	LastTouched      *time.Time `json:"last_touched,omitempty"`
+	ChurnCount       int        `json:"churn_count,omitempty"`
+	InstabilityScore float64    `json:"instability_score,omitempty"`
 
 	// Intent
 	IntentMarker string `json:"intent_marker,omitempty"`

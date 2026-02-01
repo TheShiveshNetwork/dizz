@@ -4,7 +4,7 @@ import (
 	"github.com/TheShiveshNetwork/dizz/cmd"
 )
 
-// TODO: add ignore tags to these functions
+// @ignore-unused
 func main() {
 	cmd.Execute()
 }

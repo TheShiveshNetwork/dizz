@@ -8,10 +8,9 @@ import (
 	"os"
 	"path/filepath"
 
+	commonPkg "github.com/TheShiveshNetwork/dizz/internal/common"
 	"github.com/TheShiveshNetwork/dizz/internal/config"
 	"github.com/TheShiveshNetwork/dizz/internal/integrations"
-	"github.com/TheShiveshNetwork/dizz/internal/state"
-	"github.com/TheShiveshNetwork/dizz/internal/store"
 	"github.com/TheShiveshNetwork/dizz/internal/ui"
 	"github.com/spf13/cobra"
 )
@@ -32,20 +31,17 @@ If in a git repo, creates a ref linking the commit to the snapshot.`,
 	},
 }
 
+// @ignore-unused
 func init() {
 	snapshotCmd.Flags().BoolVar(&autoSnapshot, "auto", false, "Automatic snapshot (called by git hook)")
 }
 
 func runSnapshot() {
-	cwd, _ := os.Getwd()
-	trackDir := config.TrackDirPath(cwd)
-
-	// Load current state
-	var projectState state.ProjectState
-	statePath := config.StateFilePath(trackDir)
-	if err := store.Load(statePath, &projectState); err != nil {
+	// Ensure we have current project state
+	projectState, err := commonPkg.EnsureCurrentState()
+	if err != nil {
 		if !autoSnapshot {
-			fmt.Fprintln(os.Stderr, ui.Error("✗")+" No state found. Run 'dizz whereami' first.")
+			fmt.Fprintln(os.Stderr, ui.Error("✗")+" "+err.Error())
 		}
 		os.Exit(1)
 	}
@@ -65,6 +61,8 @@ func runSnapshot() {
 	shortHash := hashStr[:6]
 
 	// Create object path: objects/ab/cdef...
+	cwd, _ := os.Getwd()
+	trackDir := config.TrackDirPath(cwd)
 	objectsDir := config.ObjectsDirPath(trackDir)
 	objectSubdir := filepath.Join(objectsDir, hashStr[:2])
 	objectPath := filepath.Join(objectSubdir, hashStr[2:]+".json")
