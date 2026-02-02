@@ -1,11 +1,11 @@
 package render
 
 import (
-	"sort"
 	"fmt"
+	"sort"
 
-	"github.com/TheShiveshNetwork/dizz/internal/ui"
 	"github.com/TheShiveshNetwork/dizz/internal/state"
+	"github.com/TheShiveshNetwork/dizz/internal/ui"
 )
 
 type FileGroup struct {
@@ -123,4 +123,3 @@ func ColorByState(text string, s state.SymbolState) string {
 		return text
 	}
 }
-

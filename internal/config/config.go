@@ -47,4 +47,3 @@ func StateFilePath(root string) string {
 func IntentFilePath(root string) string {
 	return filepath.Join(root, IntentFile)
 }
-

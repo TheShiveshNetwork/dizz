@@ -177,4 +177,3 @@ func FindProjectRoot() (string, error) {
 		dir = parent
 	}
 }
-

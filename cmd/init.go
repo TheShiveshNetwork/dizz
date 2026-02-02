@@ -26,7 +26,7 @@ func runInit() {
 	projectName := filepath.Base(cwd)
 	trackDir := config.TrackDirPath(cwd)
 	dizzConfigPath := config.ConfigFilePath(trackDir)
-	
+
 	// return if dizz config already exists
 	if _, err := os.Stat(dizzConfigPath); err == nil {
 		fmt.Println("✓ dizz already initialized")
@@ -48,7 +48,7 @@ func runInit() {
 			os.Exit(0)
 		}
 	}
-	
+
 	objectsDir := config.ObjectsDirPath(trackDir)
 	refsDir := config.RefsDirPath(trackDir)
 
@@ -102,4 +102,3 @@ func runInit() {
 	fmt.Printf("  Project: %s\n", projectName)
 	fmt.Printf("\nNext: Run '%s log' to see your project state\n", config.AppName)
 }
-

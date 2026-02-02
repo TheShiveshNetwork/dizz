@@ -30,4 +30,3 @@ func GitignoreContent() string {
 !intent.json
 !.gitignore`
 }
-

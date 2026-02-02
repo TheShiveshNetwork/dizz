@@ -69,4 +69,3 @@ func Header(text string) string {
 func Highlight(text string) string {
 	return Bold + BrightBlue + text + Reset
 }
-

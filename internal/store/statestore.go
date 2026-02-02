@@ -98,4 +98,3 @@ func (s *ConfigStore) LoadConfig() (*config.Config, error) {
 
 	return &cfg, nil
 }
-

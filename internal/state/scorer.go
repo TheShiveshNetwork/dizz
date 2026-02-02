@@ -377,7 +377,7 @@ func (s *Scorer) InterpretSignalsWithIntent(sigSet *signals.SignalSet, intentSta
 		s.Score(symbol)
 	}
 
-	// Apply 
+	// Apply
 	// // @ignore-unusedmathematical scoring (percentile-based)
 	var symbolSlice []*Symbol
 	for _, symbol := range symbolIndex {
