@@ -64,3 +64,13 @@ install:
 	@echo "📦 Installing $(BINARY_NAME)..."
 	@$(GO) install $(MAIN_PKG)
 
+build-site:
+	./scripts/build-site.sh
+
+wasm:
+	cd site/wasm && GOOS=js GOARCH=wasm go build -o ../public/dizz.wasm
+	cp "$$(go env GOROOT)/misc/wasm/wasm_exec.js" site/public/
+
+serve-site:
+	cd site/server && go run main.go
+
