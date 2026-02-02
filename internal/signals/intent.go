@@ -37,6 +37,7 @@ func ExtractIgnoreMarkers(source, file, language string) []IntentIgnoreSignal {
 	var signals []IntentIgnoreSignal
 
 	lines := strings.Split(source, "\n")
+	// TODO: make it compatible to most of the languages. currently just extracts // comments
 	ignorePattern := regexp.MustCompile(`^\s*//\s*@ignore-(unstable|unused|abandoned)\b`)
 
 	for lineNum, line := range lines {

@@ -1,0 +1,81 @@
+{
+  "version": 1,
+  "created_at": "2026-02-02T13:47:31.231852817+05:30",
+  "updated_at": "2026-02-02T15:09:10.270723791+05:30",
+  "intents": [
+    {
+      "id": "int_1770020251",
+      "type": "fixme",
+      "message": "Fix cache invalidation race condition",
+      "scope": "project",
+      "created_at": "2026-02-02T13:47:31.231853108+05:30",
+      "updated_at": "2026-02-02T13:48:01.745388778+05:30",
+      "created_by": "user",
+      "severity": 3,
+      "confidence": 0.8,
+      "status": "resolved",
+      "resolution": {
+        "method": "fixed",
+        "description": "Resolved via CLI",
+        "resolved_at": "2026-02-02T13:48:01.745388485+05:30",
+        "resolved_by": "user"
+      }
+    },
+    {
+      "id": "int_1770020361",
+      "type": "refactor",
+      "message": "Refactor scoring system to use weights",
+      "scope": "project",
+      "created_at": "2026-02-02T13:49:21.417347436+05:30",
+      "updated_at": "2026-02-02T13:49:21.417347436+05:30",
+      "created_by": "user",
+      "severity": 2,
+      "confidence": 0.8,
+      "status": "active",
+      "tags": [
+        "performance",
+        "architecture"
+      ]
+    },
+    {
+      "id": "int_1770020403",
+      "type": "question",
+      "message": "Question: Should we add caching for analysis results?",
+      "scope": "project",
+      "created_at": "2026-02-02T13:50:03.908450949+05:30",
+      "updated_at": "2026-02-02T13:50:03.908450949+05:30",
+      "created_by": "user",
+      "severity": 1,
+      "confidence": 0.8,
+      "status": "active"
+    },
+    {
+      "id": "int_1770023758",
+      "type": "todo",
+      "message": "Test from subdir",
+      "scope": "project",
+      "created_at": "2026-02-02T14:45:58.138381226+05:30",
+      "updated_at": "2026-02-02T14:45:58.138381226+05:30",
+      "created_by": "user",
+      "severity": 1,
+      "confidence": 0.8,
+      "status": "active"
+    },
+    {
+      "id": "int_1770025150",
+      "type": "fixme",
+      "message": "Critical security vulnerability in auth system",
+      "scope": "project",
+      "created_at": "2026-02-02T15:09:10.270721758+05:30",
+      "updated_at": "2026-02-02T15:09:10.270721758+05:30",
+      "created_by": "user",
+      "severity": 3,
+      "confidence": 0.8,
+      "status": "active",
+      "tags": [
+        "security",
+        "critical"
+      ]
+    }
+  ]
+}

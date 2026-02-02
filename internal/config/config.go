@@ -12,6 +12,7 @@ const (
 
 	ConfigFile = "config.json"
 	StateFile  = "state.json"
+	IntentFile = "intent.json"
 
 	DefaultBranch = "main"
 )
@@ -41,5 +42,9 @@ func ConfigFilePath(root string) string {
 
 func StateFilePath(root string) string {
 	return filepath.Join(root, StateFile)
+}
+
+func IntentFilePath(root string) string {
+	return filepath.Join(root, IntentFile)
 }
 

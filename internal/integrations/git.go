@@ -26,6 +26,30 @@ func GetCurrentCommit() (string, error) {
 	return strings.TrimSpace(string(output)), nil
 }
 
+// @returns the current commit with message
+func GetCurrentCommitWithMessage() (Commit, error) {
+	cmd := exec.Command("git", "log", "-1", "--format=%H %ct %s")
+	output, err := cmd.Output()
+	if err != nil {
+		return Commit{}, err
+	}
+
+	parts := strings.Split(strings.TrimSpace(string(output)), " ")
+	if len(parts) < 3 {
+		return Commit{}, fmt.Errorf("unexpected git output format")
+	}
+
+	hash := parts[0]
+	timestamp, _ := strconv.ParseInt(parts[1], 10, 64)
+	message := strings.Join(parts[2:], " ")
+
+	return Commit{
+		Hash:    hash,
+		Time:    time.Unix(timestamp, 0),
+		Message: message,
+	}, nil
+}
+
 // @returns the current branch name
 func GetCurrentBranch() (string, error) {
 	cmd := exec.Command("git", "rev-parse", "--abbrev-ref", "HEAD")
@@ -96,15 +120,16 @@ func GetFunctionChurn(filePath string, functionName string, startLine, endLine i
 // Commit represents a git commit with metadata
 type Commit struct {
 	Hash       string
+	Message    string
 	Time       time.Time
 	ChangeSize int
 }
 
 // @returns detailed commit history for a function with change sizes
 func GetFunctionCommits(filePath string, startLine, endLine int, depth int) ([]Commit, error) {
-	args := []string{"log", "--format=%H %ct", "-L"}
+	args := []string{"log", "--format=%H %ct %s", "-L"}
 	if depth > 0 {
-		args = []string{"log", "-" + strconv.Itoa(depth), "--format=%H %ct", "-L"}
+		args = []string{"log", "-" + strconv.Itoa(depth), "--format=%H %ct %s", "-L"}
 	}
 
 	lineRange := fmt.Sprintf("%d,%d:%s", startLine, endLine, filePath)
@@ -118,13 +143,14 @@ func GetFunctionCommits(filePath string, startLine, endLine int, depth int) ([]C
 
 	lines := strings.Split(string(output), "\n")
 	var commits []Commit
-	commitHashRegex := regexp.MustCompile(`^([a-f0-9]{7,}) (\d+)`)
+	commitHashRegex := regexp.MustCompile(`^([a-f0-9]{7,}) (\d+) (.*)$`)
 
 	for _, line := range lines {
 		matches := commitHashRegex.FindStringSubmatch(strings.TrimSpace(line))
-		if len(matches) == 3 {
+		if len(matches) == 4 {
 			hash := matches[1]
 			timestamp, _ := strconv.ParseInt(matches[2], 10, 64)
+			message := strings.TrimSpace(matches[3])
 			time := time.Unix(timestamp, 0)
 
 			// Get change size for this commit
@@ -132,6 +158,7 @@ func GetFunctionCommits(filePath string, startLine, endLine int, depth int) ([]C
 
 			commits = append(commits, Commit{
 				Hash:       hash,
+				Message:    message,
 				Time:       time,
 				ChangeSize: changeSize,
 			})

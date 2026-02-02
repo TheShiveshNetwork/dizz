@@ -27,6 +27,7 @@ func GitignoreContent() string {
 
 # Keep config
 !config.json
+!intent.json
 !.gitignore`
 }
 

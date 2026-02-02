@@ -27,6 +27,12 @@ Use this for a quick health check without full analysis.`,
 }
 
 func runStatus() {
+	trackDir, err := commonPkg.FindProjectRoot()
+	if err != nil {
+		fmt.Fprintf(os.Stderr, ui.Error("✗ %v\n"), err)
+		os.Exit(1)
+	}
+
 	// Always analyze with current project state
 	projectState, err := commonPkg.EnsureCurrentStateWithAnalysis(nil)
 	if err != nil {
@@ -54,8 +60,6 @@ func runStatus() {
 	fmt.Println()
 
 	// Project info
-	cwd, _ := os.Getwd()
-	trackDir := config.TrackDirPath(cwd)
 	var cfg config.Config
 	configPath := config.ConfigFilePath(trackDir)
 	if err := store.Load(configPath, &cfg); err == nil {
@@ -155,6 +159,20 @@ func runStatus() {
 	if summary.ActiveTodos > 0 {
 		fmt.Printf("  %s %s\n", ui.Info("📝 TODOs:"), ui.Info(fmt.Sprintf("%d", summary.ActiveTodos)))
 		fmt.Println()
+	}
+
+	// Intent summary
+	intentStore := store.NewIntentStore(config.TrackDirPath(trackDir))
+	if intentState, err := intentStore.LoadIntentState(); err == nil {
+		intentSummary := intentState.GetIntentSummary()
+		if intentSummary.ActiveIntents > 0 {
+			fmt.Printf("  %s %s", ui.Info("🎯 Intents:"), ui.Info(fmt.Sprintf("%d", intentSummary.ActiveIntents)))
+			if intentSummary.HighSeverity > 0 {
+				fmt.Printf(" %s", ui.Error(fmt.Sprintf("(%d high)", intentSummary.HighSeverity)))
+			}
+			fmt.Println()
+			fmt.Println()
+		}
 	}
 
 	// Action items

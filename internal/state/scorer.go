@@ -24,8 +24,56 @@ func NewScorer() *Scorer {
 	}
 }
 
+// calculateIntentWeight calculates intent weighting for enhanced scoring
+func (s *Scorer) calculateIntentWeight(symbol *Symbol, intentState *IntentState) float64 {
+	if intentState == nil {
+		return 1.0
+	}
+
+	intentWeight := 1.0
+	now := time.Now()
+
+	for _, intent := range intentState.GetActiveIntents() {
+		// Calculate proximity based on scope matching
+		proximity := s.calculateProximity(symbol, intent)
+		if proximity > 0 {
+			// Apply severity and proximity weighting
+			severityWeight := float64(intent.Severity) / 3.0                              // Normalize to 0-1
+			recencyWeight := math.Exp(-now.Sub(intent.UpdatedAt).Hours() / (24.0 * 30.0)) // 30-day decay
+
+			intentWeight += severityWeight * proximity * recencyWeight
+		}
+	}
+
+	return intentWeight
+}
+
+// calculateProximity measures how close an intent is to a symbol's code scope
+func (s *Scorer) calculateProximity(symbol *Symbol, intent Intent) float64 {
+	// Direct file match
+	if symbol.File == intent.Scope {
+		return 1.0
+	}
+
+	// Parse scope format (file:line-line) and check if symbol is within range
+	if len(intent.Scope) > 0 {
+		// Simple file matching for now - could be enhanced with line range parsing
+		if symbol.File == intent.Scope {
+			return 1.0
+		}
+	}
+
+	return 0.0
+}
+
+// Enhanced scoring: score_enhanced(f) = score(f) × intent_weight
+func (s *Scorer) calculateEnhancedScore(symbol *Symbol, intentState *IntentState) float64 {
+	baseScore := s.calculateInstabilityScore(symbol)
+	intentWeight := s.calculateIntentWeight(symbol, intentState)
+	return baseScore * intentWeight
+}
+
 // calculateInstabilityScore computes the mathematical instability score for a symbol
-// score(f) = Σ (change_size_i * exp(-Δt_i / τ))
 func (s *Scorer) calculateInstabilityScore(symbol *Symbol) float64 {
 	// Get detailed commit history for the function
 	commits, err := integrations.GetFunctionCommits(symbol.File, symbol.Line, symbol.EndLine, 50)
@@ -199,8 +247,13 @@ func (s *Scorer) applyMathematicalScoring(symbols []*Symbol) {
 	}
 }
 
-// InterpretSignals converts a signal set into project state
+// InterpretSignals converts a signal set into project state with intent enhancement
 func (s *Scorer) InterpretSignals(sigSet *signals.SignalSet) *ProjectState {
+	return s.InterpretSignalsWithIntent(sigSet, nil)
+}
+
+// InterpretSignalsWithIntent converts signals with intent enhancement
+func (s *Scorer) InterpretSignalsWithIntent(sigSet *signals.SignalSet, intentState *IntentState) *ProjectState {
 	ps := NewProjectState()
 
 	// Build symbol index
@@ -334,6 +387,17 @@ func (s *Scorer) InterpretSignals(sigSet *signals.SignalSet) *ProjectState {
 	for _, symbol := range symbolIndex {
 		symbolSlice = append(symbolSlice, symbol)
 	}
+
+	// Apply enhanced scoring with intent weighting
+	for _, symbol := range symbolSlice {
+		enhancedScore := s.calculateEnhancedScore(symbol, intentState)
+		// Store enhanced score for use in mathematical scoring
+		// Note: We could add a new field but will reuse InstabilityScore for now
+		if intentState != nil {
+			symbol.InstabilityScore = enhancedScore
+		}
+	}
+
 	s.applyMathematicalScoring(symbolSlice)
 
 	// Process intent ignore markers (after scoring to override final states)
@@ -378,10 +442,8 @@ func (s *Scorer) InterpretSignals(sigSet *signals.SignalSet) *ProjectState {
 	return ps
 }
 
-// SuggestNextAction recommends what to work on
+// SuggestNextAction recommends what to work on based on Priority: Planned > Unstable > Unused
 func SuggestNextAction(ps *ProjectState) string {
-	// Priority: Planned > Unstable > Unused
-
 	planned := ps.GetSymbolsByState(Planned)
 	if len(planned) > 0 {
 		return "Implement " + planned[0].Name + " (" + planned[0].File + ")"
