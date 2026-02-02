@@ -123,15 +123,6 @@ func runStatus() {
 			bar)
 	}
 
-	if summary.ByState[state.Unstable] > 0 {
-		bar := createBar(summary.ByState[state.Unstable], summary.TotalSymbols, ui.BrightRed)
-		fmt.Printf("    %s %-12s %s %s\n",
-			ui.Error("🔥"),
-			"Unstable",
-			ui.Error(fmt.Sprintf("%3d", summary.ByState[state.Unstable])),
-			bar)
-	}
-
 	if summary.ByState[state.Unused] > 0 {
 		bar := createBar(summary.ByState[state.Unused], summary.TotalSymbols, ui.BrightCyan)
 		fmt.Printf("    %s%-12s %s %s\n",
@@ -141,17 +132,24 @@ func runStatus() {
 			bar)
 	}
 
+	if summary.ByState[state.Unstable] > 0 {
+		bar := createBar(summary.ByState[state.Unstable], summary.TotalSymbols, ui.BrightRed)
+		fmt.Printf("      %-12s %s %s\n",
+			"Unstable",
+			ui.Error(fmt.Sprintf("%3d", summary.ByState[state.Unstable])),
+			bar)
+	}
+
 	if summary.ByState[state.Abandoned] > 0 {
 		bar := createBar(summary.ByState[state.Abandoned], summary.TotalSymbols, ui.Gray)
-		fmt.Printf("    %s %-12s %s %s\n",
-			ui.Muted("❌"),
+		fmt.Printf("       %-12s %s %s\n",
 			"Abandoned",
 			ui.Muted(fmt.Sprintf("%3d", summary.ByState[state.Abandoned])),
 			bar)
 	}
 
 	fmt.Printf(ui.Muted("    ──────────────────────\n"))
-	fmt.Printf(ui.Muted("    Total          %3d\n"), summary.TotalSymbols)
+	fmt.Printf(ui.Muted("      Total        %3d\n"), summary.TotalSymbols)
 	fmt.Println()
 
 	if summary.ActiveTodos > 0 {

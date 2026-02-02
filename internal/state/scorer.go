@@ -1,22 +1,81 @@
 package state
 
 import (
+	"math"
+	"sort"
+	"time"
+
+	"github.com/TheShiveshNetwork/dizz/internal/integrations"
 	"github.com/TheShiveshNetwork/dizz/internal/signals"
 )
 
 // Scorer interprets signals into state
 type Scorer struct {
-	// Configuration for scoring rules
-	highChurnThreshold int
-	abandonedThreshold int
+	// Mathematical instability scoring parameters
+	tau                 float64 // Time decay constant (in days)
+	percentileThreshold float64 // Percentile threshold for instability (0-100)
 }
 
-// NewScorer creates a new scorer with default thresholds
+// NewScorer creates a new scorer with mathematical instability scoring
 func NewScorer() *Scorer {
 	return &Scorer{
-		highChurnThreshold: 5,  // Files changed >5 times = unstable
-		abandonedThreshold: 10, // Not touched in 10+ commits = abandoned
+		tau:                 30.0, // 30 days time decay constant
+		percentileThreshold: 90.0, // 90th percentile for instability
 	}
+}
+
+// calculateInstabilityScore computes the mathematical instability score for a symbol
+// score(f) = Σ (change_size_i * exp(-Δt_i / τ))
+func (s *Scorer) calculateInstabilityScore(symbol *Symbol) float64 {
+	// Get detailed commit history for the function
+	commits, err := integrations.GetFunctionCommits(symbol.File, symbol.Line, symbol.EndLine, 50)
+	if err != nil || len(commits) == 0 {
+		return 0.0
+	}
+
+	now := time.Now()
+	var score float64
+
+	for _, commit := range commits {
+		// Calculate time difference in days
+		deltaT := now.Sub(commit.Time).Hours() / 24.0
+
+		// Apply exponential decay: change_size_i * exp(-Δt_i / τ)
+		decay := math.Exp(-deltaT / s.tau)
+		contribution := float64(commit.ChangeSize) * decay
+		score += contribution
+	}
+
+	return score
+}
+
+// calculatePercentiles computes percentiles for a list of scores
+func (s *Scorer) calculatePercentiles(scores []float64) map[float64]float64 {
+	if len(scores) == 0 {
+		return make(map[float64]float64)
+	}
+
+	// Sort scores ascending
+	sort.Float64s(scores)
+	percentiles := make(map[float64]float64)
+
+	n := float64(len(scores))
+	for p := 0.0; p <= 100.0; p += 1.0 {
+		// Linear interpolation between closest ranks
+		rank := (p / 100.0) * (n - 1)
+		lower := int(math.Floor(rank))
+		upper := int(math.Ceil(rank))
+
+		if lower == upper {
+			percentiles[p] = scores[lower]
+		} else {
+			// Interpolate
+			weight := rank - float64(lower)
+			percentiles[p] = scores[lower]*(1-weight) + scores[upper]*weight
+		}
+	}
+
+	return percentiles
 }
 
 // Score interprets a symbol's state from signals
@@ -24,10 +83,7 @@ func (s *Scorer) Score(symbol *Symbol) {
 	// Priority rules (in order):
 	// 1. Explicit intent markers override everything
 	// 2. Todos indicate planned work
-	// 3. High churn indicates instability
-	// 4. Called + stable = active
-	// 5. Not called + old = abandoned
-	// 6. Not called + new = unused
+	// 3. Calculate instability score (mathematical scoring determines final state)
 
 	// Rule 1: Intent markers
 	if symbol.IntentMarker != "" {
@@ -54,30 +110,93 @@ func (s *Scorer) Score(symbol *Symbol) {
 		return
 	}
 
-	// Rule 3: High churn
-	if symbol.ChurnCount > s.highChurnThreshold {
-		symbol.State = Unstable
-		symbol.Confidence = 0.6
+	// Rule 3: Calculate and store instability score for mathematical analysis
+	instabilityScore := s.calculateInstabilityScore(symbol)
+	symbol.InstabilityScore = instabilityScore
+
+	// Don't set state here - mathematical scoring will determine final state
+	// This ensures instability detection applies to ALL symbols (including called ones)
+}
+
+// applyMathematicalScoring applies mathematical scoring for instability, abandonment, and unused states
+func (s *Scorer) applyMathematicalScoring(symbols []*Symbol) {
+	if len(symbols) == 0 {
 		return
 	}
 
-	// Rule 4: Active use
-	if symbol.IsCalled {
-		symbol.State = Active
-		symbol.Confidence = 0.9
-		return
+	// 1. INSTABILITY: Collect instability scores for all symbols
+	var instabilityScores []float64
+	for _, symbol := range symbols {
+		if symbol.InstabilityScore > 0 {
+			instabilityScores = append(instabilityScores, symbol.InstabilityScore)
+		}
 	}
 
-	// Rule 5: Abandoned (not used, old code)
-	if !symbol.IsCalled && symbol.ChurnCount > s.abandonedThreshold {
-		symbol.State = Abandoned
-		symbol.Confidence = 0.7
-		return
+	// 2. ABANDONMENT: Calculate time-since-last-modified for unused symbols
+	var ages []float64 // in days
+	for _, symbol := range symbols {
+		if !symbol.IsCalled && symbol.IntentMarker == "" && !symbol.HasTodo {
+			if symbol.LastTouched != nil {
+				age := time.Since(*symbol.LastTouched).Hours() / 24.0
+				ages = append(ages, age)
+			}
+		}
 	}
 
-	// Rule 6: Default unused
-	symbol.State = Unused
-	symbol.Confidence = 0.6
+	// Calculate percentiles
+	var instabilityPercentiles map[float64]float64
+	if len(instabilityScores) > 0 {
+		instabilityPercentiles = s.calculatePercentiles(instabilityScores)
+	}
+
+	var agePercentiles map[float64]float64
+	if len(ages) > 0 {
+		agePercentiles = s.calculatePercentiles(ages)
+	}
+
+	// Apply mathematical scoring to ALL symbols
+	for _, symbol := range symbols {
+		// Skip if already classified by explicit intent markers or todos
+		if symbol.State != "" && (symbol.IntentMarker != "" || symbol.HasTodo) {
+			continue
+		}
+
+		// UNSTABLE: High instability score (90th percentile) - APPLIES TO ALL SYMBOLS
+		if len(instabilityPercentiles) > 0 && symbol.InstabilityScore > 0 {
+			percentile90 := instabilityPercentiles[90.0]
+			if symbol.InstabilityScore >= percentile90 {
+				symbol.State = Unstable
+				symbol.Confidence = 0.8 // High confidence for mathematical instability
+				continue
+			}
+		}
+
+		// ABANDONED: Old and never called (only for uncalled symbols)
+		if !symbol.IsCalled && symbol.LastTouched != nil {
+			if len(agePercentiles) > 0 {
+				age := time.Since(*symbol.LastTouched).Hours() / 24.0
+				percentile75 := agePercentiles[75.0] // 75th percentile for "old"
+				if age >= percentile75 {
+					symbol.State = Abandoned
+					symbol.Confidence = 0.7
+					continue
+				}
+			}
+		}
+
+		// UNUSED: Not called but not old enough to be abandoned
+		if !symbol.IsCalled {
+			symbol.State = Unused
+			symbol.Confidence = 0.6
+			continue
+		}
+
+		// ACTIVE: Called and not unstable (default for remaining symbols)
+		if symbol.IsCalled {
+			symbol.State = Active
+			symbol.Confidence = 0.9
+		}
+	}
 }
 
 // InterpretSignals converts a signal set into project state
@@ -205,10 +324,17 @@ func (s *Scorer) InterpretSignals(sigSet *signals.SignalSet) *ProjectState {
 		}
 	}
 
-	// Score all symbols
+	// Score all symbols (basic scoring)
 	for _, symbol := range symbolIndex {
 		s.Score(symbol)
 	}
+
+	// Apply mathematical scoring (percentile-based)
+	var symbolSlice []*Symbol
+	for _, symbol := range symbolIndex {
+		symbolSlice = append(symbolSlice, symbol)
+	}
+	s.applyMathematicalScoring(symbolSlice)
 
 	// Process intent ignore markers (after scoring to override final states)
 	for _, sig := range ignoreSignals {

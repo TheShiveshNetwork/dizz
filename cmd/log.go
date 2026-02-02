@@ -91,18 +91,18 @@ func printFocusedState(ps *state.ProjectState) {
 	fmt.Println()
 
 	// Quick summary with colors
-	fmt.Printf("  %s %s\n", ui.Success("✓ Active:"), ui.Success(fmt.Sprintf("%d", len(active))))
+	fmt.Printf("  %s %s\n", ui.Success("✓  Active:"), ui.Success(fmt.Sprintf("%d", len(active))))
 	if len(planned) > 0 {
 		fmt.Printf("  %s %s\n", ui.Warning("⚠ Planned:"), ui.Warning(fmt.Sprintf("%d", len(planned))))
-	}
-	if len(unstable) > 0 {
-		fmt.Printf("  %s %s\n", ui.Error("🔥 Unstable:"), ui.Error(fmt.Sprintf("%d", len(unstable))))
 	}
 	if len(unused) > 0 {
 		fmt.Printf("  %s %s\n", ui.Info("⚪ Unused:"), ui.Info(fmt.Sprintf("%d", len(unused))))
 	}
+	if len(unstable) > 0 {
+		fmt.Printf("  %s %s\n", ui.Error("   Unstable:"), ui.Error(fmt.Sprintf("%d", len(unstable))))
+	}
 	if len(abandoned) > 0 {
-		fmt.Printf("  %s %s\n", ui.Muted("❌ Abandoned:"), ui.Muted(fmt.Sprintf("%d", len(abandoned))))
+		fmt.Printf("  %s %s\n", ui.Muted("   Abandoned:"), ui.Muted(fmt.Sprintf("%d", len(abandoned))))
 	}
 	fmt.Println()
 
@@ -119,7 +119,7 @@ func printFocusedState(ps *state.ProjectState) {
 
 	// 1. PLANNED - Highest priority
 	render.RenderSymbolGroup(render.RenderArgs{
-		Title:      "━━ ⚠ PLANNED",
+		Title:      "━━ PLANNED",
 		Subtitle:   "needs implementation",
 		Symbols:    planned,
 		ShowAll:    showAll,
@@ -129,7 +129,7 @@ func printFocusedState(ps *state.ProjectState) {
 
 	// 2. UNSTABLE - High priority
 	render.RenderSymbolGroup(render.RenderArgs{
-		Title:      "━━ 🔥 UNSTABLE",
+		Title:      "━━ UNSTABLE",
 		Subtitle:   "changing too much",
 		Symbols:    unstable,
 		ShowAll:    showAll,
@@ -139,7 +139,7 @@ func printFocusedState(ps *state.ProjectState) {
 
 	// 3. UNUSED - Medium priority
 	render.RenderSymbolGroup(render.RenderArgs{
-		Title:      "━━ ⚪ UNUSED",
+		Title:      "━━ UNUSED",
 		Subtitle:   "not called anywhere",
 		Symbols:    unused,
 		ShowAll:    showAll,
@@ -149,7 +149,7 @@ func printFocusedState(ps *state.ProjectState) {
 
 	// 4. ABANDONED - Consider removal
 	render.RenderSymbolGroup(render.RenderArgs{
-		Title:      "━━ ❌ ABANDONED",
+		Title:      "━━ ABANDONED",
 		Subtitle:   "old, not used",
 		Symbols:    abandoned,
 		ShowAll:    showAll,
