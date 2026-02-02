@@ -1,4 +1,33 @@
-<!DOCTYPE html>
+package main
+
+import (
+	"fmt"
+	"os"
+	"strings"
+	"text/template"
+)
+
+type Feature struct {
+	Icon        string
+	Title       string
+	Description string
+}
+
+type Command struct {
+	Name        string
+	Description string
+	Usage       string
+	Flags       []string
+}
+
+type SiteData struct {
+	Version  string
+	Domain   string
+	Features []Feature
+	Commands []Command
+}
+
+const htmlTemplate = `<!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
@@ -10,13 +39,13 @@
     <meta property="og:title" content="Dizz - Progress-aware Dev CLI Tool">
     <meta property="og:description" content="Know what to work on next. Analyze your codebase for unused functions, TODOs, and project insights.">
     <meta property="og:type" content="website">
-    <meta property="og:url" content="https://dizz.shitworks.co">
-    <meta property="og:image" content="https://dizz.shitworks.co/assets/dizz-logo.png">
+    <meta property="og:url" content="https://{{.Domain}}">
+    <meta property="og:image" content="https://{{.Domain}}/assets/dizz-logo.png">
     <meta name="twitter:card" content="summary_large_image">
     <meta name="twitter:title" content="Dizz - Progress-aware Dev CLI Tool">
     <meta name="twitter:description" content="Know what to work on next. Analyze your codebase for unused functions, TODOs, and project insights.">
-    <meta name="twitter:image" content="https://dizz.shitworks.co/assets/dizz-logo.png">
-    <link rel="canonical" href="https://dizz.shitworks.co">
+    <meta name="twitter:image" content="https://{{.Domain}}/assets/dizz-logo.png">
+    <link rel="canonical" href="https://{{.Domain}}">
     <link rel="icon" href="favicon.ico" type="image/x-icon">
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
@@ -110,7 +139,7 @@
                 <img src="dizz-logo.png" alt="Dizz Logo" width="128" height="128">
             </div>
             <p class="tagline">Know what to work on next.</p>
-            <div class="version">v0.0.0</div>
+            <div class="version">{{.Version}}</div>
         </header>
 
 				<h1>Dizz</h1>
@@ -123,13 +152,13 @@
             </div>
             <div class="command-container">
                 <div id="linux" class="command-content">
-                    <div class="command">curl -sSL https://dizz.shitworks.co/install.sh | bash</div>
+                    <div class="command">curl -sSL https://{{.Domain}}/install.sh | bash</div>
                 </div>
                 <div id="macos" class="command-content" style="display:none;">
-                    <div class="command">curl -sSL https://dizz.shitworks.co/install.sh | bash</div>
+                    <div class="command">curl -sSL https://{{.Domain}}/install.sh | bash</div>
                 </div>
                 <div id="windows" class="command-content" style="display:none;">
-                    <div class="command">powershell -c "irm https://dizz.shitworks.co/install.ps1 | iex"</div>
+                    <div class="command">powershell -c "irm https://{{.Domain}}/install.ps1 | iex"</div>
                 </div>
                 <button class="copy-btn" onclick="copyCommand()">Copy</button>
             </div>
@@ -138,98 +167,25 @@
         <section>
             <h2>Features</h2>
             <div class="features">
-                
+                {{range .Features}}
                 <div class="feature">
-                    <h3>🧠 Code Intelligence</h3>
-                    <p>Understands your codebase structure and relationships beyond simple text matching.</p>
+                    <h3>{{.Icon}} {{.Title}}</h3>
+                    <p>{{.Description}}</p>
                 </div>
-                
-                <div class="feature">
-                    <h3>🎯 Precision Analysis</h3>
-                    <p>Language-aware AST parsing provides accurate insights across multiple programming languages.</p>
-                </div>
-                
-                <div class="feature">
-                    <h3>⚡ Millisecond Performance</h3>
-                    <p>Enterprise-grade analysis in milliseconds, not minutes. No network calls, no tokens.</p>
-                </div>
-                
-                <div class="feature">
-                    <h3>📊 State Scoring</h3>
-                    <p>Proprietary algorithm combines usage patterns, TODOs, and git history for actionable insights.</p>
-                </div>
-                
-                <div class="feature">
-                    <h3>🔄 Time-Aware Insights</h3>
-                    <p>Tracks code evolution and stability to identify what's working vs what needs attention.</p>
-                </div>
-                
-                <div class="feature">
-                    <h3>🔒 Immutable Snapshots</h3>
-                    <p>Content-addressed project states for perfect version control and historical analysis.</p>
-                </div>
-                
+                {{end}}
             </div>
         </section>
 
         <section>
             <h2>CLI Commands</h2>
             <div class="commands-grid">
-                
+                {{range .Commands}}
                 <div class="command-card">
-                    <div class="command-name">dizz version</div>
-                    <div class="command-desc">Show current version and build information.</div>
-                    <div class="command-usage">dizz version [--verbose]</div>
+                    <div class="command-name">{{.Name}}</div>
+                    <div class="command-desc">{{.Description}}</div>
+                    <div class="command-usage">{{.Usage}}</div>
                 </div>
-                
-                <div class="command-card">
-                    <div class="command-name">dizz upgrade</div>
-                    <div class="command-desc">Upgrade to the latest version automatically.</div>
-                    <div class="command-usage">dizz upgrade [--force]</div>
-                </div>
-                
-                <div class="command-card">
-                    <div class="command-name">dizz init</div>
-                    <div class="command-desc">Initialize dizz in your project directory.</div>
-                    <div class="command-usage">dizz init</div>
-                </div>
-                
-                <div class="command-card">
-                    <div class="command-name">dizz log</div>
-                    <div class="command-desc">Show what needs attention in your codebase.</div>
-                    <div class="command-usage">dizz log [--all] [--verbose]</div>
-                </div>
-                
-                <div class="command-card">
-                    <div class="command-name">dizz status</div>
-                    <div class="command-desc">Quick project health check with visual indicators.</div>
-                    <div class="command-usage">dizz status</div>
-                </div>
-                
-                <div class="command-card">
-                    <div class="command-name">dizz snapshot</div>
-                    <div class="command-desc">Create an immutable snapshot of project state.</div>
-                    <div class="command-usage">dizz snapshot [--auto]</div>
-                </div>
-                
-                <div class="command-card">
-                    <div class="command-name">dizz list</div>
-                    <div class="command-desc">Show all saved snapshots with timestamps and metadata.</div>
-                    <div class="command-usage">dizz list [--format json|table]</div>
-                </div>
-                
-                <div class="command-card">
-                    <div class="command-name">dizz resume</div>
-                    <div class="command-desc">Quick context after being away from the project.</div>
-                    <div class="command-usage">dizz resume [--days N]</div>
-                </div>
-                
-                <div class="command-card">
-                    <div class="command-name">dizz intent</div>
-                    <div class="command-desc">Manage intentional TODO markers and track planned work.</div>
-                    <div class="command-usage">dizz intent add|list|remove|complete [@symbol] [description]</div>
-                </div>
-                
+                {{end}}
             </div>
         </section>
 
@@ -270,4 +226,133 @@
         }
     </script>
 </body>
-</html>
+</html>`
+
+func getSiteData() SiteData {
+	domain := os.Getenv("DOMAIN")
+	if domain == "" {
+		domain = "dizz.shitworks.co"
+	}
+
+	version := os.Getenv("VERSION")
+	if version == "" {
+		version = "v0.0.0"
+	}
+
+	features := []Feature{
+		{
+			Icon:        "🧠",
+			Title:       "Code Intelligence",
+			Description: "Understands your codebase structure and relationships beyond simple text matching.",
+		},
+		{
+			Icon:        "🎯",
+			Title:       "Precision Analysis",
+			Description: "Language-aware AST parsing provides accurate insights across multiple programming languages.",
+		},
+		{
+			Icon:        "⚡",
+			Title:       "Millisecond Performance",
+			Description: "Enterprise-grade analysis in milliseconds, not minutes. No network calls, no tokens.",
+		},
+		{
+			Icon:        "📊",
+			Title:       "State Scoring",
+			Description: "Proprietary algorithm combines usage patterns, TODOs, and git history for actionable insights.",
+		},
+		{
+			Icon:        "🔄",
+			Title:       "Time-Aware Insights",
+			Description: "Tracks code evolution and stability to identify what's working vs what needs attention.",
+		},
+		{
+			Icon:        "🔒",
+			Title:       "Immutable Snapshots",
+			Description: "Content-addressed project states for perfect version control and historical analysis.",
+		},
+	}
+
+	commands := []Command{
+		{
+			Name:        "dizz version",
+			Description: "Show current version and build information.",
+			Usage:       "dizz version [--verbose]",
+		},
+		{
+			Name:        "dizz upgrade",
+			Description: "Upgrade to the latest version automatically.",
+			Usage:       "dizz upgrade [--force]",
+		},
+		{
+			Name:        "dizz init",
+			Description: "Initialize dizz in your project directory.",
+			Usage:       "dizz init",
+		},
+		{
+			Name:        "dizz log",
+			Description: "Show what needs attention in your codebase.",
+			Usage:       "dizz log [--all] [--verbose]",
+		},
+		{
+			Name:        "dizz status",
+			Description: "Quick project health check with visual indicators.",
+			Usage:       "dizz status",
+		},
+		{
+			Name:        "dizz snapshot",
+			Description: "Create an immutable snapshot of project state.",
+			Usage:       "dizz snapshot [--auto]",
+		},
+		{
+			Name:        "dizz list",
+			Description: "Show all saved snapshots with timestamps and metadata.",
+			Usage:       "dizz list [--format json|table]",
+		},
+		{
+			Name:        "dizz resume",
+			Description: "Quick context after being away from the project.",
+			Usage:       "dizz resume [--days N]",
+		},
+		{
+			Name:        "dizz intent",
+			Description: "Manage intentional TODO markers and track planned work.",
+			Usage:       "dizz intent add|list|remove|complete [@symbol] [description]",
+		},
+	}
+
+	return SiteData{
+		Version:  version,
+		Domain:   domain,
+		Features: features,
+		Commands: commands,
+	}
+}
+
+func main() {
+	tmpl, err := template.New("index").Parse(htmlTemplate)
+	if err != nil {
+		fmt.Printf("Error parsing template: %v\n", err)
+		os.Exit(1)
+	}
+
+	data := getSiteData()
+
+	var output strings.Builder
+	if err := tmpl.Execute(&output, data); err != nil {
+		fmt.Printf("Error executing template: %v\n", err)
+		os.Exit(1)
+	}
+
+	// Write to stdout or file
+	outputFile := "index.html"
+	if len(os.Args) > 1 {
+		outputFile = os.Args[1]
+	}
+
+	if err := os.WriteFile(outputFile, []byte(output.String()), 0644); err != nil {
+		fmt.Printf("Error writing file: %v\n", err)
+		os.Exit(1)
+	}
+
+	fmt.Printf("Generated %s successfully\n", outputFile)
+}

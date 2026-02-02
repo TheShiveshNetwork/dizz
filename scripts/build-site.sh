@@ -60,6 +60,17 @@ fi
 echo -e "${GREEN}✓ wasm_exec.js copied${NC}"
 
 # -----------------------
+# Generate HTML from template
+# -----------------------
+echo -e "${BLUE}Generating HTML from template...${NC}"
+
+cd "$ROOT_DIR/site/template"
+go run main.go "$PUBLIC_DIR/index.html"
+cd - > /dev/null
+
+echo -e "${GREEN}✓ HTML generated${NC}"
+
+# -----------------------
 # Build web server
 # -----------------------
 echo -e "${BLUE}Building HTTP server...${NC}"
