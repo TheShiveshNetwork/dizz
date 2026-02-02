@@ -136,7 +136,7 @@ const htmlTemplate = `<!DOCTYPE html>
     <div class="container">
         <header>
             <div class="logo">
-                <img src="dizz-logo.png" alt="Dizz Logo" width="128" height="128">
+                <img src="assets/dizz-logo.png" alt="Dizz Logo" width="128" height="128">
             </div>
             <p class="tagline">Know what to work on next.</p>
             <div class="version">{{.Version}}</div>

@@ -78,11 +78,22 @@ echo -e "${BLUE}Building HTTP server...${NC}"
 echo -e "${GREEN}✓ HTTP server built${NC}"
 
 # -----------------------
-# Install scripts
+# Copy assets
+# -----------------------
+ASSETS_DIR="$ROOT_DIR/site/assets"
+if [ -d "$ASSETS_DIR" ]; then
+  cp -r "$ASSETS_DIR" "$PUBLIC_DIR/"
+  echo -e "${GREEN}✓ Assets copied to public directory${NC}"
+fi
+
+# -----------------------
+# Copy install scripts
 # -----------------------
 if [ -d "$SCRIPTS_DIR" ]; then
   chmod +x "$SCRIPTS_DIR"/*.sh || true
-  echo -e "${GREEN}✓ Install scripts ready${NC}"
+  cp "$SCRIPTS_DIR"/install.sh "$PUBLIC_DIR/"
+  cp "$SCRIPTS_DIR"/install.ps1 "$PUBLIC_DIR/"
+  echo -e "${GREEN}✓ Install scripts copied to public directory${NC}"
 fi
 
 # -----------------------

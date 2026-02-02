@@ -25,17 +25,6 @@ func main() {
 	fs := http.FileServer(http.Dir("../public"))
 	http.Handle("/", fs)
 
-	// Serve install scripts
-	http.HandleFunc("/install.sh", func(w http.ResponseWriter, r *http.Request) {
-		w.Header().Set("Content-Type", "text/plain")
-		http.ServeFile(w, r, "../scripts/install.sh")
-	})
-
-	http.HandleFunc("/install.ps1", func(w http.ResponseWriter, r *http.Request) {
-		w.Header().Set("Content-Type", "text/plain")
-		http.ServeFile(w, r, "../scripts/install.ps1")
-	})
-
 	// API endpoint for version info
 	http.HandleFunc("/api/version", func(w http.ResponseWriter, r *http.Request) {
 		release, err := getLatestRelease()
