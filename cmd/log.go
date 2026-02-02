@@ -125,6 +125,7 @@ func printFocusedState(ps *state.ProjectState) {
 		Subtitle:   "needs implementation",
 		Symbols:    planned,
 		ShowAll:    showAll,
+		Verbose:    verboseOut,
 		MaxPerFile: 3,
 		ShowChurn:  false,
 	})
@@ -135,6 +136,7 @@ func printFocusedState(ps *state.ProjectState) {
 		Subtitle:   "changing too much",
 		Symbols:    unstable,
 		ShowAll:    showAll,
+		Verbose:    verboseOut,
 		MaxPerFile: 3,
 		ShowChurn:  true,
 	})
@@ -145,6 +147,7 @@ func printFocusedState(ps *state.ProjectState) {
 		Subtitle:   "not called anywhere",
 		Symbols:    unused,
 		ShowAll:    showAll,
+		Verbose:    verboseOut,
 		MaxPerFile: 3,
 		ShowChurn:  false,
 	})
@@ -155,6 +158,7 @@ func printFocusedState(ps *state.ProjectState) {
 		Subtitle:   "old, not used",
 		Symbols:    abandoned,
 		ShowAll:    showAll,
+		Verbose:    verboseOut,
 		MaxPerFile: 2,
 		ShowChurn:  true,
 	})

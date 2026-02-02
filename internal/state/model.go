@@ -1,6 +1,7 @@
 package state
 
 import (
+	"encoding/json"
 	"fmt"
 	"time"
 
@@ -72,6 +73,52 @@ type ProjectState struct {
 	Todos     []Todo                 `json:"todos"`
 	Files     []FileContext          `json:"files"`
 	Metadata  map[string]interface{} `json:"metadata,omitempty"`
+}
+
+// projectStateRaw is used for unmarshaling to handle backward compatibility
+type projectStateRaw struct {
+	UpdatedAt time.Time              `json:"updated_at"`
+	GitCommit interface{}            `json:"git_commit,omitempty"`
+	Symbols   []Symbol               `json:"symbols"`
+	Todos     []Todo                 `json:"todos"`
+	Files     []FileContext          `json:"files"`
+	Metadata  map[string]interface{} `json:"metadata,omitempty"`
+}
+
+// UnmarshalJSON handles backward compatibility for git_commit field
+func (ps *ProjectState) UnmarshalJSON(data []byte) error {
+	var raw projectStateRaw
+	if err := json.Unmarshal(data, &raw); err != nil {
+		return err
+	}
+
+	// Copy fields
+	ps.UpdatedAt = raw.UpdatedAt
+	ps.Symbols = raw.Symbols
+	ps.Todos = raw.Todos
+	ps.Files = raw.Files
+	ps.Metadata = raw.Metadata
+
+	// Handle git_commit with backward compatibility
+	if raw.GitCommit != nil {
+		switch v := raw.GitCommit.(type) {
+		case string:
+			// Old format: simple string
+			ps.GitCommit = &integrations.Commit{
+				Hash: v,
+			}
+		case map[string]interface{}:
+			// New format: object with details
+			if commitData, err := json.Marshal(v); err == nil {
+				var commit integrations.Commit
+				if err := json.Unmarshal(commitData, &commit); err == nil {
+					ps.GitCommit = &commit
+				}
+			}
+		}
+	}
+
+	return nil
 }
 
 // NewProjectState creates a new project state

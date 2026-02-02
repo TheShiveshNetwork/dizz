@@ -2,10 +2,13 @@ package render
 
 import (
 	"fmt"
+	"sort"
 	"strings"
+	"time"
 
 	"github.com/TheShiveshNetwork/dizz/internal/state"
 	"github.com/TheShiveshNetwork/dizz/internal/ui"
+	"github.com/TheShiveshNetwork/dizz/internal/utils"
 )
 
 func RenderTodos(todos []state.Todo) {
@@ -100,7 +103,11 @@ func renderIntentBlock(intent state.Intent) {
 	// Render metadata (all muted)
 	var metadata []string
 	metadata = append(metadata, fmt.Sprintf("Severity: %d", intent.Severity))
-	metadata = append(metadata, fmt.Sprintf("Created: %s", intent.CreatedAt.Format("2006-01-02")))
+
+	// Format time using utils.FormatTime
+	timeSince := time.Since(intent.CreatedAt)
+	timeDisplay := utils.FormatTime(timeSince)
+	metadata = append(metadata, fmt.Sprintf("Created: %s", timeDisplay.Text))
 
 	if len(intent.Tags) > 0 {
 		metadata = append(metadata, fmt.Sprintf("Tags: %s", strings.Join(intent.Tags, ", ")))
@@ -116,11 +123,17 @@ func RenderIntents(intents []state.Intent) {
 		return
 	}
 
-	limit := 5
-	if len(intents) < limit {
-		limit = len(intents)
-	}
+	// Sort intents by severity in decreasing order
+	sort.Slice(intents, func(i, j int) bool {
+		return intents[i].Severity > intents[j].Severity
+	})
 
+	// limit := 5
+	// if len(intents) < limit {
+	// 	limit = len(intents)
+	// }
+
+	limit := len(intents)
 	for i := 0; i < limit; i++ {
 		intent := intents[i]
 		renderIntentBlock(intent)

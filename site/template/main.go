@@ -328,6 +328,7 @@ func getSiteData() SiteData {
 	}
 }
 
+// @ignore-unused
 func main() {
 	tmpl, err := template.New("index").Parse(htmlTemplate)
 	if err != nil {

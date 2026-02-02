@@ -15,6 +15,7 @@ type ReleaseInfo struct {
 	Tag     string `json:"tag"`
 }
 
+// @ignore-unused
 func main() {
 	port := os.Getenv("PORT")
 	if port == "" {

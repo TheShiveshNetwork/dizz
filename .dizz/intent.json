@@ -1,7 +1,7 @@
 {
   "version": 1,
   "created_at": "2026-02-02T13:47:31.231852817+05:30",
-  "updated_at": "2026-02-02T15:40:07.006507771+05:30",
+  "updated_at": "2026-02-02T21:52:31.059273322+05:30",
   "intents": [
     {
       "id": "int_1770020251",
@@ -50,19 +50,72 @@
       "status": "active"
     },
     {
-      "id": "int_1770025150",
-      "type": "fixme",
-      "message": "Critical security vulnerability in auth system",
+      "id": "int_1770047648",
+      "type": "todo",
+      "message": "take snapshots on every commit",
       "scope": "project",
-      "created_at": "2026-02-02T15:09:10.270721758+05:30",
-      "updated_at": "2026-02-02T15:09:10.270721758+05:30",
+      "created_at": "2026-02-02T21:24:08.331141866+05:30",
+      "updated_at": "2026-02-02T21:24:08.331141866+05:30",
+      "created_by": "user",
+      "severity": 2,
+      "confidence": 0.8,
+      "status": "active"
+    },
+    {
+      "id": "int_1770047724",
+      "type": "fixme",
+      "message": "improve the speed of the cli",
+      "scope": "project",
+      "created_at": "2026-02-02T21:25:24.818591331+05:30",
+      "updated_at": "2026-02-02T21:25:24.818591331+05:30",
       "created_by": "user",
       "severity": 3,
       "confidence": 0.8,
+      "status": "active"
+    },
+    {
+      "id": "int_1770049136",
+      "type": "question",
+      "message": "should I implement a tree-sitter parser along with a analyzer registry to extend support for languages?",
+      "scope": "project",
+      "created_at": "2026-02-02T21:48:56.329823589+05:30",
+      "updated_at": "2026-02-02T21:48:56.329823589+05:30",
+      "created_by": "user",
+      "severity": 1,
+      "confidence": 0.8,
       "status": "active",
       "tags": [
-        "security",
-        "critical"
+        "improvement"
+      ]
+    },
+    {
+      "id": "int_1770049271",
+      "type": "todo",
+      "message": "add resolveTime to intents to track the time taken to resolve",
+      "scope": "project",
+      "created_at": "2026-02-02T21:51:11.509502433+05:30",
+      "updated_at": "2026-02-02T21:51:11.509502433+05:30",
+      "created_by": "user",
+      "severity": 2,
+      "confidence": 0.8,
+      "status": "active",
+      "tags": [
+        "improvement"
+      ]
+    },
+    {
+      "id": "int_1770049351",
+      "type": "refactor",
+      "message": "Test intent from README",
+      "scope": "project",
+      "created_at": "2026-02-02T21:52:31.059271831+05:30",
+      "updated_at": "2026-02-02T21:52:31.059271831+05:30",
+      "created_by": "user",
+      "severity": 2,
+      "confidence": 0.8,
+      "status": "active",
+      "tags": [
+        "documentation"
       ]
     }
   ]

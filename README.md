@@ -232,8 +232,48 @@ Shows all saved snapshots with timestamps and project history.
 
 ### `dizz resume`
 
-Quick context after being away from the project.
-Optimized for the "I haven't touched this in weeks" scenario.
+Quick context after being away from project.
+Optimized for "I haven't touched this in weeks" scenario.
+
+### `dizz intent`
+
+Manage human-authored intents and TODOs for better project planning.
+
+**Subcommands:**
+- `dizz intent add <message>` - Add a new intent
+- `dizz intent list` - List all intents
+- `dizz intent resolve <id>` - Resolve/remove an intent by ID
+
+**Flags:**
+- `--severity <0-3>`: Set intent severity (default: 1)
+- `--tags <tag1,tag2>`: Add tags to intent
+- `--type <todo|fixme|refactor|question|hack|temporary>`: Set intent type
+
+**Examples:**
+```bash
+# Add a high-priority intent
+dizz intent add "Fix critical security issue" --severity 3 --type fixme --tags security,urgent
+
+# Add a refactor intent with tags
+dizz intent add "Refactor authentication system" --severity 2 --type refactor --tags architecture,performance
+
+# Add a simple TODO
+dizz intent add "Add unit tests for user module" --type todo
+
+# List all intents
+dizz intent list
+
+# Resolve an intent
+dizz intent resolve int_1770020361
+```
+
+### `dizz version`
+
+Show current dizz version information.
+
+### `dizz upgrade`
+
+Upgrade dizz to the latest version.
 
 ## How It Works
 

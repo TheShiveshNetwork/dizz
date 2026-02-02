@@ -44,6 +44,7 @@ type RenderArgs struct {
 
 	Symbols []state.Symbol
 	ShowAll bool
+	Verbose bool
 
 	MaxPerFile int
 	ShowChurn  bool
@@ -73,34 +74,37 @@ func RenderSymbolGroup(args RenderArgs) {
 			ui.Muted(fmt.Sprintf("(%d items)", group.Count)),
 		)
 
-		limit := args.MaxPerFile
-		if args.ShowAll {
-			limit = len(group.Symbols)
-		}
-
-		for i, sym := range group.Symbols {
-			if i >= limit {
-				fmt.Printf(
-					ui.Muted("     ... and %d more\n"),
-					len(group.Symbols)-limit,
-				)
-				break
-			}
-			fmt.Printf(
-				"     • %s %d:%d",
-				ColorByState(sym.Name, sym.State),
-				sym.Line,
-				sym.Column,
-			)
-
-			if args.ShowChurn {
-				fmt.Printf(
-					" %s",
-					ui.Error(fmt.Sprintf("(churn: %d)", sym.ChurnCount)),
-				)
+		// Show individual symbols only if not in verbose mode
+		if !args.Verbose {
+			limit := args.MaxPerFile
+			if args.ShowAll {
+				limit = len(group.Symbols)
 			}
 
-			fmt.Println()
+			for i, sym := range group.Symbols {
+				if i >= limit {
+					fmt.Printf(
+						ui.Muted("     ... and %d more\n"),
+						len(group.Symbols)-limit,
+					)
+					break
+				}
+				fmt.Printf(
+					"     • %s %d:%d",
+					ColorByState(sym.Name, sym.State),
+					sym.Line,
+					sym.Column,
+				)
+
+				if args.ShowChurn {
+					fmt.Printf(
+						" %s",
+						ui.Error(fmt.Sprintf("(churn: %d)", sym.ChurnCount)),
+					)
+				}
+
+				fmt.Println()
+			}
 		}
 
 		fmt.Println()

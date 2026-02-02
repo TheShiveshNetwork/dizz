@@ -29,11 +29,11 @@ func TrackDirPath(root string) string {
 }
 
 func ObjectsDirPath(root string) string {
-	return filepath.Join(root, ObjectsDirName)
+	return filepath.Join(root, TrackDirName, ObjectsDirName)
 }
 
 func RefsDirPath(root string) string {
-	return filepath.Join(root, RefsDirName)
+	return filepath.Join(root, TrackDirName, RefsDirName)
 }
 
 func ConfigFilePath(root string) string {
