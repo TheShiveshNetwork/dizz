@@ -13,7 +13,7 @@ func RenderTodos(todos []state.Todo) {
 		return
 	}
 
-	fmt.Println(ui.Highlight("━━ 📝 TODOS"))
+	fmt.Println(ui.Highlight("━━ INTENTS & TODOS"))
 
 	limit := 3
 	if len(todos) < limit {
@@ -115,8 +115,6 @@ func RenderIntents(intents []state.Intent) {
 	if len(intents) == 0 {
 		return
 	}
-
-	fmt.Println(ui.Highlight("━━ INTENTS"))
 
 	limit := 5
 	if len(intents) < limit {
