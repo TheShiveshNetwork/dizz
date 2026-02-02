@@ -67,9 +67,9 @@ func runLog() {
 		fmt.Println()
 	}
 
-	// Save state
-	statePath := config.StateFilePath(trackDir)
-	if err := store.Save(statePath, projectState); err != nil {
+	// Save state using StateStore
+	stateStore := store.NewStateStore(config.TrackDirPath(trackDir))
+	if err := stateStore.SaveProjectState(projectState); err != nil {
 		fmt.Fprintf(os.Stderr, ui.Warning("Warning: Could not save state: %v\n"), err)
 	}
 
@@ -184,7 +184,7 @@ func printFocusedState(ps *state.ProjectState) {
 	fmt.Printf(ui.Muted("  %d symbols · %d need attention · %d active\n"),
 		summary.TotalSymbols, totalIssues, len(active))
 	if !showAll && totalIssues > 10 {
-		fmt.Printf(ui.Muted("  Use 'dizz log --all' to see everything\n"))
+		fmt.Printf("%s", ui.Muted("  Use 'dizz log --all' to see everything\n"))
 	}
 	fmt.Println()
 }

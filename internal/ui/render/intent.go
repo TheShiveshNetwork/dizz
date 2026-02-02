@@ -43,7 +43,6 @@ func RenderTodos(todos []state.Todo) {
 }
 
 func renderIntentBlock(intent state.Intent) {
-	// Create intent type header with background color
 	var header string
 	var bg string
 	var fg string
@@ -67,7 +66,7 @@ func renderIntentBlock(intent state.Intent) {
 	case state.Refactor:
 		header = " " + strings.ToUpper(string(intent.Type)) + " "
 		bg = ui.BgMagenta
-		fg = ui.White
+		fg = ui.Black
 
 	case state.Temporary:
 		header = " " + strings.ToUpper(string(intent.Type)) + " "
@@ -80,7 +79,6 @@ func renderIntentBlock(intent state.Intent) {
 		fg = ui.White
 	}
 
-	// Create severity color based on severity level
 	var severityColor func(string) string
 	switch {
 	case intent.Severity >= 3:
@@ -93,13 +91,10 @@ func renderIntentBlock(intent state.Intent) {
 		severityColor = ui.Muted
 	}
 
-	// Render header with type background
-	fmt.Printf("     %s\n", ui.Colorize(header, fg+bg))
-
-	// Render intent message with severity highlighting
-	fmt.Printf("     %s %s\n",
-		ui.Muted(intent.ID),
+	fmt.Printf("     %s %s %s\n",
+		ui.Colorize(header, fg+bg),
 		severityColor(intent.Message),
+		ui.Muted("("+intent.ID+")"),
 	)
 
 	// Render metadata (all muted)
@@ -121,7 +116,7 @@ func RenderIntents(intents []state.Intent) {
 		return
 	}
 
-	fmt.Println(ui.Highlight("━━ 🎯 INTENTS"))
+	fmt.Println(ui.Highlight("━━ INTENTS"))
 
 	limit := 5
 	if len(intents) < limit {

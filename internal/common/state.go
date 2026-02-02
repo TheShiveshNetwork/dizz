@@ -33,6 +33,7 @@ func EnsureCurrentStateWithAnalysis(options *AnalysisOptions) (*state.ProjectSta
 	return runCurrentAnalysisAtRoot(projectRoot, options)
 }
 
+// @ignore-unused
 // EnsureCurrentState ensures we have up-to-date project state (legacy for list command)
 func EnsureCurrentState() (*state.ProjectState, error) {
 	projectRoot, err := FindProjectRoot()
@@ -41,17 +42,19 @@ func EnsureCurrentState() (*state.ProjectState, error) {
 	}
 
 	// Load existing state (for list command that uses cached data)
-	var projectState state.ProjectState
-	statePath := config.StateFilePath(config.TrackDirPath(projectRoot))
+	trackDir := config.TrackDirPath(projectRoot)
+	stateStore := store.NewStateStore(trackDir)
 
-	if err := store.Load(statePath, &projectState); err != nil {
+	projectState, err := stateStore.LoadProjectState()
+	if err != nil {
 		// No state exists, run analysis to create it
 		return runCurrentAnalysisAtRoot(projectRoot, &AnalysisOptions{})
 	}
 
-	return &projectState, nil
+	return projectState, nil
 }
 
+// @ignore-unused
 // runCurrentAnalysis performs a full project analysis (legacy for backward compatibility)
 func runCurrentAnalysis() (*state.ProjectState, error) {
 	return runCurrentAnalysisWithOptions(&AnalysisOptions{})
@@ -70,10 +73,10 @@ func runCurrentAnalysisWithOptions(options *AnalysisOptions) (*state.ProjectStat
 func runCurrentAnalysisAtRoot(projectRoot string, options *AnalysisOptions) (*state.ProjectState, error) {
 	trackDir := config.TrackDirPath(projectRoot)
 
-	// Load config
-	var cfg config.Config
-	configPath := config.ConfigFilePath(trackDir)
-	if err := store.Load(configPath, &cfg); err != nil {
+	// Load config using ConfigStore
+	configStore := store.NewConfigStore(trackDir)
+	cfg, err := configStore.LoadConfig()
+	if err != nil {
 		return nil, err
 	}
 
@@ -127,8 +130,8 @@ func runCurrentAnalysisAtRoot(projectRoot string, options *AnalysisOptions) (*st
 
 	// Step 7: Enrich with git context if available
 	if integrations.IsRepo() {
-		if commit, err := integrations.GetCurrentCommit(); err == nil {
-			projectState.GitCommit = commit
+		if commit, err := integrations.GetCurrentCommitWithMessage(); err == nil {
+			projectState.GitCommit = &commit
 		}
 
 		// Add churn data to symbols
@@ -143,17 +146,13 @@ func runCurrentAnalysisAtRoot(projectRoot string, options *AnalysisOptions) (*st
 		}
 	}
 
-	// Step 8: Save state
-	statePath := config.StateFilePath(trackDir)
-	if err := store.Save(statePath, projectState); err != nil {
+	// Step 8: Save state using StateStore
+	stateStore := store.NewStateStore(trackDir)
+	if err := stateStore.SaveProjectState(projectState); err != nil {
 		// Continue even if saving fails
 	}
 
 	return projectState, nil
-}
-
-func EnsureTrackDir() (string, error) {
-	return FindProjectRoot()
 }
 
 // FindProjectRoot searches up directory tree for .dizz directory
@@ -178,3 +177,4 @@ func FindProjectRoot() (string, error) {
 		dir = parent
 	}
 }
+

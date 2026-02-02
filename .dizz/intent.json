@@ -1,7 +1,7 @@
 {
   "version": 1,
   "created_at": "2026-02-02T13:47:31.231852817+05:30",
-  "updated_at": "2026-02-02T15:09:10.270723791+05:30",
+  "updated_at": "2026-02-02T15:40:07.006507771+05:30",
   "intents": [
     {
       "id": "int_1770020251",
@@ -44,18 +44,6 @@
       "scope": "project",
       "created_at": "2026-02-02T13:50:03.908450949+05:30",
       "updated_at": "2026-02-02T13:50:03.908450949+05:30",
-      "created_by": "user",
-      "severity": 1,
-      "confidence": 0.8,
-      "status": "active"
-    },
-    {
-      "id": "int_1770023758",
-      "type": "todo",
-      "message": "Test from subdir",
-      "scope": "project",
-      "created_at": "2026-02-02T14:45:58.138381226+05:30",
-      "updated_at": "2026-02-02T14:45:58.138381226+05:30",
       "created_by": "user",
       "severity": 1,
       "confidence": 0.8,

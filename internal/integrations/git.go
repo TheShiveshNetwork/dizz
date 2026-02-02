@@ -16,6 +16,14 @@ func IsRepo() bool {
 	return err == nil
 }
 
+// Commit represents a git commit with metadata
+type Commit struct {
+	Hash       string
+	Message    string
+	Time       time.Time
+	ChangeSize int
+}
+
 // @returns the current commit hash
 func GetCurrentCommit() (string, error) {
 	cmd := exec.Command("git", "rev-parse", "HEAD")
@@ -24,6 +32,15 @@ func GetCurrentCommit() (string, error) {
 		return "", err
 	}
 	return strings.TrimSpace(string(output)), nil
+}
+
+func HasUntrackedOrModifiedChanges() bool {
+	cmd := exec.Command("git", "status", "--porcelain")
+	out, err := cmd.Output()
+	if err != nil {
+		return false
+	}
+	return strings.TrimSpace(string(out)) != ""
 }
 
 // @returns the current commit with message
@@ -61,6 +78,7 @@ func GetCurrentBranch() (string, error) {
 	return strings.TrimSpace(string(output)), nil
 }
 
+// @ignore-unused
 // @returns how many times a file has been modified
 func GetFileChurn(filePath string, depth int) (int, error) {
 	args := []string{"log", "--oneline", "--follow", "--"}
@@ -115,14 +133,6 @@ func GetFunctionChurn(filePath string, functionName string, startLine, endLine i
 	}
 
 	return count, nil
-}
-
-// Commit represents a git commit with metadata
-type Commit struct {
-	Hash       string
-	Message    string
-	Time       time.Time
-	ChangeSize int
 }
 
 // @returns detailed commit history for a function with change sizes

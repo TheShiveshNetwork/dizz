@@ -6,6 +6,7 @@ import (
 	"os"
 	"path/filepath"
 
+	"github.com/TheShiveshNetwork/dizz/internal/config"
 	"github.com/TheShiveshNetwork/dizz/internal/state"
 )
 
@@ -23,7 +24,7 @@ func NewIntentStore(basePath string) *IntentStore {
 
 // LoadIntentState loads the intent state from disk
 func (s *IntentStore) LoadIntentState() (*state.IntentState, error) {
-	intentPath := filepath.Join(s.basePath, "intent.json")
+	intentPath := config.IntentFilePath(s.basePath)
 
 	// If file doesn't exist, return new state
 	if _, err := os.Stat(intentPath); os.IsNotExist(err) {

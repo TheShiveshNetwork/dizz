@@ -45,6 +45,7 @@ var intentResolveCmd = &cobra.Command{
 	RunE:  runIntentResolve,
 }
 
+// @ignore-unused
 func init() {
 	rootCmd.AddCommand(intentCmd)
 	intentCmd.AddCommand(intentAddCmd)
@@ -57,6 +58,7 @@ func init() {
 	intentAddCmd.Flags().StringSliceVar(&intentTags, "tags", []string{}, "Tags for the intent")
 }
 
+// @ignore-unused
 func runIntentAdd(cmd *cobra.Command, args []string) error {
 	message := args[0]
 
@@ -106,10 +108,11 @@ func runIntentAdd(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("failed to save intent state: %w", err)
 	}
 
-	fmt.Printf("✅ Added intent %s: %s\n", intent.ID, intent.Message)
+	fmt.Println("✓ Added new intent")
 	return nil
 }
 
+// @ignore-unused
 func runIntentList(cmd *cobra.Command, args []string) error {
 	intentState, err := loadIntentState()
 	if err != nil {
@@ -126,6 +129,7 @@ func runIntentList(cmd *cobra.Command, args []string) error {
 	return nil
 }
 
+// @ignore-unused
 func runIntentResolve(cmd *cobra.Command, args []string) error {
 	intentID := args[0]
 

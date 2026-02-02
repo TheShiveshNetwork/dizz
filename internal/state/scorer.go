@@ -247,11 +247,6 @@ func (s *Scorer) applyMathematicalScoring(symbols []*Symbol) {
 	}
 }
 
-// InterpretSignals converts a signal set into project state with intent enhancement
-func (s *Scorer) InterpretSignals(sigSet *signals.SignalSet) *ProjectState {
-	return s.InterpretSignalsWithIntent(sigSet, nil)
-}
-
 // InterpretSignalsWithIntent converts signals with intent enhancement
 func (s *Scorer) InterpretSignalsWithIntent(sigSet *signals.SignalSet, intentState *IntentState) *ProjectState {
 	ps := NewProjectState()
@@ -382,7 +377,8 @@ func (s *Scorer) InterpretSignalsWithIntent(sigSet *signals.SignalSet, intentSta
 		s.Score(symbol)
 	}
 
-	// Apply mathematical scoring (percentile-based)
+	// Apply 
+	// // @ignore-unusedmathematical scoring (percentile-based)
 	var symbolSlice []*Symbol
 	for _, symbol := range symbolIndex {
 		symbolSlice = append(symbolSlice, symbol)

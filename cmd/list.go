@@ -7,7 +7,7 @@ import (
 	"path/filepath"
 	"sort"
 	"time"
-	
+
 	"github.com/spf13/cobra"
 
 	commonPkg "github.com/TheShiveshNetwork/dizz/internal/common"
@@ -77,8 +77,13 @@ func runList() {
 			snapshots = append(snapshots, SnapshotInfo{
 				Hash:      hash,
 				Timestamp: ps.UpdatedAt,
-				GitCommit: ps.GitCommit,
-				Summary:   ps.GetSummary(),
+				GitCommit: func() string {
+					if ps.GitCommit != nil {
+						return ps.GitCommit.Hash
+					}
+					return ""
+				}(),
+				Summary: ps.GetSummary(),
 			})
 		}
 
@@ -119,7 +124,7 @@ func runList() {
 			if len(shortCommit) > 7 {
 				shortCommit = shortCommit[:7]
 			}
-			fmt.Printf(ui.Muted("(" + shortCommit + ")"))
+			fmt.Printf("%s", ui.Muted("("+shortCommit+")"))
 		}
 		fmt.Println()
 

@@ -3,6 +3,8 @@ package state
 import (
 	"fmt"
 	"time"
+
+	"github.com/TheShiveshNetwork/dizz/internal/integrations"
 )
 
 // SymbolState represents the interpreted state of a code symbol
@@ -65,7 +67,7 @@ type FileContext struct {
 // ProjectState represents the complete interpreted state of the project
 type ProjectState struct {
 	UpdatedAt time.Time              `json:"updated_at"`
-	GitCommit string                 `json:"git_commit,omitempty"`
+	GitCommit *integrations.Commit   `json:"git_commit,omitempty"`
 	Symbols   []Symbol               `json:"symbols"`
 	Todos     []Todo                 `json:"todos"`
 	Files     []FileContext          `json:"files"`

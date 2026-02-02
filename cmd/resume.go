@@ -8,10 +8,8 @@ import (
 	"github.com/spf13/cobra"
 
 	commonPkg "github.com/TheShiveshNetwork/dizz/internal/common"
-	"github.com/TheShiveshNetwork/dizz/internal/config"
 	"github.com/TheShiveshNetwork/dizz/internal/integrations"
 	"github.com/TheShiveshNetwork/dizz/internal/state"
-	"github.com/TheShiveshNetwork/dizz/internal/store"
 	"github.com/TheShiveshNetwork/dizz/internal/ui"
 	"github.com/TheShiveshNetwork/dizz/internal/utils"
 )
@@ -27,7 +25,7 @@ Optimized for the "I haven't touched this in weeks" scenario.`,
 }
 
 func runResume() {
-	trackDir, err := commonPkg.FindProjectRoot()
+	_, err := commonPkg.FindProjectRoot()
 	if err != nil {
 		fmt.Fprintf(os.Stderr, ui.Error("✗ %v\n"), err)
 		os.Exit(1)
@@ -39,11 +37,6 @@ func runResume() {
 		fmt.Fprintln(os.Stderr, ui.Error("✗")+" "+err.Error())
 		os.Exit(1)
 	}
-
-	// Load config
-	var cfg config.Config
-	configPath := config.ConfigFilePath(trackDir)
-	store.Load(configPath, &cfg)
 
 	// Calculate time away
 	timeSince := time.Since(projectState.UpdatedAt)

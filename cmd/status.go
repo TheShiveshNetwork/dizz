@@ -60,31 +60,38 @@ func runStatus() {
 	fmt.Println()
 
 	// Project info
-	var cfg config.Config
-	configPath := config.ConfigFilePath(trackDir)
-	if err := store.Load(configPath, &cfg); err == nil {
+	configStore := store.NewConfigStore(trackDir)
+	if cfg, err := configStore.LoadConfig(); err == nil {
 		fmt.Printf("  %s %s\n", ui.Muted("Project:"), ui.Highlight(cfg.ProjectName))
-	}
-
-	// Git info
-	if integrations.IsRepo() {
-		if branch, err := integrations.GetCurrentBranch(); err == nil {
-			fmt.Printf("  %s %s\n", ui.Muted("Branch:"), ui.Info(branch))
-		}
-		if projectState.GitCommit != "" {
-			shortCommit := projectState.GitCommit
-			if len(shortCommit) > 7 {
-				shortCommit = shortCommit[:7]
-			}
-			fmt.Printf("  %s %s\n", ui.Muted("Commit:"), ui.Muted(shortCommit))
-		}
 	}
 
 	// Last updated
 	timeSince := time.Since(projectState.UpdatedAt)
 	timeDisplay := utils.FormatTime(timeSince)
-	fmt.Printf("  %s %s\n", ui.Muted("Updated:"), ui.Muted(timeDisplay.Text))
-	fmt.Println()
+	fmt.Printf("  %s %s\n", ui.Muted("Code Updated:"), ui.Muted(timeDisplay.Text))
+
+	// Git info
+	if integrations.IsRepo() {
+		isUntracked := integrations.HasUntrackedOrModifiedChanges()
+		if isUntracked {
+			fmt.Printf("  %s %s\n",
+				ui.Warning("●"),
+				ui.Warning("Changes not committed"),
+			)
+		}
+		fmt.Println()
+		if branch, err := integrations.GetCurrentBranch(); err == nil {
+			fmt.Printf("  %s %s\n", ui.Muted("Branch:"), ui.Info(branch))
+		}
+		if projectState.GitCommit != nil {
+			commitMsg := projectState.GitCommit.Message
+			shortCommit := projectState.GitCommit.Hash
+			if len(shortCommit) > 7 {
+				shortCommit = shortCommit[:7]
+			}
+			fmt.Printf("  %s %s %s\n", ui.Muted("Last Commit:"), commitMsg, ui.Muted("("+shortCommit+")"))
+		}
+	}
 
 	// Health indicator
 	var healthColor string
@@ -100,6 +107,7 @@ func runStatus() {
 		healthIcon = "○"
 	}
 
+	fmt.Println()
 	fmt.Printf("  %s %s %s\n",
 		ui.Muted("Health:"),
 		ui.Colorize(healthIcon, healthColor),
@@ -152,7 +160,7 @@ func runStatus() {
 			bar)
 	}
 
-	fmt.Printf(ui.Muted("    ──────────────────────\n"))
+	fmt.Printf("%s", ui.Muted("    ──────────────────────\n"))
 	fmt.Printf(ui.Muted("      Total        %3d\n"), summary.TotalSymbols)
 	fmt.Println()
 
