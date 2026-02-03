@@ -3,4 +3,5 @@
 
 # Keep config
 !config.json
+!intent.json
 !.gitignore

@@ -2,13 +2,13 @@ package cmd
 
 import (
 	"fmt"
+	"io"
+	"net/http"
 	"os"
 	"runtime"
-	"net/http"
-	"io"
 
 	"github.com/spf13/cobra"
-	
+
 	"github.com/TheShiveshNetwork/dizz/internal/config"
 )
 
@@ -76,4 +76,3 @@ func downloadURL(version string) string {
 		name, os, arch,
 	)
 }
-

@@ -1,6 +1,11 @@
 package state
 
-import "time"
+import (
+	"fmt"
+	"time"
+
+	"github.com/TheShiveshNetwork/dizz/internal/integrations"
+)
 
 // SymbolState represents the interpreted state of a code symbol
 type SymbolState string
@@ -62,7 +67,17 @@ type FileContext struct {
 // ProjectState represents the complete interpreted state of the project
 type ProjectState struct {
 	UpdatedAt time.Time              `json:"updated_at"`
-	GitCommit string                 `json:"git_commit,omitempty"`
+	GitCommit *integrations.Commit   `json:"git_commit,omitempty"`
+	Symbols   []Symbol               `json:"symbols"`
+	Todos     []Todo                 `json:"todos"`
+	Files     []FileContext          `json:"files"`
+	Metadata  map[string]interface{} `json:"metadata,omitempty"`
+}
+
+// projectStateRaw is used for unmarshaling to handle backward compatibility
+type projectStateRaw struct {
+	UpdatedAt time.Time              `json:"updated_at"`
+	GitCommit interface{}            `json:"git_commit,omitempty"`
 	Symbols   []Symbol               `json:"symbols"`
 	Todos     []Todo                 `json:"todos"`
 	Files     []FileContext          `json:"files"`
@@ -131,6 +146,186 @@ func (ps *ProjectState) GetSummary() Summary {
 
 	for _, sym := range ps.Symbols {
 		summary.ByState[sym.State]++
+	}
+
+	return summary
+}
+
+// IntentType represents the type of intent
+type IntentType string
+
+const (
+	IntentTodo IntentType = "todo"
+	Fixme      IntentType = "fixme"
+	Refactor   IntentType = "refactor"
+	Question   IntentType = "question"
+	Hack       IntentType = "hack"
+	Temporary  IntentType = "temporary"
+)
+
+// IntentStatus represents the status of an intent
+type IntentStatus string
+
+const (
+	IntentActive   IntentStatus = "active"
+	IntentResolved IntentStatus = "resolved"
+	IntentDeferred IntentStatus = "deferred"
+)
+
+// Intent represents a human-authored intent
+type Intent struct {
+	ID             string       `json:"id"`
+	Type           IntentType   `json:"type"`
+	Message        string       `json:"message"`
+	Scope          string       `json:"scope"` // file:line-line format
+	CreatedAt      time.Time    `json:"created_at"`
+	UpdatedAt      time.Time    `json:"updated_at"`
+	CreatedBy      string       `json:"created_by"`
+	Severity       int          `json:"severity"`   // 0-3
+	Confidence     float64      `json:"confidence"` // 0.0-1.0
+	Status         IntentStatus `json:"status"`
+	Tags           []string     `json:"tags,omitempty"`
+	RelatedCommits []string     `json:"related_commits,omitempty"`
+	BlockedBy      []string     `json:"blocked_by,omitempty"`
+	Resolution     *Resolution  `json:"resolution,omitempty"`
+}
+
+// Resolution represents how an intent was resolved
+type Resolution struct {
+	Method      string    `json:"method"` // "fixed", "wontfix", "duplicate", etc.
+	Description string    `json:"description"`
+	ResolvedAt  time.Time `json:"resolved_at"`
+	ResolvedBy  string    `json:"resolved_by"`
+}
+
+// Assumption represents a recorded assumption
+type Assumption struct {
+	ID          string    `json:"id"`
+	Description string    `json:"description"`
+	Scope       string    `json:"scope"`
+	CreatedAt   time.Time `json:"created_at"`
+	CreatedBy   string    `json:"created_by"`
+	Confidence  float64   `json:"confidence"`
+}
+
+// KnownRisk represents a known risk
+type KnownRisk struct {
+	ID          string    `json:"id"`
+	Description string    `json:"description"`
+	Scope       string    `json:"scope"`
+	CreatedAt   time.Time `json:"created_at"`
+	CreatedBy   string    `json:"created_by"`
+	Severity    int       `json:"severity"`
+	Mitigation  string    `json:"mitigation,omitempty"`
+}
+
+// IntentState represents persistent human intent tracking
+type IntentState struct {
+	Version     float64      `json:"version"`
+	CreatedAt   time.Time    `json:"created_at"`
+	UpdatedAt   time.Time    `json:"updated_at"`
+	Intents     []Intent     `json:"intents"`
+	Assumptions []Assumption `json:"assumptions,omitempty"`
+	KnownRisks  []KnownRisk  `json:"known_risks,omitempty"`
+}
+
+// NewIntentState creates a new intent state
+func NewIntentState() *IntentState {
+	now := time.Now()
+	return &IntentState{
+		Version:     1.0,
+		CreatedAt:   now,
+		UpdatedAt:   now,
+		Intents:     make([]Intent, 0),
+		Assumptions: make([]Assumption, 0),
+		KnownRisks:  make([]KnownRisk, 0),
+	}
+}
+
+// AddIntent adds an intent to the state
+func (is *IntentState) AddIntent(intent Intent) {
+	is.UpdatedAt = time.Now()
+	is.Intents = append(is.Intents, intent)
+}
+
+// GetActiveIntents returns all active intents
+func (is *IntentState) GetActiveIntents() []Intent {
+	var result []Intent
+	for _, intent := range is.Intents {
+		if intent.Status == IntentActive {
+			result = append(result, intent)
+		}
+	}
+	return result
+}
+
+// @ignore-unused
+// TODO: add intent filters
+func (is *IntentState) GetIntentsByType(intentType IntentType) []Intent {
+	var result []Intent
+	for _, intent := range is.Intents {
+		if intent.Type == intentType {
+			result = append(result, intent)
+		}
+	}
+	return result
+}
+
+// @ignore-unused
+// TODO: add intent filters
+func (is *IntentState) GetIntentsBySeverity(minSeverity int) []Intent {
+	var result []Intent
+	for _, intent := range is.Intents {
+		if intent.Severity >= minSeverity {
+			result = append(result, intent)
+		}
+	}
+	return result
+}
+
+// ResolveIntent marks an intent as resolved
+func (is *IntentState) ResolveIntent(id string, resolution Resolution) error {
+	for i, intent := range is.Intents {
+		if intent.ID == id {
+			is.Intents[i].Status = IntentResolved
+			is.Intents[i].Resolution = &resolution
+			is.Intents[i].UpdatedAt = time.Now()
+			is.UpdatedAt = time.Now()
+			return nil
+		}
+	}
+	return fmt.Errorf("intent not found: %s", id)
+}
+
+// GetIntentSummary returns a summary of the intent state
+type IntentSummary struct {
+	TotalIntents  int                  `json:"total_intents"`
+	ActiveIntents int                  `json:"active_intents"`
+	ByType        map[IntentType]int   `json:"by_type"`
+	ByStatus      map[IntentStatus]int `json:"by_status"`
+	HighSeverity  int                  `json:"high_severity"` // severity >= 3
+}
+
+// GetIntentSummary returns a summary of intents
+func (is *IntentState) GetIntentSummary() IntentSummary {
+	summary := IntentSummary{
+		TotalIntents: len(is.Intents),
+		ByType:       make(map[IntentType]int),
+		ByStatus:     make(map[IntentStatus]int),
+		HighSeverity: 0,
+	}
+
+	for _, intent := range is.Intents {
+		summary.ByType[intent.Type]++
+		summary.ByStatus[intent.Status]++
+
+		if intent.Status == IntentActive {
+			summary.ActiveIntents++
+		}
+
+		if intent.Severity >= 3 {
+			summary.HighSeverity++
+		}
 	}
 
 	return summary

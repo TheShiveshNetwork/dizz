@@ -1,15 +1,15 @@
 package utils
 
 import (
-	"time"
 	"fmt"
+	"time"
 
 	"github.com/TheShiveshNetwork/dizz/internal/ui"
 )
 
 type TimeDisplay struct {
-	Text	string
-	Color	string
+	Text  string
+	Color string
 }
 
 func FormatTime(timeSince time.Duration) TimeDisplay {
@@ -56,4 +56,3 @@ func FormatTime(timeSince time.Duration) TimeDisplay {
 		}
 	}
 }
-

@@ -12,6 +12,7 @@ const (
 
 	ConfigFile = "config.json"
 	StateFile  = "state.json"
+	IntentFile = "intent.json"
 
 	DefaultBranch = "main"
 )
@@ -28,11 +29,11 @@ func TrackDirPath(root string) string {
 }
 
 func ObjectsDirPath(root string) string {
-	return filepath.Join(root, ObjectsDirName)
+	return filepath.Join(root, TrackDirName, ObjectsDirName)
 }
 
 func RefsDirPath(root string) string {
-	return filepath.Join(root, RefsDirName)
+	return filepath.Join(root, TrackDirName, RefsDirName)
 }
 
 func ConfigFilePath(root string) string {
@@ -43,3 +44,6 @@ func StateFilePath(root string) string {
 	return filepath.Join(root, StateFile)
 }
 
+func IntentFilePath(root string) string {
+	return filepath.Join(root, IntentFile)
+}

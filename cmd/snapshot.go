@@ -37,8 +37,14 @@ func init() {
 }
 
 func runSnapshot() {
+	trackDir, err := commonPkg.FindProjectRoot()
+	if err != nil {
+		fmt.Fprintf(os.Stderr, ui.Error("✗ %v\n"), err)
+		os.Exit(1)
+	}
+
 	// Ensure we have current project state
-	projectState, err := commonPkg.EnsureCurrentState()
+	projectState, err := commonPkg.EnsureCurrentStateWithAnalysis(nil)
 	if err != nil {
 		if !autoSnapshot {
 			fmt.Fprintln(os.Stderr, ui.Error("✗")+" "+err.Error())
@@ -46,7 +52,6 @@ func runSnapshot() {
 		os.Exit(1)
 	}
 
-	// Serialize state to JSON
 	stateJSON, err := json.MarshalIndent(projectState, "", "  ")
 	if err != nil {
 		if !autoSnapshot {
@@ -61,8 +66,6 @@ func runSnapshot() {
 	shortHash := hashStr[:6]
 
 	// Create object path: objects/ab/cdef...
-	cwd, _ := os.Getwd()
-	trackDir := config.TrackDirPath(cwd)
 	objectsDir := config.ObjectsDirPath(trackDir)
 	objectSubdir := filepath.Join(objectsDir, hashStr[:2])
 	objectPath := filepath.Join(objectSubdir, hashStr[2:]+".json")

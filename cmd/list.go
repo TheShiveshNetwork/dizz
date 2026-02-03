@@ -7,9 +7,10 @@ import (
 	"path/filepath"
 	"sort"
 	"time"
-	
+
 	"github.com/spf13/cobra"
 
+	commonPkg "github.com/TheShiveshNetwork/dizz/internal/common"
 	"github.com/TheShiveshNetwork/dizz/internal/config"
 	"github.com/TheShiveshNetwork/dizz/internal/state"
 	"github.com/TheShiveshNetwork/dizz/internal/ui"
@@ -34,11 +35,14 @@ type SnapshotInfo struct {
 }
 
 func runList() {
-	cwd, _ := os.Getwd()
-	trackDir := config.TrackDirPath(cwd)
+	trackDir, err := commonPkg.FindProjectRoot()
+	if err != nil {
+		fmt.Fprintf(os.Stderr, ui.Error("✗ %v\n"), err)
+		os.Exit(1)
+	}
+
 	objectsDir := config.ObjectsDirPath(trackDir)
 
-	// Check if objects directory exists
 	if _, err := os.Stat(objectsDir); os.IsNotExist(err) {
 		fmt.Println(ui.Warning("⚠ No snapshots found"))
 		fmt.Println(ui.Muted("  Run 'dizz snapshot' to create your first snapshot"))
@@ -55,7 +59,6 @@ func runList() {
 		}
 
 		if filepath.Ext(path) == ".json" {
-			// Load snapshot
 			var ps state.ProjectState
 			data, err := os.ReadFile(path)
 			if err != nil {
@@ -74,8 +77,13 @@ func runList() {
 			snapshots = append(snapshots, SnapshotInfo{
 				Hash:      hash,
 				Timestamp: ps.UpdatedAt,
-				GitCommit: ps.GitCommit,
-				Summary:   ps.GetSummary(),
+				GitCommit: func() string {
+					if ps.GitCommit != nil {
+						return ps.GitCommit.Hash
+					}
+					return ""
+				}(),
+				Summary: ps.GetSummary(),
 			})
 		}
 
@@ -92,7 +100,6 @@ func runList() {
 		return snapshots[i].Timestamp.After(snapshots[j].Timestamp)
 	})
 
-	// Display
 	fmt.Println()
 	fmt.Println()
 	fmt.Println(ui.Header("SNAPSHOT HISTORY"))
@@ -117,11 +124,10 @@ func runList() {
 			if len(shortCommit) > 7 {
 				shortCommit = shortCommit[:7]
 			}
-			fmt.Printf(ui.Muted("(" + shortCommit + ")"))
+			fmt.Printf("%s", ui.Muted("("+shortCommit+")"))
 		}
 		fmt.Println()
 
-		// Summary
 		active := snap.Summary.ByState[state.Active]
 		planned := snap.Summary.ByState[state.Planned]
 		unstable := snap.Summary.ByState[state.Unstable]

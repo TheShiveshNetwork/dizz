@@ -5,19 +5,19 @@ type SignalType string
 
 const (
 	// Structure signals
-	FunctionDefined SignalType = "function_defined"
-	FunctionCalled  SignalType = "function_called"
-	ImportFound     SignalType = "import_found"
+	FunctionDefined	SignalType = "function_defined"
+	FunctionCalled	SignalType = "function_called"
+	ImportFound			SignalType = "import_found"
 
 	// Intent signals
-	TodoFound    SignalType = "todo_found"
-	TodoRemoved  SignalType = "todo_removed"
-	IntentMarker SignalType = "intent_marker"
-	IntentIgnore SignalType = "intent_ignore"
+	TodoFound			SignalType = "todo_found"
+	TodoRemoved		SignalType = "todo_removed"
+	IntentMarker	SignalType = "intent_marker"
+	IgnoreFlag		SignalType = "intent_ignore"
 
 	// Time signals
-	FileTouched  SignalType = "file_touched"
-	FileModified SignalType = "file_modified"
+	FileTouched		SignalType = "file_touched"
+	FileModified	SignalType = "file_modified"
 )
 
 // Signal represents a single fact extracted from the codebase

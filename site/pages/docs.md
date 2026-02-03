@@ -1,34 +1,8 @@
-<div align="center">
-
-<!-- Logo -->
-<img src="https://raw.githubusercontent.com/TheShiveshNetwork/dizz/refs/heads/main/site/assets/dizz-logo.png" alt="dizz logo" width="160" />
-
-</div>
-
-# dizz
-![Version](https://img.shields.io/github/v/release/TheShiveshNetwork/dizz?label=version)
-
-> **Know what to work on next.**
+# Dizz
 
 `dizz` is a local, Git-aware developer CLI that analyzes your codebase and answers one core question:
 
 > **“What should I work on next?”**
-
-Unlike linters or task trackers, `dizz` focuses on **developer understanding** — not just correctness.
-
-> dizz is stable and safe to use on real projects.  
-> It runs fully offline, makes no network calls, never modifies your code, and operates in read-only mode.
-
-## Contents
-
-- [Overview](#overview)
-- [Why dizz?](#why-dizz)
-- [What dizz is not](#what-dizz-is-not)
-- [Installation](#installation)
-- [Quick Start](#quick-start)
-- [Commands](#commands)
-- [Symbol States](#symbol-states)
-- [License](#license)
 
 ## Overview
 
@@ -156,9 +130,9 @@ Resolve and intent (mark it completed)
 dizz intent resolve int_1770020361
 ```
 
-Each Intent carries a severity score from 0–3, where 3 represents critical, project-shaping intent and 0 represents low-impact or exploratory intent.
-
 > Intents are immutable project goals; TODO/FIXME comments are mutable code-level fixes — dizz treats them differently by design.
+
+Each Intent carries a severity score from 0–3, where 3 represents critical, project-shaping intent and 0 represents low-impact or exploratory intent.
 
 ## Symbol States
 
@@ -172,9 +146,59 @@ Symbol states are derived by combining usage signals, intent markers, and histor
 | `unused`    | Declared, never used |
 | `abandoned` | Old + unused         |
 
+## Architecture Overview
+
+### The Four Dimensions of Project State
+
+Every project has four dimensions that `dizz` models explicitly:
+
+| Dimension     | What It Represents | How It's Derived      |
+| ------------- | ------------------ | --------------------- |
+| **Structure** | What exists        | AST parsing, regex    |
+| **Usage**     | What's connected   | Call graphs, imports  |
+| **Intent**    | What's planned     | TODOs, intent markers |
+| **Time**      | What's stable      | Git history & churn   |
+
+### High-Level Architecture
+
+```
+┌─────────────────────────────────────────────────────────┐
+│                    CLI Commands                         │
+│      (init, log, status, snapshot, list, resume)        │
+└───────────────────────┬─────────────────────────────────┘
+                         │
+                         ▼
+┌─────────────────────────────────────────────────────────┐
+│                  Orchestration                          │
+│         (Coordinates all other layers)                  │
+└───┬───────────┬─────────────┬────────────┬──────────────┘
+    │           │             │            │
+    ▼           ▼             ▼            ▼
+┌─────────┐ ┌──────────┐ ┌─────────┐ ┌─────────┐
+│ Discover│ │ Analyzer │ │   Git   │ │  Store  │
+│  Files  │ │ Registry │ │ Context │ │ Objects │
+└────┬────┘ └─────┬────┘ └────┬────┘ └────┬────┘
+     │            │           │           │
+     └────────────┴───────────┴───────────┘
+                   │
+                   ▼
+            ┌──────────────┐
+            │   Signals    │  ← universal facts
+            └──────┬───────┘
+                   │
+                   ▼
+            ┌──────────────┐
+            │ State Engine │  ← interpretation
+            └──────┬───────┘
+                   │
+                   ▼
+            ┌──────────────┐
+            │ Project State│  ← understanding
+            └──────────────┘
+```
+
 ## License
 
 [LICENSE](https://github.com/TheShiveshNetwork/dizz/blob/main/LICENSE)
 
 Built with ❤️ for developers who hate wasting time deciding what to work on next.
-

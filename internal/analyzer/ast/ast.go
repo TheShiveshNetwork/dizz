@@ -101,7 +101,7 @@ func (a *Analyzer) extractCalls(file *ast.File, filePath string, fset *token.Fil
 						end.Line,
 						end.Column,
 					)
-				
+
 				sigSet.Add(*sig)
 			}
 		}

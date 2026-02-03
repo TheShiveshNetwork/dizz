@@ -26,7 +26,7 @@ func runInit() {
 	projectName := filepath.Base(cwd)
 	trackDir := config.TrackDirPath(cwd)
 	dizzConfigPath := config.ConfigFilePath(trackDir)
-	
+
 	// return if dizz config already exists
 	if _, err := os.Stat(dizzConfigPath); err == nil {
 		fmt.Println("✓ dizz already initialized")
@@ -48,7 +48,7 @@ func runInit() {
 			os.Exit(0)
 		}
 	}
-	
+
 	objectsDir := config.ObjectsDirPath(trackDir)
 	refsDir := config.RefsDirPath(trackDir)
 
@@ -85,7 +85,7 @@ func runInit() {
 	fmt.Printf("✓ Initialized %s\n", projectName)
 	// install post-commit hook
 	if isGitRepo {
-		hookContent := integrations.GetHookContent(config.AppName)
+		hookContent := defaults.GitPostCommitHookContent(config.AppName)
 		if err := integrations.InstallPostCommitHook(hookContent); err != nil {
 			fmt.Printf("⚠️  Could not install git hook: %v\n", err)
 			fmt.Println("   You can still use dizz manually with 'dizz snapshot'")
@@ -102,4 +102,3 @@ func runInit() {
 	fmt.Printf("  Project: %s\n", projectName)
 	fmt.Printf("\nNext: Run '%s log' to see your project state\n", config.AppName)
 }
-

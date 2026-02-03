@@ -8,10 +8,8 @@ import (
 	"github.com/spf13/cobra"
 
 	commonPkg "github.com/TheShiveshNetwork/dizz/internal/common"
-	"github.com/TheShiveshNetwork/dizz/internal/config"
 	"github.com/TheShiveshNetwork/dizz/internal/integrations"
 	"github.com/TheShiveshNetwork/dizz/internal/state"
-	"github.com/TheShiveshNetwork/dizz/internal/store"
 	"github.com/TheShiveshNetwork/dizz/internal/ui"
 	"github.com/TheShiveshNetwork/dizz/internal/utils"
 )
@@ -27,19 +25,18 @@ Optimized for the "I haven't touched this in weeks" scenario.`,
 }
 
 func runResume() {
+	_, err := commonPkg.FindProjectRoot()
+	if err != nil {
+		fmt.Fprintf(os.Stderr, ui.Error("✗ %v\n"), err)
+		os.Exit(1)
+	}
+
 	// Ensure we have current project state
-	projectState, err := commonPkg.EnsureCurrentState()
+	projectState, err := commonPkg.EnsureCurrentStateWithAnalysis(nil)
 	if err != nil {
 		fmt.Fprintln(os.Stderr, ui.Error("✗")+" "+err.Error())
 		os.Exit(1)
 	}
-
-	// Load config
-	cwd, _ := os.Getwd()
-	trackDir := config.TrackDirPath(cwd)
-	var cfg config.Config
-	configPath := config.ConfigFilePath(trackDir)
-	store.Load(configPath, &cfg)
 
 	// Calculate time away
 	timeSince := time.Since(projectState.UpdatedAt)
@@ -78,15 +75,6 @@ func runResume() {
 			}
 			if len(planned) > 3 {
 				fmt.Printf(ui.Muted("    ... and %d more\n"), len(planned)-3)
-			}
-			fmt.Println()
-		}
-
-		if len(unstable) > 0 {
-			fmt.Printf("  %s Code with high churn:\n", ui.Error("🔥"))
-			for i := 0; i < len(unstable) && i < 3; i++ {
-				fmt.Printf("    • %s ", ui.Highlight(unstable[i].Name))
-				fmt.Printf(ui.Error("(%d changes)\n"), unstable[i].ChurnCount)
 			}
 			fmt.Println()
 		}

@@ -72,5 +72,5 @@ wasm:
 	cp "$$(go env GOROOT)/misc/wasm/wasm_exec.js" site/public/
 
 serve-site:
-	cd site/server && go run main.go
+	cd site/server && go run server.go
 

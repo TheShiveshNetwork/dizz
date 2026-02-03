@@ -33,7 +33,7 @@ Flags:
   -a, --all     Show all symbols including active ones
   -v, --verbose   Show detailed analysis info`,
 	Run: func(cmd *cobra.Command, args []string) {
-		runWhereami()
+		runLog()
 	},
 }
 
@@ -43,16 +43,15 @@ func init() {
 	logCmd.Flags().BoolVarP(&verboseOut, "verbose", "v", false, "Show detailed analysis info")
 }
 
-func runWhereami() {
-	cwd, _ := os.Getwd()
-	trackDir := config.TrackDirPath(cwd)
-	if _, err := os.Stat(trackDir); os.IsNotExist(err) {
-		fmt.Fprintln(os.Stderr, ui.Error("✗")+" Not a dizz project. Run 'dizz init' first.")
+func runLog() {
+	trackDir, err := commonPkg.FindProjectRoot()
+	if err != nil {
+		fmt.Fprintf(os.Stderr, ui.Error("✗ %v\n"), err)
 		os.Exit(1)
 	}
 
 	if verboseOut {
-		fmt.Println(ui.Muted("🔍 Analyzing project..."))
+		fmt.Println(ui.Muted("Analyzing project..."))
 		fmt.Println()
 	}
 
@@ -68,13 +67,12 @@ func runWhereami() {
 		fmt.Println()
 	}
 
-	// Save state
-	statePath := config.StateFilePath(trackDir)
-	if err := store.Save(statePath, projectState); err != nil {
+	// Save state using StateStore
+	stateStore := store.NewStateStore(config.TrackDirPath(trackDir))
+	if err := stateStore.SaveProjectState(projectState); err != nil {
 		fmt.Fprintf(os.Stderr, ui.Warning("Warning: Could not save state: %v\n"), err)
 	}
 
-	// Display results
 	printFocusedState(projectState)
 }
 
@@ -88,12 +86,16 @@ func printFocusedState(ps *state.ProjectState) {
 	summary := ps.GetSummary()
 	totalIssues := len(planned) + len(unstable) + len(unused) + len(abandoned)
 
+	// Get trackDir for intent loading
+	trackDir, _ := commonPkg.FindProjectRoot()
+	intentStore := store.NewIntentStore(config.TrackDirPath(trackDir))
+
 	fmt.Println()
 
-	// Quick summary with colors
+	// Quick summary
 	fmt.Printf("  %s %s\n", ui.Success("✓  Active:"), ui.Success(fmt.Sprintf("%d", len(active))))
 	if len(planned) > 0 {
-		fmt.Printf("  %s %s\n", ui.Warning("⚠ Planned:"), ui.Warning(fmt.Sprintf("%d", len(planned))))
+		fmt.Printf("  %s %s\n", ui.Warning("⚠  Planned:"), ui.Warning(fmt.Sprintf("%d", len(planned))))
 	}
 	if len(unused) > 0 {
 		fmt.Printf("  %s %s\n", ui.Info("⚪ Unused:"), ui.Info(fmt.Sprintf("%d", len(unused))))
@@ -123,6 +125,7 @@ func printFocusedState(ps *state.ProjectState) {
 		Subtitle:   "needs implementation",
 		Symbols:    planned,
 		ShowAll:    showAll,
+		Verbose:    verboseOut,
 		MaxPerFile: 3,
 		ShowChurn:  false,
 	})
@@ -133,6 +136,7 @@ func printFocusedState(ps *state.ProjectState) {
 		Subtitle:   "changing too much",
 		Symbols:    unstable,
 		ShowAll:    showAll,
+		Verbose:    verboseOut,
 		MaxPerFile: 3,
 		ShowChurn:  true,
 	})
@@ -143,6 +147,7 @@ func printFocusedState(ps *state.ProjectState) {
 		Subtitle:   "not called anywhere",
 		Symbols:    unused,
 		ShowAll:    showAll,
+		Verbose:    verboseOut,
 		MaxPerFile: 3,
 		ShowChurn:  false,
 	})
@@ -153,14 +158,22 @@ func printFocusedState(ps *state.ProjectState) {
 		Subtitle:   "old, not used",
 		Symbols:    abandoned,
 		ShowAll:    showAll,
+		Verbose:    verboseOut,
 		MaxPerFile: 2,
 		ShowChurn:  true,
 	})
 
 	activeTodos := ps.GetActiveTodos()
-	render.RenderTodos(activeTodos)
 
-	// Show active if requested
+	// Load and render intents
+	if intentState, err := intentStore.LoadIntentState(); err == nil {
+		activeIntents := intentState.GetActiveIntents()
+		render.RenderTodosAndIntents(activeTodos, activeIntents)
+	} else {
+		// Fallback to just todos for backward compatibility
+		render.RenderTodos(activeTodos)
+	}
+
 	if showAll && len(active) > 0 {
 		printActiveSymbols(active)
 	}
@@ -175,7 +188,7 @@ func printFocusedState(ps *state.ProjectState) {
 	fmt.Printf(ui.Muted("  %d symbols · %d need attention · %d active\n"),
 		summary.TotalSymbols, totalIssues, len(active))
 	if !showAll && totalIssues > 10 {
-		fmt.Printf(ui.Muted("  Use 'dizz log --all' to see everything\n"))
+		fmt.Printf("%s", ui.Muted("  Use 'dizz log --all' to see everything\n"))
 	}
 	fmt.Println()
 }
