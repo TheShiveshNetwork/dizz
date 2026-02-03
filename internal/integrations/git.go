@@ -282,12 +282,3 @@ func InstallPostCommitHook(hookContent string) error {
 
 	return os.WriteFile(hookPath, []byte(content), 0755)
 }
-
-func GetHookContent(appName string) string {
-	return `
-DIZZ_BIN="$(command -v ` + appName + ` || true)"
-if [ -x "$DIZZ_BIN" ]; then
-    "$DIZZ_BIN" snapshot --auto >/dev/null 2>&1 || true
-fi
-`
-}

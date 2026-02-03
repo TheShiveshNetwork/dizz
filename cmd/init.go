@@ -85,7 +85,7 @@ func runInit() {
 	fmt.Printf("✓ Initialized %s\n", projectName)
 	// install post-commit hook
 	if isGitRepo {
-		hookContent := integrations.GetHookContent(config.AppName)
+		hookContent := defaults.GitPostCommitHookContent(config.AppName)
 		if err := integrations.InstallPostCommitHook(hookContent); err != nil {
 			fmt.Printf("⚠️  Could not install git hook: %v\n", err)
 			fmt.Println("   You can still use dizz manually with 'dizz snapshot'")
