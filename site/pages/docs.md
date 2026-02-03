@@ -1,4 +1,8 @@
-# Documentation
+# Dizz
+
+`dizz` is a local, Git-aware developer CLI that analyzes your codebase and answers one core question:
+
+> **“What should I work on next?”**
 
 ## Overview
 

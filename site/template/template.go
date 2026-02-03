@@ -25,7 +25,7 @@ var BaseTemplate = fmt.Sprintf(`<!DOCTYPE html>
         <div class="sidebar">
             <h2>Navigation</h2>
             <ul>
-                <li><a href="/docs" {{if eq .Path "/docs"}}class="active"{{end}}>Overview</a></li>
+                <li><a href="/docs">Overview</a></li>
                 <li><a href="#quick-start">Quick Start</a></li>
                 <li><a href="#commands">Commands</a></li>
                 <li><a href="#symbol-states">Symbol States</a></li>
@@ -46,7 +46,7 @@ var BaseTemplate = fmt.Sprintf(`<!DOCTYPE html>
                     <img src="assets/dizz-logo.png" alt="Dizz Logo" width="128" height="128">
                 </div>
                 <p class="tagline">Know what to work on next.</p>
-                <div class="version">{{.Version}}</div>
+                <div class="version">v{{.Version}}</div>
                 {{end}}
             </header>
 
@@ -108,9 +108,132 @@ var BaseTemplate = fmt.Sprintf(`<!DOCTYPE html>
                 });
             }
         }
+
+        // Scroll-based navigation highlighting
+        function initScrollSpy() {
+            const sections = Array.from(document.querySelectorAll('h2[id], h3[id]'));
+            const allNavLinks = document.querySelectorAll('.sidebar a');
+            const anchorLinks = document.querySelectorAll('.sidebar a[href^="#"]');
+            const overviewLink = document.querySelector('.sidebar a[href="/docs"]');
+            
+            let currentActiveId = null;
+            let isScrolling = false;
+            
+            function updateActiveNav() {
+                if (isScrolling) return; // Don't update during smooth scrolling
+                
+                const scrollY = window.scrollY + 80; // Smaller offset for earlier activation
+                let newActiveId = null;
+                
+                // If at the top of the page, activate Overview
+                if (scrollY <= 100) {
+                    newActiveId = 'overview';
+                } else {
+                    // Find the last section that starts before the current scroll position
+                    for (let i = sections.length - 1; i >= 0; i--) {
+                        const section = sections[i];
+                        const sectionTop = section.offsetTop;
+                        
+                        if (scrollY >= sectionTop) {
+                            newActiveId = section.getAttribute('id');
+                            break;
+                        }
+                    }
+                }
+                
+                // Only update if the active section actually changed
+                if (newActiveId !== currentActiveId) {
+                    // Remove active from all links
+                    allNavLinks.forEach(link => link.classList.remove('active'));
+                    
+                    // Add active to the appropriate link
+                    if (newActiveId === 'overview' && overviewLink) {
+                        overviewLink.classList.add('active');
+                    } else if (newActiveId) {
+                        anchorLinks.forEach(link => {
+                            if (link.getAttribute('href') === '#' + newActiveId) {
+                                link.classList.add('active');
+                            }
+                        });
+                    }
+                    
+                    currentActiveId = newActiveId;
+                }
+            }
+            
+            // Smooth scrolling for navigation links
+            anchorLinks.forEach(link => {
+                link.addEventListener('click', function(e) {
+                    e.preventDefault();
+                    const targetId = this.getAttribute('href').substring(1);
+                    const targetSection = document.getElementById(targetId);
+                    
+                    if (targetSection) {
+                        isScrolling = true;
+                        const offsetTop = targetSection.offsetTop - 20;
+                        
+                        window.scrollTo({
+                            top: offsetTop,
+                            behavior: 'smooth'
+                        });
+                        
+                        // Manually set the active state immediately on click
+                        allNavLinks.forEach(l => l.classList.remove('active'));
+                        this.classList.add('active');
+                        currentActiveId = targetId;
+                        
+                        // Re-enable scroll detection after animation completes
+                        setTimeout(() => {
+                            isScrolling = false;
+                            updateActiveNav(); // Final check to ensure correct state
+                        }, 1000); // 1 second for smooth scroll to complete
+                    }
+                });
+            });
+            
+            // Handle Overview link click
+            if (overviewLink) {
+                overviewLink.addEventListener('click', function(e) {
+                    e.preventDefault();
+                    isScrolling = true;
+                    
+                    window.scrollTo({
+                        top: 0,
+                        behavior: 'smooth'
+                    });
+                    
+                    // Manually set the active state immediately on click
+                    allNavLinks.forEach(l => l.classList.remove('active'));
+                    this.classList.add('active');
+                    currentActiveId = 'overview';
+                    
+                    // Re-enable scroll detection after animation completes
+                    setTimeout(() => {
+                        isScrolling = false;
+                        updateActiveNav(); // Final check to ensure correct state
+                    }, 1000);
+                });
+            }
+            
+            // Throttled scroll event listener
+            let scrollTimeout;
+            window.addEventListener('scroll', () => {
+                clearTimeout(scrollTimeout);
+                scrollTimeout = setTimeout(updateActiveNav, 50); // 50ms throttle
+            });
+            
+            // Initial call
+            setTimeout(updateActiveNav, 100); // Small delay to ensure page is rendered
+        }
+
+        // Initialize scroll spy when DOM is ready
+        if (document.querySelector('.sidebar')) {
+            initScrollSpy();
+        }
     </script>
 </body>
 </html>`, BaseStyle)
+
 const BaseStyle string = `        * { margin: 0; padding: 0; box-sizing: border-box; }
         body { 
             font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, monospace; 
@@ -127,7 +250,7 @@ const BaseStyle string = `        * { margin: 0; padding: 0; box-sizing: border-
         }
         header { text-align: center; margin-bottom: 40px; {{if .IsDocs}}flex: 1;{{end}} }
         .logo { margin-bottom: 20px; color: #58a6ff; }
-        h1 { font-size: 3rem; font-weight: 700; color: #ffffff; }
+				h1 { margin: 30px 0; font-size: 3rem; font-weight: 700; color: #ffffff; }
         .tagline { font-size: 1.4rem; color: #8b949e; margin-bottom: 24px; }
         .version { 
             display: inline-block; 
@@ -171,7 +294,7 @@ const BaseStyle string = `        * { margin: 0; padding: 0; box-sizing: border-
             display: block;
             padding: 6px 10px;
             border-radius: 4px;
-            transition: all 0.2s ease;
+            transition: all 0.3s ease;
         }
         .sidebar a:hover {
             color: #ffffff;
@@ -189,7 +312,7 @@ const BaseStyle string = `        * { margin: 0; padding: 0; box-sizing: border-
         }
         {{end}}
         /* Markdown styles */
-        h2 { font-size: 2rem; margin: 40px 0 24px 0; color: #ffffff; }
+        h2 { font-size: 2rem; margin: 30px 0 24px 0; color: #ffffff; }
         h3 { font-size: 1.5rem; margin: 30px 0 15px 0; color: #ffffff; }
         h4 { font-size: 1.2rem; margin: 20px 0 10px 0; color: #ffffff; }
         p { margin-bottom: 16px; color: #e0e0e0; }
@@ -298,7 +421,6 @@ const BaseStyle string = `        * { margin: 0; padding: 0; box-sizing: border-
             border-radius: 6px;
             padding: 20px;
             position: relative;
-            margin: 32px 0;
         }
         .command {
             font-family: 'Monaco', 'Menlo', monospace;
@@ -334,7 +456,7 @@ const BaseStyle string = `        * { margin: 0; padding: 0; box-sizing: border-
             background: #2d2d30;
             border-radius: 6px;
         }
-				.feature h3 {
+				.feature h1, .feature h3 {
 					margin: 0;
 				}
         .commands-grid {
@@ -391,4 +513,3 @@ const BaseStyle string = `        * { margin: 0; padding: 0; box-sizing: border-
             }
         }
     `
-

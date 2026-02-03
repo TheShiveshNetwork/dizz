@@ -21,6 +21,5 @@ func main() {
 	http.Handle("/", fs)
 
 	fmt.Printf("Server starting on port %s\n", port)
-	fmt.Printf("Serving files from: %s\n", "../public")
 	log.Fatal(http.ListenAndServe(":"+port, nil))
 }

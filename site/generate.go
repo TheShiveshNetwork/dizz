@@ -9,6 +9,7 @@ import (
 	"text/template"
 
 	"github.com/yuin/goldmark"
+	"github.com/yuin/goldmark/extension"
 	"github.com/yuin/goldmark/renderer/html"
 
 	staticTemplate "github.com/TheShiveshNetwork/dizz/site/template"
@@ -26,6 +27,7 @@ type SiteData struct {
 
 func renderMarkdown(content string) (string, error) {
 	md := goldmark.New(
+		goldmark.WithExtensions(extension.Table),
 		goldmark.WithRendererOptions(
 			html.WithHardWraps(),
 			html.WithXHTML(),
@@ -39,10 +41,10 @@ func renderMarkdown(content string) (string, error) {
 		return "", err
 	}
 
-	// Sanitize HTML content
 	htmlContent := sanitizeHTML(buf.String())
 
 	// Post-process to add anchor IDs for headings
+	htmlContent = strings.ReplaceAll(htmlContent, `<h2>Overview</h2>`, `<h2 id="quick-start">Overview</h2>`)
 	htmlContent = strings.ReplaceAll(htmlContent, `<h2>Quick Start</h2>`, `<h2 id="quick-start">Quick Start</h2>`)
 	htmlContent = strings.ReplaceAll(htmlContent, `<h2>Commands</h2>`, `<h2 id="commands">Commands</h2>`)
 	htmlContent = strings.ReplaceAll(htmlContent, `<h2>Symbol States</h2>`, `<h2 id="symbol-states">Symbol States</h2>`)
@@ -51,9 +53,7 @@ func renderMarkdown(content string) (string, error) {
 	return htmlContent, nil
 }
 
-// sanitizeHTML removes potentially dangerous HTML elements and attributes
 func sanitizeHTML(content string) string {
-	// Remove dangerous tags with word boundaries to avoid false positives
 	dangerousTags := []string{
 		`<script[^>]*>.*?</script>`,
 		`<iframe[^>]*>.*?</iframe>`,
@@ -146,13 +146,11 @@ func getLatestRelease() (*ReleaseInfo, error) {
 }
 
 func generatePage(data SiteData, markdownFile string, outputFile string) error {
-	// Read markdown content
 	markdownContent, err := readMarkdownFile(markdownFile)
 	if err != nil {
 		return fmt.Errorf("error reading markdown file: %v", err)
 	}
 
-	// Convert markdown to HTML
 	htmlContent, err := renderMarkdown(markdownContent)
 	if err != nil {
 		return fmt.Errorf("error rendering markdown: %v", err)
@@ -171,7 +169,6 @@ func generatePage(data SiteData, markdownFile string, outputFile string) error {
 		return fmt.Errorf("error executing template: %v", err)
 	}
 
-	// Write to file
 	if err := os.WriteFile(outputFile, []byte(result.String()), 0644); err != nil {
 		return fmt.Errorf("error writing file: %v", err)
 	}
@@ -181,14 +178,12 @@ func generatePage(data SiteData, markdownFile string, outputFile string) error {
 
 // @ignore-unused
 func main() {
-	// Generate home page
 	homeData := getSiteData()
 	if err := generatePage(homeData, "pages/index.md", "public/index.html"); err != nil {
 		fmt.Printf("Error generating home page: %v\n", err)
 		os.Exit(1)
 	}
 
-	// Generate docs page
 	docsData := getDocsData()
 	if err := generatePage(docsData, "pages/docs.md", "public/docs/index.html"); err != nil {
 		fmt.Printf("Error generating docs page: %v\n", err)

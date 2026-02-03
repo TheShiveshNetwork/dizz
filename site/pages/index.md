@@ -1,5 +1,3 @@
-<h1>Dizz</h1>
-
 <h2>Quick Install</h2>
 
 <div class="tabs">
@@ -20,6 +18,15 @@
 </div>
 <button class="copy-btn" onclick="copyCommand()">Copy</button>
 </div>
+
+<h1>Dizz</h1>
+
+<h2>Overview</h2>
+
+`dizz` is a local, Git-aware developer CLI that analyzes your codebase to understand **progress**, not just correctness.  
+It helps developers answer the question **“What should I work on next?”** by detecting unused code, planned work (TODOs), unstable areas, and forgotten or abandoned logic using static analysis and Git context.
+
+Unlike linters or task managers, `dizz` models **developer intent and code evolution**. It runs fully offline, requires no configuration to start, and works across multiple languages through a unified signal-based architecture.
 
 <h2>Features</h2>
 
