@@ -153,7 +153,7 @@ func runIntentResolve(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("failed to save intent state: %w", err)
 	}
 
-	fmt.Printf("✅ Resolved intent %s\n", intentID)
+	fmt.Printf("✓ Resolved intent %s\n", intentID)
 	return nil
 }
 

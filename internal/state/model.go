@@ -1,7 +1,6 @@
 package state
 
 import (
-	"encoding/json"
 	"fmt"
 	"time"
 
@@ -83,42 +82,6 @@ type projectStateRaw struct {
 	Todos     []Todo                 `json:"todos"`
 	Files     []FileContext          `json:"files"`
 	Metadata  map[string]interface{} `json:"metadata,omitempty"`
-}
-
-// UnmarshalJSON handles backward compatibility for git_commit field
-func (ps *ProjectState) UnmarshalJSON(data []byte) error {
-	var raw projectStateRaw
-	if err := json.Unmarshal(data, &raw); err != nil {
-		return err
-	}
-
-	// Copy fields
-	ps.UpdatedAt = raw.UpdatedAt
-	ps.Symbols = raw.Symbols
-	ps.Todos = raw.Todos
-	ps.Files = raw.Files
-	ps.Metadata = raw.Metadata
-
-	// Handle git_commit with backward compatibility
-	if raw.GitCommit != nil {
-		switch v := raw.GitCommit.(type) {
-		case string:
-			// Old format: simple string
-			ps.GitCommit = &integrations.Commit{
-				Hash: v,
-			}
-		case map[string]interface{}:
-			// New format: object with details
-			if commitData, err := json.Marshal(v); err == nil {
-				var commit integrations.Commit
-				if err := json.Unmarshal(commitData, &commit); err == nil {
-					ps.GitCommit = &commit
-				}
-			}
-		}
-	}
-
-	return nil
 }
 
 // NewProjectState creates a new project state
@@ -296,7 +259,8 @@ func (is *IntentState) GetActiveIntents() []Intent {
 	return result
 }
 
-// GetIntentsByType returns intents by type
+// @ignore-unused
+// TODO: add intent filters
 func (is *IntentState) GetIntentsByType(intentType IntentType) []Intent {
 	var result []Intent
 	for _, intent := range is.Intents {
@@ -307,7 +271,8 @@ func (is *IntentState) GetIntentsByType(intentType IntentType) []Intent {
 	return result
 }
 
-// GetIntentsBySeverity returns intents with severity >= threshold
+// @ignore-unused
+// TODO: add intent filters
 func (is *IntentState) GetIntentsBySeverity(minSeverity int) []Intent {
 	var result []Intent
 	for _, intent := range is.Intents {

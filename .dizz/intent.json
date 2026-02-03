@@ -1,7 +1,7 @@
 {
   "version": 1,
   "created_at": "2026-02-02T13:47:31.231852817+05:30",
-  "updated_at": "2026-02-02T21:52:31.059273322+05:30",
+  "updated_at": "2026-02-03T19:08:22.401249121+05:30",
   "intents": [
     {
       "id": "int_1770020251",
@@ -55,11 +55,17 @@
       "message": "take snapshots on every commit",
       "scope": "project",
       "created_at": "2026-02-02T21:24:08.331141866+05:30",
-      "updated_at": "2026-02-02T21:24:08.331141866+05:30",
+      "updated_at": "2026-02-03T19:06:32.990038428+05:30",
       "created_by": "user",
       "severity": 2,
       "confidence": 0.8,
-      "status": "active"
+      "status": "resolved",
+      "resolution": {
+        "method": "fixed",
+        "description": "Resolved via CLI",
+        "resolved_at": "2026-02-03T19:06:32.990038144+05:30",
+        "resolved_by": "user"
+      }
     },
     {
       "id": "int_1770047724",
@@ -94,14 +100,20 @@
       "message": "add resolveTime to intents to track the time taken to resolve",
       "scope": "project",
       "created_at": "2026-02-02T21:51:11.509502433+05:30",
-      "updated_at": "2026-02-02T21:51:11.509502433+05:30",
+      "updated_at": "2026-02-03T19:08:22.401249076+05:30",
       "created_by": "user",
       "severity": 2,
       "confidence": 0.8,
-      "status": "active",
+      "status": "resolved",
       "tags": [
         "improvement"
-      ]
+      ],
+      "resolution": {
+        "method": "fixed",
+        "description": "Resolved via CLI",
+        "resolved_at": "2026-02-03T19:08:22.401248753+05:30",
+        "resolved_by": "user"
+      }
     },
     {
       "id": "int_1770049351",
