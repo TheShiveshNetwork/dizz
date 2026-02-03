@@ -183,7 +183,6 @@ func generateIntentID() string {
 }
 
 func determineScope() string {
-	// TODO: Implement scope detection based on git context
 	return "project"
 }
 

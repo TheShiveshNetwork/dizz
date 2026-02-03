@@ -1,7 +1,7 @@
 {
   "version": 1,
   "created_at": "2026-02-02T13:47:31.231852817+05:30",
-  "updated_at": "2026-02-03T19:08:22.401249121+05:30",
+  "updated_at": "2026-02-03T21:25:47.637880641+05:30",
   "intents": [
     {
       "id": "int_1770020251",
@@ -116,19 +116,31 @@
       }
     },
     {
-      "id": "int_1770049351",
-      "type": "refactor",
-      "message": "Test intent from README",
+      "id": "int_1770134102",
+      "type": "todo",
+      "message": "update scope determination logic in intents to make proximity analysis work and have weight of intents on signals",
       "scope": "project",
-      "created_at": "2026-02-02T21:52:31.059271831+05:30",
-      "updated_at": "2026-02-02T21:52:31.059271831+05:30",
+      "created_at": "2026-02-03T21:25:02.244253976+05:30",
+      "updated_at": "2026-02-03T21:25:02.244253976+05:30",
       "created_by": "user",
-      "severity": 2,
+      "severity": 1,
       "confidence": 0.8,
       "status": "active",
       "tags": [
-        "documentation"
+        "improvement"
       ]
+    },
+    {
+      "id": "int_1770134147",
+      "type": "question",
+      "message": "Add description for intents and comamnd intent describe to get more context",
+      "scope": "project",
+      "created_at": "2026-02-03T21:25:47.637879248+05:30",
+      "updated_at": "2026-02-03T21:25:47.637879248+05:30",
+      "created_by": "user",
+      "severity": 2,
+      "confidence": 0.8,
+      "status": "active"
     }
   ]
 }
