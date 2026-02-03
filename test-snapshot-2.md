@@ -1,1 +1,0 @@
-This is another test to verify automatic snapshot creation.
