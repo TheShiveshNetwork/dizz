@@ -5,8 +5,7 @@ import (
 	"strings"
 )
 
-// IntentIgnoreSignal represents an intent marker for ignoring analysis
-type IntentIgnoreSignal struct {
+type IgnoreSignal struct {
 	Type      string
 	File      string
 	Line      int
@@ -17,9 +16,9 @@ type IntentIgnoreSignal struct {
 	Metadata  map[string]interface{}
 }
 
-func NewIntentIgnore(file, name string, line, column, endLine, endColumn int, language string) IntentIgnoreSignal {
-	return IntentIgnoreSignal{
-		Type:      string(IntentIgnore),
+func NewIgnoreFlag(file, name string, line, column, endLine, endColumn int, language string) IgnoreSignal {
+	return IgnoreSignal{
+		Type:      string(IgnoreFlag),
 		File:      file,
 		Line:      line,
 		Column:    column,
@@ -33,8 +32,8 @@ func NewIntentIgnore(file, name string, line, column, endLine, endColumn int, la
 }
 
 // ExtractIgnoreMarkers finds @ignore-* patterns in code
-func ExtractIgnoreMarkers(source, file, language string) []IntentIgnoreSignal {
-	var signals []IntentIgnoreSignal
+func ExtractIgnoreMarkers(source, file, language string) []IgnoreSignal {
+	var signals []IgnoreSignal
 
 	lines := strings.Split(source, "\n")
 	// TODO: make it compatible to most of the languages. currently just extracts // comments
@@ -42,7 +41,6 @@ func ExtractIgnoreMarkers(source, file, language string) []IntentIgnoreSignal {
 
 	for lineNum, line := range lines {
 		if ignorePattern.MatchString(line) {
-			// Extract ignore type from the comment
 			ignoreType := extractIgnoreTypeFromComment(line)
 
 			// Find the symbol this comment applies to by looking for the next function/struct/class definition
@@ -52,7 +50,7 @@ func ExtractIgnoreMarkers(source, file, language string) []IntentIgnoreSignal {
 				// Try to find the symbol end by looking for closing braces
 				endLine := findSymbolEnd(lines, symbolInfo.line, symbolInfo.name)
 				if endLine > symbolInfo.line {
-					signal := NewIntentIgnore(file, symbolInfo.name, lineNum+1, 0, endLine, len(line), language)
+					signal := NewIgnoreFlag(file, symbolInfo.name, lineNum+1, 0, endLine, len(line), language)
 					// Store the ignore type in metadata
 					signal.Metadata["ignore_type"] = ignoreType
 					signals = append(signals, signal)
@@ -130,13 +128,12 @@ func findNextSymbol(lines []string, startLine int) symbolInfo {
 // findSymbolEnd finds the end line of a symbol by looking for closing braces
 func findSymbolEnd(lines []string, startLine int, symbolName string) int {
 	// Simple heuristic: find the matching closing brace for this function/class
-	for i := startLine; i < len(lines) && i < startLine+50; i++ { // Limit search range
+	for i := startLine; i < len(lines) && i < startLine+50; i++ {
 		line := strings.TrimSpace(lines[i])
 
 		// Look for the symbol name followed by opening patterns
 		if strings.Contains(line, symbolName) &&
 			(strings.Contains(line, "{") || strings.Contains(line, "(")) {
-			// Found the symbol definition, now find its end
 			braceCount := 0
 			for j := i; j < len(lines); j++ {
 				scanLine := strings.TrimSpace(lines[j])

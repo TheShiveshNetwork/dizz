@@ -12,7 +12,7 @@ NC='\033[0m'
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 
 # Paths (absolute, safe)
-WASM_DIR="$ROOT_DIR/site/wasm"
+SITE_DIR="$ROOT_DIR/site"
 PUBLIC_DIR="$ROOT_DIR/site/public"
 SERVER_DIR="$ROOT_DIR/site/server"
 SCRIPTS_DIR="$ROOT_DIR/site/scripts"
@@ -28,15 +28,15 @@ fi
 echo -e "${GREEN}Go version: $(go version)${NC}"
 
 # Ensure directories exist
-mkdir -p "$PUBLIC_DIR"
+mkdir -p "$PUBLIC_DIR/docs"
 
 # -----------------------
 # Build WASM
 # -----------------------
 echo -e "${BLUE}Building WebAssembly module...${NC}"
 
-cd "$WASM_DIR"
-GOOS=js GOARCH=wasm go build -o "$PUBLIC_DIR/dizz.wasm"
+cd "$SITE_DIR"
+GOOS=js GOARCH=wasm go build -tags wasm -o "$PUBLIC_DIR/dizz.wasm" wasm.go
 cd - > /dev/null
 
 echo -e "${GREEN}✓ WebAssembly module built${NC}"
@@ -64,8 +64,8 @@ echo -e "${GREEN}✓ wasm_exec.js copied${NC}"
 # -----------------------
 echo -e "${BLUE}Generating HTML from template...${NC}"
 
-cd "$ROOT_DIR/site/template"
-go run main.go "$PUBLIC_DIR/index.html"
+cd "$SITE_DIR"
+go run generate.go
 cd - > /dev/null
 
 echo -e "${GREEN}✓ HTML generated${NC}"
@@ -80,7 +80,7 @@ echo -e "${GREEN}✓ HTTP server built${NC}"
 # -----------------------
 # Copy assets
 # -----------------------
-ASSETS_DIR="$ROOT_DIR/site/assets"
+ASSETS_DIR="$SITE_DIR/assets"
 if [ -d "$ASSETS_DIR" ]; then
   cp -r "$ASSETS_DIR" "$PUBLIC_DIR/"
   echo -e "${GREEN}✓ Assets copied to public directory${NC}"
@@ -105,7 +105,7 @@ echo -e "${GREEN}✓ WASM: $PUBLIC_DIR/dizz.wasm${NC}"
 echo -e "${GREEN}✓ wasm_exec.js${NC}"
 echo
 echo -e "${BLUE}Run locally:${NC}"
-echo "cd site/server && go run main.go"
+echo "go run site/server/server.go"
 echo "→ http://localhost:8080"
 echo
 echo -e "${GREEN}Build completed successfully!${NC}"

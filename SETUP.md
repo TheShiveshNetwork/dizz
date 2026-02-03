@@ -25,18 +25,6 @@ make --version
 
 The Makefile defines a few important variables:
 
-| Variable      | Description                                            |
-| ------------- | ------------------------------------------------------ |
-| `BINARY_NAME` | Name of the compiled CLI binary (`dizz`)               |
-| `BUILD_DIR`   | Directory where the compiled binary is placed (`bin/`) |
-| `MAIN_PKG`    | Entry point package for the application (`.`)          |
-| `GO`          | Go compiler command                                    |
-| `GOFLAGS`     | Go build flags (`-trimpath` for reproducible builds)   |
-
-These variables keep the Makefile clean and easy to change later.
-
----
-
 ## Common Commands
 
 ### 🔨 Build the Project
@@ -192,6 +180,28 @@ dizz
 ```
 
 from anywhere on your system.
+
+---
+
+---
+
+### 🌐 Site Setup Locally
+
+```bash
+make build-site
+```
+
+What this does:
+
+* Builds the WASM site locally
+
+After this, you can run:
+
+```bash
+make serve-site
+```
+
+to run a simple go server that serves the site locally.
 
 ---
 

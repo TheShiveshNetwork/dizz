@@ -104,14 +104,14 @@ func analyzeIgnoreMarkers(filePath string) []signals.Signal {
 	// Use the signals package to extract ignore markers
 	ignoreSignals := signals.ExtractIgnoreMarkers(source, filePath, language)
 
-	// Convert IntentIgnoreSignal to Signal
+	// Convert IgnoreSignal to Signal
 	var result []signals.Signal
 	for _, ignoreSig := range ignoreSignals {
 		// Extract ignore type from comment
 		ignoreType := extractIgnoreTypeFromSignal(ignoreSig, source)
 
 		if symbolName, ok := ignoreSig.Metadata["symbol_name"].(string); ok {
-			signal := signals.NewSignal(signals.IntentIgnore, filePath).
+			signal := signals.NewSignal(signals.IgnoreFlag, filePath).
 				WithName(symbolName).
 				WithRange(ignoreSig.Line, ignoreSig.Column, ignoreSig.EndLine, ignoreSig.EndColumn).
 				WithLanguage(language).
@@ -126,7 +126,7 @@ func analyzeIgnoreMarkers(filePath string) []signals.Signal {
 }
 
 // extractIgnoreTypeFromSignal extracts the ignore type from the original comment
-func extractIgnoreTypeFromSignal(ignoreSig signals.IntentIgnoreSignal, source string) string {
+func extractIgnoreTypeFromSignal(ignoreSig signals.IgnoreSignal, source string) string {
 	lines := strings.Split(source, "\n")
 	if ignoreSig.Line > 0 && ignoreSig.Line <= len(lines) {
 		line := lines[ignoreSig.Line-1]

@@ -1,3 +1,6 @@
+//go:build wasm
+// +build wasm
+
 package main
 
 import (
@@ -5,7 +8,6 @@ import (
 	"syscall/js"
 )
 
-// @ignore-unused
 func main() {
 	// Make functions available to JavaScript
 	js.Global().Set("getWasmVersion", js.FuncOf(getWasmVersion))
@@ -16,7 +18,6 @@ func main() {
 	select {}
 }
 
-// @ignore-unused
 func getWasmVersion(this js.Value, args []js.Value) interface{} {
 	// This would typically read from the embedded version info
 	// For now, return a hardcoded version
@@ -26,7 +27,6 @@ func getWasmVersion(this js.Value, args []js.Value) interface{} {
 	}
 }
 
-// @ignore-unused
 func getWasmCommands(this js.Value, args []js.Value) interface{} {
 	// Return available CLI commands that can be executed
 	commands := []map[string]interface{}{
@@ -42,7 +42,7 @@ func getWasmCommands(this js.Value, args []js.Value) interface{} {
 		},
 		{
 			"name":        "build",
-			"description": "Build the project",
+			"description": "Build project",
 			"category":    "build",
 		},
 		{
@@ -70,7 +70,6 @@ func getWasmCommands(this js.Value, args []js.Value) interface{} {
 	return result
 }
 
-// @ignore-unused
 func runWasmCommand(this js.Value, args []js.Value) interface{} {
 	if len(args) < 1 {
 		return map[string]interface{}{

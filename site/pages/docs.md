@@ -1,25 +1,9 @@
-<div align="center">
-
-<!-- Logo -->
-<img src="https://raw.githubusercontent.com/TheShiveshNetwork/dizz/refs/heads/main/site/assets/dizz-logo.png" alt="dizz logo" width="160" />
-
-</div>
-
-# dizz
-
-> **Know what to work on next.**
-
-`dizz` is a local, Git-aware developer CLI that analyzes your codebase and answers one core question:
-
-> **“What should I work on next?”**
-
-Unlike linters or task trackers, `dizz` focuses on **developer understanding** — not just correctness.
-
+# Documentation
 
 ## Overview
 
 `dizz` is a local, Git-aware developer CLI that analyzes your codebase to understand **progress**, not just correctness.  
-It helps developers answer the question **“What should I work on next?”** by detecting unused code, planned work (TODOs), unstable areas, and forgotten or abandoned logic using static analysis and Git context.
+It helps developers answer the question **"What should I work on next?"** by detecting unused code, planned work (TODOs), unstable areas, and forgotten or abandoned logic using static analysis and Git context.
 
 Unlike linters or task managers, `dizz` models **developer intent and code evolution**. It runs fully offline, requires no configuration to start, and works across multiple languages through a unified signal-based architecture.
 
@@ -31,12 +15,11 @@ Unlike linters or task managers, `dizz` models **developer intent and code evolu
 Modern projects fail not because of bugs, but because of:
 
 * Lost context
-* Forgotten TODOs
+* Forgotten TODOs  
 * Unused or half-connected code
 * Unclear priorities after time away
 
-`dizz` continuously models your project’s **state of progress** and surfaces what actually deserves your attention.
-
+`dizz` continuously models your project's **state of progress** and surfaces what actually deserves your attention.
 
 ## Quick Start
 
@@ -60,7 +43,7 @@ Full project analysis.
 Shows:
 
 * Planned work
-* Unstable areas
+* Unstable areas  
 * Unused code
 * Abandoned code
 
@@ -94,7 +77,7 @@ Instant context recovery after time away.
 
 Optimized for:
 
-> “I haven’t touched this project in weeks.”
+> "I haven't touched this project in weeks."
 
 ### `dizz intent`
 
@@ -122,12 +105,12 @@ dizz intent resolve int_1770020361
 
 Every project has four dimensions that `dizz` models explicitly:
 
-| Dimension     | What It Represents | How It’s Derived      |
+| Dimension     | What It Represents | How It's Derived      |
 | ------------- | ------------------ | --------------------- |
 | **Structure** | What exists        | AST parsing, regex    |
-| **Usage**     | What’s connected   | Call graphs, imports  |
-| **Intent**    | What’s planned     | TODOs, intent markers |
-| **Time**      | What’s stable      | Git history & churn   |
+| **Usage**     | What's connected   | Call graphs, imports  |
+| **Intent**    | What's planned     | TODOs, intent markers |
+| **Time**      | What's stable      | Git history & churn   |
 
 ### High-Level Architecture
 
@@ -136,8 +119,8 @@ Every project has four dimensions that `dizz` models explicitly:
 │                    CLI Commands                         │
 │      (init, log, status, snapshot, list, resume)        │
 └───────────────────────┬─────────────────────────────────┘
-                        │
-                        ▼
+                         │
+                         ▼
 ┌─────────────────────────────────────────────────────────┐
 │                  Orchestration                          │
 │         (Coordinates all other layers)                  │

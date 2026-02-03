@@ -323,7 +323,6 @@ func (s *Scorer) InterpretSignalsWithIntent(sigSet *signals.SignalSet, intentSta
 		}
 	}
 
-	// Process intent markers (function-level association)
 	for _, sig := range sigSet.ByType(signals.IntentMarker) {
 		// Match to symbols in the same file and line range
 		for key, symbol := range symbolIndex {
@@ -337,8 +336,7 @@ func (s *Scorer) InterpretSignalsWithIntent(sigSet *signals.SignalSet, intentSta
 		}
 	}
 
-	// Process intent ignore markers (before final scoring)
-	ignoreSignals := sigSet.ByType(signals.IntentIgnore)
+	ignoreSignals := sigSet.ByType(signals.IgnoreFlag)
 	for _, sig := range ignoreSignals {
 		// Match to symbols by name first, then by location as fallback
 		for key, symbol := range symbolIndex {
