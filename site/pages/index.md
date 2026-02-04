@@ -83,7 +83,7 @@ Unlike linters or task managers, `dizz` models **developer intent and code evolu
 <div class="command-card">
 <div class="command-name">dizz upgrade</div>
 <div class="command-desc">Upgrade to the latest version automatically.</div>
-<div class="command-usage">dizz upgrade [--force]</div>
+<div class="command-usage">dizz upgrade</div>
 </div>
 
 <div class="command-card">
@@ -113,19 +113,19 @@ Unlike linters or task managers, `dizz` models **developer intent and code evolu
 <div class="command-card">
 <div class="command-name">dizz list</div>
 <div class="command-desc">Show all saved snapshots with timestamps and metadata.</div>
-<div class="command-usage">dizz list [--format json|table]</div>
+<div class="command-usage">dizz list</div>
 </div>
 
 <div class="command-card">
 <div class="command-name">dizz resume</div>
 <div class="command-desc">Quick context after being away from the project.</div>
-<div class="command-usage">dizz resume [--days N]</div>
+<div class="command-usage">dizz resume</div>
 </div>
 
 <div class="command-card">
 <div class="command-name">dizz intent</div>
 <div class="command-desc">Manage intentional TODO markers and track planned work.</div>
-<div class="command-usage">dizz intent add|list|remove|complete [@symbol] [description]</div>
+<div class="command-usage">dizz intent add|list|resolve</div>
 </div>
 
 </div>
