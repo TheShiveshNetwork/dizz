@@ -89,6 +89,7 @@ func runCurrentAnalysisAtRoot(projectRoot string, options *AnalysisOptions) (*st
 	if !filepath.IsAbs(analysisRoot) {
 		analysisRoot = filepath.Join(projectRoot, analysisRoot)
 	}
+	analysisRoot = filepath.Clean(analysisRoot)
 
 	files, err := discover.CodeFiles(analysisRoot, cfg.Exclude)
 	if err != nil {
