@@ -82,7 +82,16 @@ func runCurrentAnalysisAtRoot(projectRoot string, options *AnalysisOptions) (*st
 	}
 
 	// Step 1: Discover files
-	files, err := discover.CodeFiles(cfg.RootPath, cfg.Exclude)
+	// Always resolve the root path relative to the project root so analysis is
+	// consistent regardless of the current working directory (tests may run from
+	// subdirectories).
+	analysisRoot := cfg.RootPath
+	if !filepath.IsAbs(analysisRoot) {
+		analysisRoot = filepath.Join(projectRoot, analysisRoot)
+	}
+	analysisRoot = filepath.Clean(analysisRoot)
+
+	files, err := discover.CodeFiles(analysisRoot, cfg.Exclude)
 	if err != nil {
 		return nil, err
 	}
