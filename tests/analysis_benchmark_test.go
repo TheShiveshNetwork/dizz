@@ -7,6 +7,20 @@ import (
 	"github.com/TheShiveshNetwork/dizz/internal/integrations"
 )
 
+// BenchmarkExtractionOnly benchmarks only the symbol extraction part (no git)
+func BenchmarkExtractionOnly(b *testing.B) {
+	b.Run("Symbol_Extraction", func(b *testing.B) {
+		b.ResetTimer()
+		for i := 0; i < b.N; i++ {
+			// Manually run discovery and extraction without git enrichment
+			_, err := commonPkg.EnsureCurrentStateWithAnalysis(&commonPkg.AnalysisOptions{SkipGit: true})
+			if err != nil {
+				b.Fatalf("Analysis failed: %v", err)
+			}
+		}
+	})
+}
+
 // BenchmarkFullAnalysis benchmarks the entire analysis pipeline
 func BenchmarkFullAnalysis(b *testing.B) {
 	if !integrations.IsRepo() {

@@ -21,6 +21,11 @@ var initCmd = &cobra.Command{
 	},
 }
 
+// @ignore-unused
+func init() {
+	rootCmd.AddCommand(initCmd)
+}
+
 func runInit() {
 	cwd, _ := os.Getwd()
 	projectName := filepath.Base(cwd)

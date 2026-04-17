@@ -46,7 +46,13 @@ clean:
 .PHONY: test
 test:
 	@echo "🧪 Running tests..."
-	@$(GO) test ./...
+	@$(GO) test -v ./tests/...
+
+## Run benchmarks
+.PHONY: bench
+bench:
+	@echo "📊 Running benchmarks..."
+	@$(GO) test -bench=. -benchmem ./tests/...
 
 ## Format code
 .PHONY: fmt

@@ -22,13 +22,5 @@ func Execute() {
 
 // @ignore-unused
 func init() {
-	// initialize all the subcommands
-	rootCmd.AddCommand(initCmd)
-	rootCmd.AddCommand(versionCmd)
-	rootCmd.AddCommand(upgradeCmd)
-	rootCmd.AddCommand(logCmd)
-	rootCmd.AddCommand(statusCmd)
-	rootCmd.AddCommand(snapshotCmd)
-	rootCmd.AddCommand(listCmd)
-	rootCmd.AddCommand(resumeCmd)
+	// Root commands are registered via init() in their respective files
 }
