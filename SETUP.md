@@ -111,6 +111,7 @@ Based on a codebase with ~40 files and 175 symbols on an Intel i5-10300H CPU:
 | `dizz list` | List saved snapshots |
 | `dizz resume` | Get context after being away from the project |
 | `dizz intent` | Manage human-authored intents (todos, etc.) |
+| `dizz todo list` | View extracted code markers (TODOs, FIXMEs) |
 | `dizz upgrade` | Upgrade to the latest version |
 | `dizz version` | Show current version |
 

@@ -6,6 +6,7 @@ import (
 	"go/token"
 	"os"
 	"path/filepath"
+	"regexp"
 	"strings"
 
 	"github.com/TheShiveshNetwork/dizz/internal/signals"
@@ -34,9 +35,10 @@ func (a *Analyzer) Analyze(files []string) (*signals.SignalSet, error) {
 			continue
 		}
 
-		// Extract signals
-		a.extractDefinitions(file, filePath, fset, sigSet)
-		a.extractCalls(file, filePath, fset, sigSet)
+		// Extract signals in a single pass
+		a.inspectFile(file, filePath, fset, sigSet)
+
+		// These are relatively fast as they iterate over fixed lists
 		a.extractImports(file, filePath, fset, sigSet)
 		a.extractTodos(file, filePath, fset, sigSet)
 		a.extractIntents(file, filePath, sigSet)
@@ -45,53 +47,48 @@ func (a *Analyzer) Analyze(files []string) (*signals.SignalSet, error) {
 	return sigSet, nil
 }
 
-func (a *Analyzer) extractDefinitions(file *ast.File, filePath string, fset *token.FileSet, sigSet *signals.SignalSet) {
+// inspectFile performs a single pass over the AST to extract definitions and calls
+func (a *Analyzer) inspectFile(file *ast.File, filePath string, fset *token.FileSet, sigSet *signals.SignalSet) {
 	ast.Inspect(file, func(n ast.Node) bool {
-		if fn, ok := n.(*ast.FuncDecl); ok && fn.Name != nil {
-			start := fset.Position(fn.Pos())
-			end := fset.Position(fn.End())
+		switch node := n.(type) {
+		case *ast.FuncDecl:
+			if node.Name != nil {
+				start := fset.Position(node.Pos())
+				end := fset.Position(node.End())
 
-			sig := signals.NewSignal(signals.FunctionDefined, filePath).
-				WithName(fn.Name.Name).
-				WithLanguage(a.Language()).
-				WithRange(
-					start.Line,
-					start.Column,
-					end.Line,
-					end.Column,
-				)
+				sig := signals.NewSignal(signals.FunctionDefined, filePath).
+					WithName(node.Name.Name).
+					WithLanguage(a.Language()).
+					WithRange(
+						start.Line,
+						start.Column,
+						end.Line,
+						end.Column,
+					)
 
-			// Add metadata
-			if fn.Recv != nil {
-				sig.WithMeta("is_method", true)
+				// Add metadata
+				if node.Recv != nil {
+					sig.WithMeta("is_method", true)
+				}
+				if node.Body == nil {
+					sig.WithMeta("is_interface", true)
+				}
+
+				sigSet.Add(*sig)
 			}
-			if fn.Body == nil {
-				sig.WithMeta("is_interface", true)
-			}
-
-			sigSet.Add(*sig)
-		}
-		return true
-	})
-}
-
-// extractCalls finds function calls
-func (a *Analyzer) extractCalls(file *ast.File, filePath string, fset *token.FileSet, sigSet *signals.SignalSet) {
-	ast.Inspect(file, func(n ast.Node) bool {
-		if call, ok := n.(*ast.CallExpr); ok {
+		case *ast.CallExpr:
 			var name string
-
-			switch fun := call.Fun.(type) {
+			switch fun := node.Fun.(type) {
 			case *ast.Ident:
 				name = fun.Name
 			case *ast.SelectorExpr:
 				name = fun.Sel.Name
 			}
 
-			start := fset.Position(call.Pos())
-			end := fset.Position(call.End())
-
 			if name != "" {
+				start := fset.Position(node.Pos())
+				end := fset.Position(node.End())
+
 				sig := signals.NewSignal(signals.FunctionCalled, filePath).
 					WithName(name).
 					WithLanguage(a.Language()).
@@ -131,16 +128,19 @@ func (a *Analyzer) extractImports(file *ast.File, filePath string, fset *token.F
 	}
 }
 
+var todoRegex = regexp.MustCompile(`(?i)\b(TODO|FIXME|XXX|HACK|NOTE):\s*(.*)`)
+
 func (a *Analyzer) extractTodos(file *ast.File, filePath string, fset *token.FileSet, sigSet *signals.SignalSet) {
 	for _, commentGroup := range file.Comments {
 		for _, comment := range commentGroup.List {
 			text := comment.Text
-			if strings.Contains(text, "TODO") || strings.Contains(text, "FIXME") {
+			if matches := todoRegex.FindStringSubmatch(text); len(matches) > 1 {
 				pos := fset.Position(comment.Pos())
 				sig := signals.NewSignal(signals.TodoFound, filePath).
 					WithLine(pos.Line).
 					WithLanguage(a.Language()).
-					WithMeta("text", strings.TrimSpace(text))
+					WithMeta("type", strings.ToUpper(matches[1])).
+					WithMeta("text", strings.TrimSpace(matches[2]))
 				sigSet.Add(*sig)
 			}
 		}

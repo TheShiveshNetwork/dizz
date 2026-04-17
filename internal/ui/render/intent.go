@@ -45,6 +45,31 @@ func RenderTodos(todos []state.Todo) {
 	fmt.Println()
 }
 
+// RenderTodoList renders all todos in a list format similar to intent list
+func RenderTodoList(todos []state.Todo) {
+	if len(todos) == 0 {
+		fmt.Println("No active todos found.")
+		return
+	}
+
+	fmt.Println()
+	fmt.Println(ui.Highlight("━━ CODE TODOS & FIXMES"))
+	fmt.Println()
+
+	for _, todo := range todos {
+		// Location (always muted)
+		fmt.Printf(
+			"  %s\n",
+			ui.Muted(fmt.Sprintf("%s:%d", todo.File, todo.Line)),
+		)
+
+		renderTodoBlock(todo.Text)
+	}
+
+	fmt.Printf(ui.Muted("  Total: %d todos found in code\n"), len(todos))
+	fmt.Println()
+}
+
 func renderIntentBlock(intent state.Intent) {
 	var header string
 	var bg string
