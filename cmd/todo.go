@@ -34,8 +34,10 @@ func init() {
 }
 
 func runTodoList() {
-	// Always analyze to get current project state
-	projectState, err := commonPkg.EnsureCurrentStateWithAnalysis(nil)
+	// Always analyze to get current project state (without git enrichment).
+	projectState, err := commonPkg.EnsureCurrentStateWithAnalysis(&commonPkg.AnalysisOptions{
+		SkipGit: true,
+	})
 	if err != nil {
 		fmt.Fprintf(os.Stderr, ui.Error("Error analyzing files: %v\n"), err)
 		os.Exit(1)
