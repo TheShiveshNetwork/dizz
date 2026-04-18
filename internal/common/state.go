@@ -138,7 +138,7 @@ func runCurrentAnalysisAtRoot(projectRoot string, options *AnalysisOptions) (*st
 	}
 
 	// Step 7: Enrich with git context if available (OPTIMIZED - Batch Git Operations)
-	if integrations.IsRepo() && (options == nil || !options.SkipGit) {
+	if (options == nil || !options.SkipGit) && integrations.IsRepo() {
 		if commit, err := integrations.GetCurrentCommitWithMessage(); err == nil {
 			projectState.GitCommit = &commit
 		}
