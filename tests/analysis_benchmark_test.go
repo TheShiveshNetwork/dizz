@@ -1,6 +1,7 @@
 package benchmarks
 
 import (
+	"errors"
 	"path/filepath"
 	"testing"
 
@@ -54,9 +55,15 @@ func runExtractionOnly() error {
 	registry := analyzer.NewRegistry()
 	registry.Register(&ast.Analyzer{})
 	registry.Register(regex.NewAnalyzer())
-	_, err = registry.AnalyzeFiles(files)
+	sigSet, err := registry.AnalyzeFiles(files)
+	if err != nil {
+		return err
+	}
+	if len(sigSet.Signals) == 0 {
+		return errors.New("analysis produced no signals")
+	}
 
-	return err
+	return nil
 }
 
 // BenchmarkFullAnalysis benchmarks the entire analysis pipeline
