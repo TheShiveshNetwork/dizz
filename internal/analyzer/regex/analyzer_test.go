@@ -13,10 +13,11 @@ func TestAnalyze_TodoExtractionFromAnchoredComments(t *testing.T) {
 
 	tmpDir := t.TempDir()
 	testFile := filepath.Join(tmpDir, "example.js")
-	content := `// TODO: line comment
+content := `// TODO: line comment
 const endpoint = "https://example.com/TODO: not-a-comment";
 /* TODO: block comment start
  * TODO: block comment continuation
+ ** TODO: block comment continuation 2
  */
 const value = "TODO: still-not-a-comment";
 `
@@ -32,7 +33,25 @@ const value = "TODO: still-not-a-comment";
 	}
 
 	todos := sigSet.ByType(signals.TodoFound)
-	if len(todos) != 3 {
-		t.Fatalf("expected 3 TODO signals from comment lines, got %d", len(todos))
+	if len(todos) != 4 {
+		t.Fatalf("expected 4 TODO signals from comment lines, got %d", len(todos))
+	}
+
+	got := map[int]string{}
+	for _, todo := range todos {
+		got[todo.Line] = todo.Metadata["text"].(string)
+	}
+
+	want := map[int]string{
+		1: "line comment",
+		3: "block comment start",
+		4: "block comment continuation",
+		5: "block comment continuation 2",
+	}
+
+	for line, expectedText := range want {
+		if got[line] != expectedText {
+			t.Fatalf("expected TODO at line %d with text %q, got %q", line, expectedText, got[line])
+		}
 	}
 }

@@ -214,6 +214,9 @@ func (a *Analyzer) analyzeFile(filePath string, lang LanguageDef, sigSet *signal
 	return scanner.Err()
 }
 
+// isCommentLine checks if a line starts with a known comment prefix.
+// For languages with /* */ comments, it also treats "* " and "*\t"
+// block-comment continuation lines as comment lines.
 func isCommentLine(line string, prefixes []string) bool {
 	trimmed := strings.TrimSpace(line)
 	hasBlockCommentPrefix := false
@@ -226,5 +229,15 @@ func isCommentLine(line string, prefixes []string) bool {
 		}
 	}
 
-	return hasBlockCommentPrefix && strings.HasPrefix(trimmed, "*")
+	if !hasBlockCommentPrefix || !strings.HasPrefix(trimmed, "*") {
+		return false
+	}
+	if len(trimmed) == 1 {
+		return true
+	}
+	if len(trimmed) > 2 && trimmed[1] == '*' {
+		return trimmed[2] == ' ' || trimmed[2] == '\t'
+	}
+
+	return trimmed[1] == ' ' || trimmed[1] == '\t'
 }
