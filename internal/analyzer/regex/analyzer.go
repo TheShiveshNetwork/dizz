@@ -36,7 +36,14 @@ func NewAnalyzer() *Analyzer {
 	langs := []LanguageDef{
 		{
 			Name:       "javascript",
-			Extensions: []string{".js", ".jsx", ".ts", ".tsx"},
+			Extensions: []string{".js", ".jsx"},
+			FuncPattern: regexp.MustCompile(`(?:async\s+)?function\s+([a-zA-Z0-9_]+)\s*\(`),
+			ImportPattern: regexp.MustCompile(`import\s+.*\s+from\s+['"](.*)['"]`),
+			CommentPrefixes: []string{"//", "/*"},
+		},
+		{
+			Name:       "typescript",
+			Extensions: []string{".ts", ".tsx"},
 			FuncPattern: regexp.MustCompile(`(?:async\s+)?function\s+([a-zA-Z0-9_]+)\s*\(`),
 			ImportPattern: regexp.MustCompile(`import\s+.*\s+from\s+['"](.*)['"]`),
 			CommentPrefixes: []string{"//", "/*"},
