@@ -197,52 +197,52 @@ func RenderTodosAndIntents(todos []state.Todo, intents []state.Intent) {
 func renderTodoBlock(todoType string, raw string) {
 	text := normalizeTodoText(raw)
 	upper := strings.ToUpper(text)
-	normalizedType := strings.ToUpper(strings.TrimSpace(todoType))
 
 	var header string
 	var fg string
 	var bg string
 
-	switch {
-	case normalizedType == "FIXME" || normalizedType == "FIX" ||
-		normalizedType == "BUG" || normalizedType == "HACK":
+	normalizedType := ""
+	if strings.TrimSpace(todoType) != "" {
+		normalizedType = strings.ToUpper(strings.TrimSpace(todoType))
+	}
+
+	switch normalizedType {
+	case "FIXME", "FIX", "BUG", "HACK":
 		header = ui.Error(" FIX ")
 		bg = ui.BgRed
 		fg = ui.White
-
-	case normalizedType == "TODO" || normalizedType == "TBD":
+	case "TODO", "TBD":
 		header = ui.Warning(" TODO ")
 		bg = ui.BgYellow
 		fg = ui.Black
-
-	case normalizedType == "NOTE" || normalizedType == "INFO":
+	case "NOTE", "INFO":
 		header = ui.Info(" NOTE ")
 		bg = ui.BgCyan
 		fg = ui.Black
-
-	case strings.Contains(upper, "FIX"),
-		strings.Contains(upper, "BUG"),
-		strings.Contains(upper, "HACK"):
-		header = ui.Error(" FIX ")
-		bg = ui.BgRed
-		fg = ui.White
-
-	case strings.Contains(upper, "TODO"),
-		strings.Contains(upper, "TBD"):
-		header = ui.Warning(" TODO ")
-		bg = ui.BgYellow
-		fg = ui.Black
-
-	case strings.Contains(upper, "NOTE"),
-		strings.Contains(upper, "INFO"):
-		header = ui.Info(" NOTE ")
-		bg = ui.BgCyan
-		fg = ui.Black
-
 	default:
-		header = ui.Highlight(" TODO ")
-		bg = ui.BgGray
-		fg = ui.White
+		switch {
+		case strings.Contains(upper, "FIX"),
+			strings.Contains(upper, "BUG"),
+			strings.Contains(upper, "HACK"):
+			header = ui.Error(" FIX ")
+			bg = ui.BgRed
+			fg = ui.White
+		case strings.Contains(upper, "TODO"),
+			strings.Contains(upper, "TBD"):
+			header = ui.Warning(" TODO ")
+			bg = ui.BgYellow
+			fg = ui.Black
+		case strings.Contains(upper, "NOTE"),
+			strings.Contains(upper, "INFO"):
+			header = ui.Info(" NOTE ")
+			bg = ui.BgCyan
+			fg = ui.Black
+		default:
+			header = ui.Highlight(" TODO ")
+			bg = ui.BgGray
+			fg = ui.White
+		}
 	}
 
 	content := " " + text + " "
