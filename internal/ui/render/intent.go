@@ -32,7 +32,7 @@ func RenderTodos(todos []state.Todo) {
 			ui.Muted(fmt.Sprintf("%s:%d", todo.File, todo.Line)),
 		)
 
-		renderTodoBlock(todo.Text)
+		renderTodoBlock(todo.Type, todo.Text)
 	}
 
 	if len(todos) > limit {
@@ -63,7 +63,7 @@ func RenderTodoList(todos []state.Todo) {
 			ui.Muted(fmt.Sprintf("%s:%d", todo.File, todo.Line)),
 		)
 
-		renderTodoBlock(todo.Text)
+		renderTodoBlock(todo.Type, todo.Text)
 	}
 
 	fmt.Printf(ui.Muted("  Total: %d todos found in code\n"), len(todos))
@@ -194,15 +194,32 @@ func RenderTodosAndIntents(todos []state.Todo, intents []state.Intent) {
 	}
 }
 
-func renderTodoBlock(raw string) {
+func renderTodoBlock(todoType string, raw string) {
 	text := normalizeTodoText(raw)
 	upper := strings.ToUpper(text)
+	normalizedType := strings.ToUpper(strings.TrimSpace(todoType))
 
 	var header string
 	var fg string
 	var bg string
 
 	switch {
+	case normalizedType == "FIXME" || normalizedType == "FIX" ||
+		normalizedType == "BUG" || normalizedType == "HACK":
+		header = ui.Error(" FIX ")
+		bg = ui.BgRed
+		fg = ui.White
+
+	case normalizedType == "TODO" || normalizedType == "TBD":
+		header = ui.Warning(" TODO ")
+		bg = ui.BgYellow
+		fg = ui.Black
+
+	case normalizedType == "NOTE" || normalizedType == "INFO":
+		header = ui.Info(" NOTE ")
+		bg = ui.BgCyan
+		fg = ui.Black
+
 	case strings.Contains(upper, "FIX"),
 		strings.Contains(upper, "BUG"),
 		strings.Contains(upper, "HACK"):
