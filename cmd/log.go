@@ -39,6 +39,7 @@ Flags:
 
 // @ignore-unused
 func init() {
+	rootCmd.AddCommand(logCmd)
 	logCmd.Flags().BoolVarP(&showAll, "all", "a", false, "Show all symbols including active ones")
 	logCmd.Flags().BoolVarP(&verboseOut, "verbose", "v", false, "Show detailed analysis info")
 }

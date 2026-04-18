@@ -27,6 +27,11 @@ Use this to see project history over time.`,
 	},
 }
 
+// @ignore-unused
+func init() {
+	rootCmd.AddCommand(listCmd)
+}
+
 type SnapshotInfo struct {
 	Hash      string
 	Timestamp time.Time

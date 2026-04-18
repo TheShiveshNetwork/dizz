@@ -82,16 +82,56 @@ func (s *Scorer) calculateInstabilityScore(symbol *Symbol) float64 {
 	}
 
 	now := time.Now()
-	var score float64
 
-	for _, commit := range commits {
+	// 1. Group commits into activity windows (24h)
+	// This prevents penalizing multiple small commits for a single logical change (burst activity)
+	type activityEvent struct {
+		time       time.Time
+		changeSize int
+	}
+
+	var events []activityEvent
+	if len(commits) > 0 {
+		// git log returns newest first, so commits[0] is the latest
+		currentEvent := activityEvent{time: commits[0].Time, changeSize: commits[0].ChangeSize}
+		for i := 1; i < len(commits); i++ {
+			// If within 24 hours of the current event, group them
+			if currentEvent.time.Sub(commits[i].Time).Hours() < 24.0 {
+				currentEvent.changeSize += commits[i].ChangeSize
+			} else {
+				events = append(events, currentEvent)
+				currentEvent = activityEvent{time: commits[i].Time, changeSize: commits[i].ChangeSize}
+			}
+		}
+		events = append(events, currentEvent)
+	}
+
+	// 2. Calculate raw instability score with exponential decay
+	var score float64
+	for _, event := range events {
 		// Calculate time difference in days
-		deltaT := now.Sub(commit.Time).Hours() / 24.0
+		deltaT := now.Sub(event.time).Hours() / 24.0
 
 		// Apply exponential decay: change_size_i * exp(-Δt_i / τ)
 		decay := math.Exp(-deltaT / s.tau)
-		contribution := float64(commit.ChangeSize) * decay
+		contribution := float64(event.changeSize) * decay
 		score += contribution
+	}
+
+	// 3. Apply "Stability through Silence" (TSLC - Time Since Last Change)
+	// If a function hasn't been touched in a long time, it's likely "settled" and correct.
+	// We aggressively discount the score if it has been untouched for more than 1x tau.
+	if len(commits) > 0 {
+		lastChangeAge := now.Sub(commits[0].Time).Hours() / 24.0
+
+		if lastChangeAge > s.tau {
+			// Multiplier decreases exponentially after tau.
+			// At 1x tau, multiplier is 1.0
+			// At 2x tau, multiplier is ~0.36
+			// At 3x tau, multiplier is ~0.13
+			silenceMultiplier := math.Exp(-(lastChangeAge - s.tau) / s.tau)
+			score *= silenceMultiplier
+		}
 	}
 
 	return score

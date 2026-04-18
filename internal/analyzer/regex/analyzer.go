@@ -16,12 +16,13 @@ import (
 // compiledLanguage caches compiled regexps for a LanguageConfig so we only pay
 // the compilation cost once per language.
 type compiledLanguage struct {
-	cfg          language.LanguageConfig
-	fnPatterns   []*regexp.Regexp
-	callPatterns []*regexp.Regexp
-	todoPattern  *regexp.Regexp
-	intentState  *regexp.Regexp
-	intentFeat   *regexp.Regexp
+	cfg            language.LanguageConfig
+	fnPatterns     []*regexp.Regexp
+	callPatterns   []*regexp.Regexp
+	importPatterns []*regexp.Regexp
+	todoPattern    *regexp.Regexp
+	intentState    *regexp.Regexp
+	intentFeat     *regexp.Regexp
 }
 
 // Analyzer uses the language registry to extract signals from any supported
@@ -54,6 +55,11 @@ func compile(lc language.LanguageConfig) *compiledLanguage {
 			cl.callPatterns = append(cl.callPatterns, re)
 		}
 	}
+	for _, p := range lc.ImportPatterns {
+		if re, err := regexp.Compile(p); err == nil {
+			cl.importPatterns = append(cl.importPatterns, re)
+		}
+	}
 
 	// Build a TODO pattern that matches any of the language's comment prefixes.
 	cl.todoPattern = buildTodoPattern(lc)
@@ -76,7 +82,9 @@ func buildTodoPattern(lc language.LanguageConfig) *regexp.Regexp {
 		prefixes = []string{`//`, `#`}
 	}
 	joined := strings.Join(prefixes, "|")
-	return regexp.MustCompile(`(?i)^\s*(?:` + joined + `|\*|/\*)\s*(TODO|FIXME|XXX|HACK|NOTE):\s*(.+)`)
+	// \*+ handles single-star (* TODO:) and double-star (** TODO:) block
+	// comment continuation lines.
+	return regexp.MustCompile(`(?i)^\s*(?:` + joined + `|\*+|/\*)\s*(TODO|FIXME|XXX|HACK|NOTE):\s*(.+)`)
 }
 
 // Language returns a descriptive identifier for this analyzer.
@@ -127,13 +135,59 @@ func (a *Analyzer) analyzeFile(filePath string, sigSet *signals.SignalSet) error
 		lineNum++
 		line := scanner.Text()
 
+		// Check whether this line is a comment line (for TODO detection).
+		isComment := isCommentLine(line, commentPrefixes(cl.cfg))
+
 		a.extractFunctions(line, filePath, lc.Name, lineNum, tier, cl, sigSet)
 		a.extractCalls(line, filePath, lc.Name, lineNum, tier, cl, sigSet)
-		a.extractTodos(line, filePath, lc.Name, lineNum, cl, sigSet)
+		a.extractImports(line, filePath, lc.Name, lineNum, cl, sigSet)
+		a.extractTodos(line, filePath, lc.Name, lineNum, cl, isComment, sigSet)
 		a.extractIntents(line, filePath, lc.Name, lineNum, cl, sigSet)
 	}
 
 	return scanner.Err()
+}
+
+// commentPrefixes returns the line comment prefixes for a LanguageConfig.
+func commentPrefixes(lc language.LanguageConfig) []string {
+	var out []string
+	for _, cs := range lc.CommentStyles {
+		if cs.LinePrefix != "" {
+			out = append(out, cs.LinePrefix)
+		}
+		if cs.BlockStart != "" {
+			out = append(out, cs.BlockStart)
+		}
+	}
+	return out
+}
+
+// isCommentLine checks if a line starts with a known comment prefix.
+// For languages with /* */ comments, it also treats "* " and "*\t"
+// block-comment continuation lines as comment lines.
+func isCommentLine(line string, prefixes []string) bool {
+	trimmed := strings.TrimSpace(line)
+	hasBlockCommentPrefix := false
+	for _, prefix := range prefixes {
+		if strings.HasPrefix(trimmed, prefix) {
+			return true
+		}
+		if prefix == "/*" {
+			hasBlockCommentPrefix = true
+		}
+	}
+
+	if !hasBlockCommentPrefix || !strings.HasPrefix(trimmed, "*") {
+		return false
+	}
+	if len(trimmed) == 1 {
+		return true
+	}
+	if len(trimmed) > 2 && trimmed[1] == '*' {
+		return trimmed[2] == ' ' || trimmed[2] == '\t'
+	}
+
+	return trimmed[1] == ' ' || trimmed[1] == '\t'
 }
 
 // extractFunctions emits FunctionDefined signals.
@@ -208,12 +262,29 @@ func (a *Analyzer) extractCalls(
 	}
 }
 
-// extractTodos emits TodoFound signals.
-func (a *Analyzer) extractTodos(
+// extractImports emits ImportFound signals.
+func (a *Analyzer) extractImports(
 	line, filePath, langName string, lineNum int,
 	cl *compiledLanguage, sigSet *signals.SignalSet,
 ) {
-	if cl.todoPattern == nil {
+	for _, re := range cl.importPatterns {
+		if m := re.FindStringSubmatch(line); m != nil && len(m) > 1 {
+			sig := signals.NewSignal(signals.ImportFound, filePath).
+				WithName(m[1]).
+				WithLine(lineNum).
+				WithLanguage(langName)
+			sigSet.Add(*sig)
+			return // one import per line
+		}
+	}
+}
+
+// extractTodos emits TodoFound signals — only for comment lines.
+func (a *Analyzer) extractTodos(
+	line, filePath, langName string, lineNum int,
+	cl *compiledLanguage, isComment bool, sigSet *signals.SignalSet,
+) {
+	if !isComment || cl.todoPattern == nil {
 		return
 	}
 	m := cl.todoPattern.FindStringSubmatch(line)
@@ -251,9 +322,9 @@ func (a *Analyzer) extractIntents(
 	}
 }
 
-// ──────────────────────────────────────────────────────────────────────────────
+// ────────────────────────────────────────────────────────────────────────────
 // Helpers
-// ──────────────────────────────────────────────────────────────────────────────
+// ────────────────────────────────────────────────────────────────────────────
 
 func tierLabel(t language.Tier) string {
 	switch t {

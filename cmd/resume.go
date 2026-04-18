@@ -24,6 +24,11 @@ Optimized for the "I haven't touched this in weeks" scenario.`,
 	},
 }
 
+// @ignore-unused
+func init() {
+	rootCmd.AddCommand(resumeCmd)
+}
+
 func runResume() {
 	_, err := commonPkg.FindProjectRoot()
 	if err != nil {

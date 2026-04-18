@@ -21,10 +21,6 @@ make --version
 
 ---
 
-## Project Build Configuration
-
-The Makefile defines a few important variables:
-
 ## Common Commands
 
 ### 🔨 Build the Project
@@ -34,12 +30,8 @@ make build
 ```
 
 What this does:
-
-* Creates a `bin/` directory if it doesn’t exist
 * Compiles the Go project
 * Outputs the binary to `bin/dizz`
-
-Use this when you want a reusable binary.
 
 ---
 
@@ -48,181 +40,90 @@ Use this when you want a reusable binary.
 ```bash
 make run
 ```
-
-What this does:
-
-* Runs `make build`
-* Executes the compiled binary (`bin/dizz`)
-
-This is the standard way to run the tool locally.
-
----
+Runs `make build` and executes `bin/dizz`.
 
 ### ▶️ Run with Arguments
 
 ```bash
 make run-args ARGS="status"
 ```
-
-What this does:
-
-* Builds the binary
-* Runs it with custom CLI arguments
-
-Example:
-
-```bash
-make run-args ARGS="scan --all"
-```
-
-This is useful for testing specific commands.
+Runs the binary with custom CLI arguments.
 
 ---
 
-### ⚡ Fast Development Mode
+### 🧪 Testing & Benchmarking
 
-```bash
-make dev
-```
-
-What this does:
-
-* Builds the binary into `/tmp/dizz`
-* Immediately runs it
-
-Why this exists:
-
-* Faster than full builds
-* Avoids polluting the project directory
-* Ideal for rapid iteration
-
----
-
-### 🧪 Run Tests
-
+#### Run All Tests
 ```bash
 make test
 ```
+Runs all tests with verbose output.
 
-What this does:
-
-* Runs all Go tests recursively (`./...`)
-
-Use this before committing or opening a PR.
+#### Run Benchmarks
+```bash
+make bench
+```
+Runs performance benchmarks with memory statistics.
 
 ---
 
-### 🎨 Format Code
+### 📊 Performance Benchmarks (Current)
 
-```bash
-make fmt
-```
+Based on a codebase with ~40 files and 175 symbols on an Intel i5-10300H CPU:
 
-What this does:
+| Operation | Time | Notes |
+|-----------|------|-------|
+| **Symbol Extraction** | ~1.3s | AST & Regex analysis |
+| **Git Analysis (Batched)** | ~50ms | 175 symbols |
+| **Git Analysis (Individual)** | ~370ms | Legacy approach |
+| **Total Full Analysis** | ~1.4s | Cold start |
 
-* Formats all Go files using `go fmt`
-
-Always run this before committing code.
-
----
-
-### 🔍 Lint Code (Optional)
-
-```bash
-make lint
-```
-
-Requirements:
-
-* `golangci-lint` must be installed
-
-What this does:
-
-* Runs static analysis and style checks
-
-Install lint tool:
-
-```bash
-go install github.com/golangci/golangci-lint/cmd/golangci-lint@latest
-```
+**Optimization Impact:** Batched git operations are **~7x faster** than individual calls.
 
 ---
 
-### 🧹 Clean Build Artifacts
+### 🛠 Development Utilities
 
-```bash
-make clean
-```
-
-What this does:
-
-* Removes `bin/`
-* Removes temporary dev binaries
-
-Use this if builds behave strangely or before a fresh build.
+* `make dev`: Fast rebuild and run from `/tmp`.
+* `make fmt`: Format all Go files.
+* `make lint`: Run static analysis (requires `golangci-lint`).
+* `make clean`: Remove build artifacts.
+* `make install`: Install `dizz` to your system path.
 
 ---
 
-### 📦 Install Locally
+### 🌐 Website & WASM
 
-```bash
-make install
-```
-
-What this does:
-
-* Installs `dizz` into your `$GOPATH/bin` or `$GOBIN`
-
-After this, you can run:
-
-```bash
-dizz
-```
-
-from anywhere on your system.
+* `make build-site`: Builds the documentation site.
+* `make wasm`: Compiles the WASM binary for the web.
+* `make serve-site`: Starts a local server for the site.
 
 ---
 
----
+## CLI Command Reference
 
-### 🌐 Site Setup Locally
-
-```bash
-make build-site
-```
-
-What this does:
-
-* Builds the WASM site locally
-
-After this, you can run:
-
-```bash
-make serve-site
-```
-
-to run a simple go server that serves the site locally.
+| Command | Description |
+|---------|-------------|
+| `dizz init` | Initialize dizz in the current directory |
+| `dizz status` | Quick project health check and summary |
+| `dizz log` | Detailed analysis of planned, unstable, and unused code |
+| `dizz snapshot` | Create an immutable state snapshot |
+| `dizz list` | List saved snapshots |
+| `dizz resume` | Get context after being away from the project |
+| `dizz intent` | Manage human-authored intents (todos, etc.) |
+| `dizz todo list` | View extracted code markers (TODOs, FIXMEs) |
+| `dizz upgrade` | Upgrade to the latest version |
+| `dizz version` | Show current version |
 
 ---
 
 ## Recommended Development Flow
 
-```text
+```bash
 make fmt      # format code
 make test     # run tests
+make bench    # check performance
 make dev      # quick local run
-make build    # final build
 ```
 
----
-
-## Notes
-
-* The `Makefile` avoids Git hooks to keep history clean
-* Generated files (e.g. `.dizz` snapshots) should be gitignored
-* All commands are safe to run on Linux, macOS, and WSL
-
----
-
 Happy hacking 🚀
-

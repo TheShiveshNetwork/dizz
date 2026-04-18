@@ -32,7 +32,7 @@ func RenderTodos(todos []state.Todo) {
 			ui.Muted(fmt.Sprintf("%s:%d", todo.File, todo.Line)),
 		)
 
-		renderTodoBlock(todo.Text)
+		renderTodoBlock(todo.Type, todo.Text)
 	}
 
 	if len(todos) > limit {
@@ -42,6 +42,31 @@ func RenderTodos(todos []state.Todo) {
 		)
 	}
 
+	fmt.Println()
+}
+
+// RenderTodoList renders all todos in a list format similar to intent list
+func RenderTodoList(todos []state.Todo) {
+	if len(todos) == 0 {
+		fmt.Println("No active todos found.")
+		return
+	}
+
+	fmt.Println()
+	fmt.Println(ui.Highlight("━━ CODE TODOS & FIXMES"))
+	fmt.Println()
+
+	for _, todo := range todos {
+		// Location (always muted)
+		fmt.Printf(
+			"  %s\n",
+			ui.Muted(fmt.Sprintf("%s:%d", todo.File, todo.Line)),
+		)
+
+		renderTodoBlock(todo.Type, todo.Text)
+	}
+
+	fmt.Printf(ui.Muted("  Total: %d todos found in code\n"), len(todos))
 	fmt.Println()
 }
 
@@ -169,45 +194,63 @@ func RenderTodosAndIntents(todos []state.Todo, intents []state.Intent) {
 	}
 }
 
-func renderTodoBlock(raw string) {
+func renderTodoBlock(todoType string, raw string) {
 	text := normalizeTodoText(raw)
-	upper := strings.ToUpper(text)
-
-	var header string
-	var fg string
-	var bg string
-
-	switch {
-	case strings.Contains(upper, "FIX"),
-		strings.Contains(upper, "BUG"),
-		strings.Contains(upper, "HACK"):
-		header = ui.Error(" FIX ")
-		bg = ui.BgRed
-		fg = ui.White
-
-	case strings.Contains(upper, "TODO"),
-		strings.Contains(upper, "TBD"):
-		header = ui.Warning(" TODO ")
-		bg = ui.BgYellow
-		fg = ui.Black
-
-	case strings.Contains(upper, "NOTE"),
-		strings.Contains(upper, "INFO"):
-		header = ui.Info(" NOTE ")
-		bg = ui.BgCyan
-		fg = ui.Black
-
-	default:
-		header = ui.Highlight(" TODO ")
-		bg = ui.BgGray
-		fg = ui.White
-	}
+	header, fg, bg := classifyTodoStyle(todoType, text)
 
 	content := " " + text + " "
 
 	// Render block
 	println("     " + header)
 	println("     " + fg + bg + content + ui.Reset)
+}
+
+func classifyTodoStyle(todoType string, text string) (header string, fg string, bg string) {
+	fixKeywords := []string{"FIXME", "FIX", "BUG", "HACK"}
+	todoKeywords := []string{"TODO", "TBD"}
+	noteKeywords := []string{"NOTE", "INFO"}
+
+	normalizedType := strings.ToUpper(strings.TrimSpace(todoType))
+	if normalizedType != "" {
+		switch {
+		case equalsAny(normalizedType, fixKeywords):
+			return ui.Error(" FIX "), ui.White, ui.BgRed
+		case equalsAny(normalizedType, todoKeywords):
+			return ui.Warning(" TODO "), ui.Black, ui.BgYellow
+		case equalsAny(normalizedType, noteKeywords):
+			return ui.Info(" NOTE "), ui.Black, ui.BgCyan
+		}
+	}
+
+	upper := strings.ToUpper(text)
+	switch {
+	case containsAny(upper, fixKeywords):
+		return ui.Error(" FIX "), ui.White, ui.BgRed
+	case containsAny(upper, todoKeywords):
+		return ui.Warning(" TODO "), ui.Black, ui.BgYellow
+	case containsAny(upper, noteKeywords):
+		return ui.Info(" NOTE "), ui.Black, ui.BgCyan
+	default:
+		return ui.Highlight(" TODO "), ui.White, ui.BgGray
+	}
+}
+
+func containsAny(s string, values []string) bool {
+	for _, value := range values {
+		if strings.Contains(s, value) {
+			return true
+		}
+	}
+	return false
+}
+
+func equalsAny(s string, values []string) bool {
+	for _, value := range values {
+		if s == value {
+			return true
+		}
+	}
+	return false
 }
 
 func normalizeTodoText(text string) string {
