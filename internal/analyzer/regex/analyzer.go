@@ -158,13 +158,7 @@ func (a *Analyzer) analyzeFile(filePath string, lang LanguageDef, sigSet *signal
 		line := scanner.Text()
 
 		// Determine if this line contains a comment
-		isComment := false
-		for _, prefix := range lang.CommentPrefixes {
-			if strings.Contains(line, prefix) {
-				isComment = true
-				break
-			}
-		}
+		isComment := isCommentLine(line, lang.CommentPrefixes)
 
 		// 1. Extract Functions
 		if matches := lang.FuncPattern.FindStringSubmatch(line); matches != nil && len(matches) > 1 {
@@ -218,4 +212,19 @@ func (a *Analyzer) analyzeFile(filePath string, lang LanguageDef, sigSet *signal
 	}
 
 	return scanner.Err()
+}
+
+func isCommentLine(line string, prefixes []string) bool {
+	trimmed := strings.TrimSpace(line)
+	hasBlockCommentPrefix := false
+	for _, prefix := range prefixes {
+		if strings.HasPrefix(trimmed, prefix) {
+			return true
+		}
+		if prefix == "/*" {
+			hasBlockCommentPrefix = true
+		}
+	}
+
+	return hasBlockCommentPrefix && strings.HasPrefix(trimmed, "*")
 }
