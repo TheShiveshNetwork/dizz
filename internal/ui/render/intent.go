@@ -196,60 +196,41 @@ func RenderTodosAndIntents(todos []state.Todo, intents []state.Intent) {
 
 func renderTodoBlock(todoType string, raw string) {
 	text := normalizeTodoText(raw)
-	upper := strings.ToUpper(text)
-
-	var header string
-	var fg string
-	var bg string
-
-	normalizedType := ""
-	if strings.TrimSpace(todoType) != "" {
-		normalizedType = strings.ToUpper(strings.TrimSpace(todoType))
-	}
-
-	switch normalizedType {
-	case "FIXME", "FIX", "BUG", "HACK":
-		header = ui.Error(" FIX ")
-		bg = ui.BgRed
-		fg = ui.White
-	case "TODO", "TBD":
-		header = ui.Warning(" TODO ")
-		bg = ui.BgYellow
-		fg = ui.Black
-	case "NOTE", "INFO":
-		header = ui.Info(" NOTE ")
-		bg = ui.BgCyan
-		fg = ui.Black
-	default:
-		switch {
-		case strings.Contains(upper, "FIX"),
-			strings.Contains(upper, "BUG"),
-			strings.Contains(upper, "HACK"):
-			header = ui.Error(" FIX ")
-			bg = ui.BgRed
-			fg = ui.White
-		case strings.Contains(upper, "TODO"),
-			strings.Contains(upper, "TBD"):
-			header = ui.Warning(" TODO ")
-			bg = ui.BgYellow
-			fg = ui.Black
-		case strings.Contains(upper, "NOTE"),
-			strings.Contains(upper, "INFO"):
-			header = ui.Info(" NOTE ")
-			bg = ui.BgCyan
-			fg = ui.Black
-		default:
-			header = ui.Highlight(" TODO ")
-			bg = ui.BgGray
-			fg = ui.White
-		}
-	}
+	header, fg, bg := classifyTodoStyle(todoType, text)
 
 	content := " " + text + " "
 
 	// Render block
 	println("     " + header)
 	println("     " + fg + bg + content + ui.Reset)
+}
+
+func classifyTodoStyle(todoType string, text string) (header string, fg string, bg string) {
+	normalizedType := strings.ToUpper(strings.TrimSpace(todoType))
+	switch normalizedType {
+	case "FIXME", "FIX", "BUG", "HACK":
+		return ui.Error(" FIX "), ui.White, ui.BgRed
+	case "TODO", "TBD":
+		return ui.Warning(" TODO "), ui.Black, ui.BgYellow
+	case "NOTE", "INFO":
+		return ui.Info(" NOTE "), ui.Black, ui.BgCyan
+	}
+
+	upper := strings.ToUpper(text)
+	switch {
+	case strings.Contains(upper, "FIX"),
+		strings.Contains(upper, "BUG"),
+		strings.Contains(upper, "HACK"):
+		return ui.Error(" FIX "), ui.White, ui.BgRed
+	case strings.Contains(upper, "TODO"),
+		strings.Contains(upper, "TBD"):
+		return ui.Warning(" TODO "), ui.Black, ui.BgYellow
+	case strings.Contains(upper, "NOTE"),
+		strings.Contains(upper, "INFO"):
+		return ui.Info(" NOTE "), ui.Black, ui.BgCyan
+	default:
+		return ui.Highlight(" TODO "), ui.White, ui.BgGray
+	}
 }
 
 func normalizeTodoText(text string) string {
