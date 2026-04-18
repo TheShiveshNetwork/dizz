@@ -99,23 +99,28 @@ func (r *Registry) AnalyzeFiles(files []string) (*signals.SignalSet, error) {
 		defer wg.Done()
 		var ignoreSigs []signals.Signal
 		// Limit concurrency for I/O to avoid system resource limits
-		sem := make(chan struct{}, 8)
+		const workerCount = 8
+		jobs := make(chan string)
 		var innerWg sync.WaitGroup
 		var mu sync.Mutex
 
-		for _, file := range files {
+		for i := 0; i < workerCount; i++ {
 			innerWg.Add(1)
-			go func(f string) {
+			go func() {
 				defer innerWg.Done()
-				sem <- struct{}{}
-				defer func() { <-sem }()
-				
-				sigs := analyzeIgnoreMarkers(f)
-				mu.Lock()
-				ignoreSigs = append(ignoreSigs, sigs...)
-				mu.Unlock()
-			}(file)
+				for f := range jobs {
+					sigs := analyzeIgnoreMarkers(f)
+					mu.Lock()
+					ignoreSigs = append(ignoreSigs, sigs...)
+					mu.Unlock()
+				}
+			}()
 		}
+
+		for _, file := range files {
+			jobs <- file
+		}
+		close(jobs)
 		innerWg.Wait()
 		signalChan <- ignoreSigs
 	}()
