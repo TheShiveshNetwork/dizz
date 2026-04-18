@@ -26,6 +26,11 @@ Use this for a quick health check without full analysis.`,
 	},
 }
 
+// @ignore-unused
+func init() {
+	rootCmd.AddCommand(statusCmd)
+}
+
 func runStatus() {
 	trackDir, err := commonPkg.FindProjectRoot()
 	if err != nil {

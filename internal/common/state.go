@@ -21,6 +21,7 @@ type AnalysisOptions struct {
 	IgnoreUnstable  bool
 	IgnoreUnused    bool
 	IgnoreAbandoned bool
+	SkipGit         bool
 	// Add more options as needed
 }
 
@@ -90,7 +91,6 @@ func runCurrentAnalysisAtRoot(projectRoot string, options *AnalysisOptions) (*st
 		analysisRoot = filepath.Join(projectRoot, analysisRoot)
 	}
 	analysisRoot = filepath.Clean(analysisRoot)
-
 	files, err := discover.CodeFiles(analysisRoot, cfg.Exclude)
 	if err != nil {
 		return nil, err
@@ -139,7 +139,7 @@ func runCurrentAnalysisAtRoot(projectRoot string, options *AnalysisOptions) (*st
 	}
 
 	// Step 7: Enrich with git context if available (OPTIMIZED - Batch Git Operations)
-	if integrations.IsRepo() {
+	if (options == nil || !options.SkipGit) && integrations.IsRepo() {
 		if commit, err := integrations.GetCurrentCommitWithMessage(); err == nil {
 			projectState.GitCommit = &commit
 		}

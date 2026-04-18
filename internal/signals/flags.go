@@ -31,13 +31,18 @@ func NewIgnoreFlag(file, name string, line, column, endLine, endColumn int, lang
 	}
 }
 
+var (
+	// TODO: make it compatible to most of the languages. currently just extracts // comments
+	ignorePattern = regexp.MustCompile(`^\s*//\s*@ignore-(unstable|unused|abandoned)\b`)
+	ignoreTypeRe  = regexp.MustCompile(`@ignore-(unstable|unused|abandoned)`)
+	funcPattern   = regexp.MustCompile(`func\s+(\w+)\s*\(`)
+)
+
 // ExtractIgnoreMarkers finds @ignore-* patterns in code
 func ExtractIgnoreMarkers(source, file, language string) []IgnoreSignal {
 	var signals []IgnoreSignal
 
 	lines := strings.Split(source, "\n")
-	// TODO: make it compatible to most of the languages. currently just extracts // comments
-	ignorePattern := regexp.MustCompile(`^\s*//\s*@ignore-(unstable|unused|abandoned)\b`)
 
 	for lineNum, line := range lines {
 		if ignorePattern.MatchString(line) {
@@ -64,8 +69,7 @@ func ExtractIgnoreMarkers(source, file, language string) []IgnoreSignal {
 
 // extractIgnoreTypeFromComment extracts ignore type from @ignore-* comment
 func extractIgnoreTypeFromComment(comment string) string {
-	re := regexp.MustCompile(`@ignore-(unstable|unused|abandoned)`)
-	matches := re.FindStringSubmatch(comment)
+	matches := ignoreTypeRe.FindStringSubmatch(comment)
 	if len(matches) > 1 {
 		return matches[1]
 	}
@@ -93,8 +97,7 @@ func findNextSymbol(lines []string, startLine int) symbolInfo {
 		// Look for function definitions (Go) - more flexible matching
 		if strings.HasPrefix(line, "func ") {
 			// Handle both "func name()" and "func name() returnType {" patterns
-			re := regexp.MustCompile(`func\s+(\w+)\s*\(`)
-			matches := re.FindStringSubmatch(line)
+			matches := funcPattern.FindStringSubmatch(line)
 			if len(matches) > 1 {
 				return symbolInfo{name: matches[1], line: i + 1}
 			}

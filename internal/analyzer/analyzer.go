@@ -2,7 +2,9 @@ package analyzer
 
 import (
 	"os"
+	"path/filepath"
 	"strings"
+	"sync"
 
 	"github.com/TheShiveshNetwork/dizz/internal/signals"
 )
@@ -48,9 +50,18 @@ func (r *Registry) FindAnalyzer(file string) Analyzer {
 
 // AnalyzeFiles runs appropriate analyzers on all files
 func (r *Registry) AnalyzeFiles(files []string) (*signals.SignalSet, error) {
+	if len(files) == 0 {
+		return &signals.SignalSet{}, nil
+	}
+
+	// Optimization: For very small projects, skip parallelization to avoid overhead
+	// Launching goroutines and managing channels is slower than just reading ~40 files.
+	if len(files) < 100 {
+		return r.analyzeSequentially(files)
+	}
+
 	// Group files by analyzer
 	filesByAnalyzer := make(map[Analyzer][]string)
-
 	for _, file := range files {
 		analyzer := r.FindAnalyzer(file)
 		if analyzer != nil {
@@ -58,15 +69,101 @@ func (r *Registry) AnalyzeFiles(files []string) (*signals.SignalSet, error) {
 		}
 	}
 
-	// Run each analyzer on its files
 	allSignals := &signals.SignalSet{}
+	var wg sync.WaitGroup
+	
+	// Use channels to collect results instead of a Mutex to avoid contention
+	// Each analyzer gets one slot, plus one for ignore markers
+	signalChan := make(chan []signals.Signal, len(filesByAnalyzer)+1)
+	errChan := make(chan error, len(filesByAnalyzer))
+
+	// 1. Run analyzers in parallel
+	for analyzer, analyzerFiles := range filesByAnalyzer {
+		wg.Add(1)
+		go func(a Analyzer, af []string) {
+			defer wg.Done()
+			sigSet, err := a.Analyze(af)
+			if err != nil {
+				errChan <- err
+				return
+			}
+			if sigSet != nil {
+				signalChan <- sigSet.Signals
+			}
+		}(analyzer, analyzerFiles)
+	}
+
+	// 2. Analyze ignore markers in parallel (mostly I/O bound)
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		var ignoreSigs []signals.Signal
+		// Limit concurrency for I/O to avoid system resource limits
+		const workerCount = 8
+		jobs := make(chan string)
+		var innerWg sync.WaitGroup
+		var mu sync.Mutex
+
+		for i := 0; i < workerCount; i++ {
+			innerWg.Add(1)
+			go func() {
+				defer innerWg.Done()
+				for f := range jobs {
+					sigs := analyzeIgnoreMarkers(f)
+					mu.Lock()
+					ignoreSigs = append(ignoreSigs, sigs...)
+					mu.Unlock()
+				}
+			}()
+		}
+
+		for _, file := range files {
+			jobs <- file
+		}
+		close(jobs)
+		innerWg.Wait()
+		signalChan <- ignoreSigs
+	}()
+
+	// Close signal channel once all workers are done
+	go func() {
+		wg.Wait()
+		close(signalChan)
+	}()
+
+	// Collect all signals
+	for sigs := range signalChan {
+		for _, sig := range sigs {
+			allSignals.Add(sig)
+		}
+	}
+
+	// Return first error if any occurred
+	select {
+	case err := <-errChan:
+		return nil, err
+	default:
+		return allSignals, nil
+	}
+}
+
+// analyzeSequentially handles small projects without parallel overhead
+func (r *Registry) analyzeSequentially(files []string) (*signals.SignalSet, error) {
+	allSignals := &signals.SignalSet{}
+	
+	filesByAnalyzer := make(map[Analyzer][]string)
+	for _, file := range files {
+		analyzer := r.FindAnalyzer(file)
+		if analyzer != nil {
+			filesByAnalyzer[analyzer] = append(filesByAnalyzer[analyzer], file)
+		}
+	}
 
 	for analyzer, analyzerFiles := range filesByAnalyzer {
 		sigSet, err := analyzer.Analyze(analyzerFiles)
 		if err != nil {
 			return nil, err
 		}
-
 		if sigSet != nil {
 			for _, sig := range sigSet.Signals {
 				allSignals.Add(sig)
@@ -74,10 +171,9 @@ func (r *Registry) AnalyzeFiles(files []string) (*signals.SignalSet, error) {
 		}
 	}
 
-	// Also analyze files for intent ignore markers
 	for _, file := range files {
-		ignoreSignals := analyzeIgnoreMarkers(file)
-		for _, sig := range ignoreSignals {
+		sigs := analyzeIgnoreMarkers(file)
+		for _, sig := range sigs {
 			allSignals.Add(sig)
 		}
 	}
@@ -93,21 +189,13 @@ func analyzeIgnoreMarkers(filePath string) []signals.Signal {
 	}
 
 	source := string(content)
-	// Determine language from file extension
-	language := "unknown"
-	if strings.HasSuffix(filePath, ".go") {
-		language = "go"
-	} else if strings.HasSuffix(filePath, ".js") || strings.HasSuffix(filePath, ".ts") {
-		language = "javascript"
-	}
+	language := detectLanguage(filePath)
 
 	// Use the signals package to extract ignore markers
 	ignoreSignals := signals.ExtractIgnoreMarkers(source, filePath, language)
 
-	// Convert IgnoreSignal to Signal
 	var result []signals.Signal
 	for _, ignoreSig := range ignoreSignals {
-		// Extract ignore type from comment
 		ignoreType := extractIgnoreTypeFromSignal(ignoreSig, source)
 
 		if symbolName, ok := ignoreSig.Metadata["symbol_name"].(string); ok {
@@ -116,13 +204,37 @@ func analyzeIgnoreMarkers(filePath string) []signals.Signal {
 				WithRange(ignoreSig.Line, ignoreSig.Column, ignoreSig.EndLine, ignoreSig.EndColumn).
 				WithLanguage(language).
 				WithMeta("ignore_type", ignoreType).
-				WithMeta("symbol_name", symbolName) // Also copy symbol_name to new signal
+				WithMeta("symbol_name", symbolName)
 
 			result = append(result, *signal)
 		}
 	}
 
 	return result
+}
+
+func detectLanguage(filePath string) string {
+	ext := strings.ToLower(filepath.Ext(filePath))
+	langMap := map[string]string{
+		".go":   "go",
+		".js":   "javascript",
+		".ts":   "typescript",
+		".jsx":  "javascript",
+		".tsx":  "typescript",
+		".py":   "python",
+		".rs":   "rust",
+		".rb":   "ruby",
+		".php":  "php",
+		".java": "java",
+		".c":    "c",
+		".cpp":  "cpp",
+		".h":    "c",
+		".hpp":  "cpp",
+	}
+	if lang, ok := langMap[ext]; ok {
+		return lang
+	}
+	return "unknown"
 }
 
 // extractIgnoreTypeFromSignal extracts the ignore type from the original comment

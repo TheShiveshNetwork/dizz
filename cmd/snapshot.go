@@ -33,6 +33,7 @@ If in a git repo, creates a ref linking the commit to the snapshot.`,
 
 // @ignore-unused
 func init() {
+	rootCmd.AddCommand(snapshotCmd)
 	snapshotCmd.Flags().BoolVar(&autoSnapshot, "auto", false, "Automatic snapshot (called by git hook)")
 }
 
