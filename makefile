@@ -3,6 +3,10 @@ BINARY_NAME := dizz
 BUILD_DIR   := bin
 MAIN_PKG    := .
 
+# Local development install
+INSTALL_DIR := $(HOME)/.local/bin
+TARGET_NAME := dizz-dev
+
 # Go env
 GO          := go
 GOFLAGS     := -trimpath
@@ -66,9 +70,17 @@ lint:
 
 ## Install locally (go install)
 .PHONY: install
-install:
-	@echo "📦 Installing $(BINARY_NAME)..."
-	@$(GO) install $(MAIN_PKG)
+install: build
+	@echo "📦 Installing $(TARGET_NAME) to $(INSTALL_DIR)..."
+	@mkdir -p $(INSTALL_DIR)
+	@cp $(BUILD_DIR)/$(BINARY_NAME) $(INSTALL_DIR)/$(TARGET_NAME)
+	@chmod +x $(INSTALL_DIR)/$(TARGET_NAME)
+	@echo "✅ Installed as $(TARGET_NAME)"
+
+.PHONY: uninstall
+uninstall:
+	@echo "🗑 Removing $(TARGET_NAME)..."
+	@rm -f $(INSTALL_DIR)/$(TARGET_NAME)
 
 build-site:
 	./scripts/build-site.sh

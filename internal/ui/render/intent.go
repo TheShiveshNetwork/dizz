@@ -16,7 +16,7 @@ func RenderTodos(todos []state.Todo) {
 		return
 	}
 
-	fmt.Println(ui.Highlight("━━ INTENTS & TODOS"))
+	fmt.Println(ui.Highlight("INTENTS & TODOS"))
 
 	limit := 3
 	if len(todos) < limit {
@@ -53,7 +53,7 @@ func RenderTodoList(todos []state.Todo) {
 	}
 
 	fmt.Println()
-	fmt.Println(ui.Highlight("━━ CODE TODOS & FIXMES"))
+	fmt.Println(ui.Highlight("CODE TODOS & FIXMES"))
 	fmt.Println()
 
 	for _, todo := range todos {

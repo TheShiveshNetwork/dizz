@@ -1,7 +1,7 @@
 {
   "version": 1,
   "created_at": "2026-02-02T13:47:31.231852817+05:30",
-  "updated_at": "2026-02-03T21:25:47.637880641+05:30",
+  "updated_at": "2026-04-18T22:11:11.89981803+05:30",
   "intents": [
     {
       "id": "int_1770020251",
@@ -121,14 +121,20 @@
       "message": "update scope determination logic in intents to make proximity analysis work and have weight of intents on signals",
       "scope": "project",
       "created_at": "2026-02-03T21:25:02.244253976+05:30",
-      "updated_at": "2026-02-03T21:25:02.244253976+05:30",
+      "updated_at": "2026-04-18T22:11:11.899817979+05:30",
       "created_by": "user",
       "severity": 1,
       "confidence": 0.8,
-      "status": "active",
+      "status": "resolved",
       "tags": [
         "improvement"
-      ]
+      ],
+      "resolution": {
+        "method": "fixed",
+        "description": "Resolved via CLI",
+        "resolved_at": "2026-04-18T22:11:11.899817626+05:30",
+        "resolved_by": "user"
+      }
     },
     {
       "id": "int_1770134147",
