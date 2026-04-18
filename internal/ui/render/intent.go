@@ -206,31 +206,51 @@ func renderTodoBlock(todoType string, raw string) {
 }
 
 func classifyTodoStyle(todoType string, text string) (header string, fg string, bg string) {
+	fixKeywords := []string{"FIXME", "FIX", "BUG", "HACK"}
+	todoKeywords := []string{"TODO", "TBD"}
+	noteKeywords := []string{"NOTE", "INFO"}
+
 	normalizedType := strings.ToUpper(strings.TrimSpace(todoType))
-	switch normalizedType {
-	case "FIXME", "FIX", "BUG", "HACK":
-		return ui.Error(" FIX "), ui.White, ui.BgRed
-	case "TODO", "TBD":
-		return ui.Warning(" TODO "), ui.Black, ui.BgYellow
-	case "NOTE", "INFO":
-		return ui.Info(" NOTE "), ui.Black, ui.BgCyan
+	if normalizedType != "" {
+		switch {
+		case equalsAny(normalizedType, fixKeywords):
+			return ui.Error(" FIX "), ui.White, ui.BgRed
+		case equalsAny(normalizedType, todoKeywords):
+			return ui.Warning(" TODO "), ui.Black, ui.BgYellow
+		case equalsAny(normalizedType, noteKeywords):
+			return ui.Info(" NOTE "), ui.Black, ui.BgCyan
+		}
 	}
 
 	upper := strings.ToUpper(text)
 	switch {
-	case strings.Contains(upper, "FIX"),
-		strings.Contains(upper, "BUG"),
-		strings.Contains(upper, "HACK"):
+	case containsAny(upper, fixKeywords):
 		return ui.Error(" FIX "), ui.White, ui.BgRed
-	case strings.Contains(upper, "TODO"),
-		strings.Contains(upper, "TBD"):
+	case containsAny(upper, todoKeywords):
 		return ui.Warning(" TODO "), ui.Black, ui.BgYellow
-	case strings.Contains(upper, "NOTE"),
-		strings.Contains(upper, "INFO"):
+	case containsAny(upper, noteKeywords):
 		return ui.Info(" NOTE "), ui.Black, ui.BgCyan
 	default:
 		return ui.Highlight(" TODO "), ui.White, ui.BgGray
 	}
+}
+
+func containsAny(s string, values []string) bool {
+	for _, value := range values {
+		if strings.Contains(s, value) {
+			return true
+		}
+	}
+	return false
+}
+
+func equalsAny(s string, values []string) bool {
+	for _, value := range values {
+		if s == value {
+			return true
+		}
+	}
+	return false
 }
 
 func normalizeTodoText(text string) string {
