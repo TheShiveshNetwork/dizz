@@ -1,24 +1,62 @@
 package benchmarks
 
 import (
+	"path/filepath"
 	"testing"
 
+	"github.com/TheShiveshNetwork/dizz/internal/analyzer"
+	"github.com/TheShiveshNetwork/dizz/internal/analyzer/ast"
+	"github.com/TheShiveshNetwork/dizz/internal/analyzer/regex"
 	commonPkg "github.com/TheShiveshNetwork/dizz/internal/common"
+	"github.com/TheShiveshNetwork/dizz/internal/config"
+	"github.com/TheShiveshNetwork/dizz/internal/discover"
 	"github.com/TheShiveshNetwork/dizz/internal/integrations"
+	"github.com/TheShiveshNetwork/dizz/internal/store"
 )
 
 // BenchmarkExtractionOnly benchmarks only the symbol extraction part (no git)
 func BenchmarkExtractionOnly(b *testing.B) {
-	b.Run("Symbol_Extraction", func(b *testing.B) {
+	b.Run("Discovery_And_Extraction", func(b *testing.B) {
 		b.ResetTimer()
 		for i := 0; i < b.N; i++ {
-			// Manually run discovery and extraction without git enrichment
-			_, err := commonPkg.EnsureCurrentStateWithAnalysis(&commonPkg.AnalysisOptions{SkipGit: true})
+			err := runExtractionOnly()
 			if err != nil {
-				b.Fatalf("Analysis failed: %v", err)
+				b.Fatalf("Extraction failed: %v", err)
 			}
 		}
 	})
+}
+
+func runExtractionOnly() error {
+	projectRoot, err := commonPkg.FindProjectRoot()
+	if err != nil {
+		return err
+	}
+
+	trackDir := config.TrackDirPath(projectRoot)
+	configStore := store.NewConfigStore(trackDir)
+	cfg, err := configStore.LoadConfig()
+	if err != nil {
+		return err
+	}
+
+	analysisRoot := cfg.RootPath
+	if !filepath.IsAbs(analysisRoot) {
+		analysisRoot = filepath.Join(projectRoot, analysisRoot)
+	}
+	analysisRoot = filepath.Clean(analysisRoot)
+
+	files, err := discover.CodeFiles(analysisRoot, cfg.Exclude)
+	if err != nil {
+		return err
+	}
+
+	registry := analyzer.NewRegistry()
+	registry.Register(&ast.Analyzer{})
+	registry.Register(regex.NewAnalyzer())
+	_, err = registry.AnalyzeFiles(files)
+
+	return err
 }
 
 // BenchmarkFullAnalysis benchmarks the entire analysis pipeline
