@@ -91,7 +91,6 @@ func runCurrentAnalysisAtRoot(projectRoot string, options *AnalysisOptions) (*st
 		analysisRoot = filepath.Join(projectRoot, analysisRoot)
 	}
 	analysisRoot = filepath.Clean(analysisRoot)
-
 	files, err := discover.CodeFilesWithIncludes(analysisRoot, cfg.Include, cfg.Exclude)
 	if err != nil {
 		return nil, err

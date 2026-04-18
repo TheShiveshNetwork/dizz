@@ -1,36 +1,36 @@
 package signals
 
 import (
-"regexp"
-"strings"
+	"regexp"
+	"strings"
 
-"github.com/TheShiveshNetwork/dizz/internal/language"
+	"github.com/TheShiveshNetwork/dizz/internal/language"
 )
 
 type IgnoreSignal struct {
-Type      string
-File      string
-Line      int
-Column    int
-EndLine   int
-EndColumn int
-Language  string
-Metadata  map[string]interface{}
+	Type      string
+	File      string
+	Line      int
+	Column    int
+	EndLine   int
+	EndColumn int
+	Language  string
+	Metadata  map[string]interface{}
 }
 
 func NewIgnoreFlag(file, name string, line, column, endLine, endColumn int, lang string) IgnoreSignal {
-return IgnoreSignal{
-Type:      string(IgnoreFlag),
-File:      file,
-Line:      line,
-Column:    column,
-EndLine:   endLine,
-EndColumn: endColumn,
-Language:  lang,
-Metadata: map[string]interface{}{
-"symbol_name": name,
-},
-}
+	return IgnoreSignal{
+		Type:      string(IgnoreFlag),
+		File:      file,
+		Line:      line,
+		Column:    column,
+		EndLine:   endLine,
+		EndColumn: endColumn,
+		Language:  lang,
+		Metadata: map[string]interface{}{
+			"symbol_name": name,
+		},
+	}
 }
 
 // ignoreRe matches @ignore-(unstable|unused|abandoned) in any text fragment
@@ -45,163 +45,163 @@ var ignoreMarkerRe = regexp.MustCompile(`@ignore-(unstable|unused|abandoned)\b`)
 // language.  It uses the language's CommentStyles so it works correctly with
 // //, #, --, ;, %, and other comment syntaxes.
 func ExtractIgnoreMarkers(source, file, langID string) []IgnoreSignal {
-lc, ok := language.Get(langID)
-if !ok {
-// Unknown language — fall back to scanning for the bare marker regardless
-// of comment syntax.
-lc = language.LanguageConfig{
-ID: langID,
-CommentStyles: []language.CommentStyle{
-{LinePrefix: "//"},
-{LinePrefix: "#"},
-{LinePrefix: "--"},
-{LinePrefix: "%"},
-{LinePrefix: ";"},
-},
-}
-}
+	lc, ok := language.Get(langID)
+	if !ok {
+		// Unknown language — fall back to scanning for the bare marker regardless
+		// of comment syntax.
+		lc = language.LanguageConfig{
+			ID: langID,
+			CommentStyles: []language.CommentStyle{
+				{LinePrefix: "//"},
+				{LinePrefix: "#"},
+				{LinePrefix: "--"},
+				{LinePrefix: "%"},
+				{LinePrefix: ";"},
+			},
+		}
+	}
 
-var result []IgnoreSignal
-lines := strings.Split(source, "\n")
+	var result []IgnoreSignal
+	lines := strings.Split(source, "\n")
 
-for lineIdx, line := range lines {
-if !ignoreMarkerRe.MatchString(line) {
-continue
-}
+	for lineIdx, line := range lines {
+		if !ignoreMarkerRe.MatchString(line) {
+			continue
+		}
 
-// Check the line contains the marker inside a comment.
-if !lineContainsIgnoreInComment(line, lc) {
-continue
-}
+		// Check the line contains the marker inside a comment.
+		if !lineContainsIgnoreInComment(line, lc) {
+			continue
+		}
 
-ignoreType := extractIgnoreTypeFromLine(line)
-symbolInfo := findNextSymbol(lines, lineIdx+1, lc)
-if symbolInfo.name == "" {
-continue
-}
+		ignoreType := extractIgnoreTypeFromLine(line)
+		symbolInfo := findNextSymbol(lines, lineIdx+1, lc)
+		if symbolInfo.name == "" {
+			continue
+		}
 
-endLine := findSymbolEnd(lines, symbolInfo.line, symbolInfo.name)
-if endLine <= symbolInfo.line {
-endLine = symbolInfo.line + 1
-}
+		endLine := findSymbolEnd(lines, symbolInfo.line, symbolInfo.name)
+		if endLine <= symbolInfo.line {
+			endLine = symbolInfo.line + 1
+		}
 
-sig := NewIgnoreFlag(file, symbolInfo.name, lineIdx+1, 0, endLine, len(line), langID)
-sig.Metadata["ignore_type"] = ignoreType
-result = append(result, sig)
-}
+		sig := NewIgnoreFlag(file, symbolInfo.name, lineIdx+1, 0, endLine, len(line), langID)
+		sig.Metadata["ignore_type"] = ignoreType
+		result = append(result, sig)
+	}
 
-return result
+	return result
 }
 
 // lineContainsIgnoreInComment returns true when the @ignore-* marker appears
 // inside a comment on this line, according to the language's comment styles.
 func lineContainsIgnoreInComment(line string, lc language.LanguageConfig) bool {
-trimmed := strings.TrimSpace(line)
+	trimmed := strings.TrimSpace(line)
 
-for _, cs := range lc.CommentStyles {
-if cs.LinePrefix != "" {
-idx := strings.Index(trimmed, cs.LinePrefix)
-if idx >= 0 {
-after := trimmed[idx+len(cs.LinePrefix):]
-if ignoreRe.MatchString(after) {
-return true
-}
-}
-}
-// Block comment start on same line (e.g. /* @ignore-unused */ or (* ... *))
-if cs.BlockStart != "" {
-idx := strings.Index(trimmed, cs.BlockStart)
-if idx >= 0 {
-after := trimmed[idx+len(cs.BlockStart):]
-if ignoreRe.MatchString(after) {
-return true
-}
-}
-}
-}
+	for _, cs := range lc.CommentStyles {
+		if cs.LinePrefix != "" {
+			idx := strings.Index(trimmed, cs.LinePrefix)
+			if idx >= 0 {
+				after := trimmed[idx+len(cs.LinePrefix):]
+				if ignoreRe.MatchString(after) {
+					return true
+				}
+			}
+		}
+		// Block comment start on same line (e.g. /* @ignore-unused */ or (* ... *))
+		if cs.BlockStart != "" {
+			idx := strings.Index(trimmed, cs.BlockStart)
+			if idx >= 0 {
+				after := trimmed[idx+len(cs.BlockStart):]
+				if ignoreRe.MatchString(after) {
+					return true
+				}
+			}
+		}
+	}
 
-// If no comment style matched but the marker is present, accept it as a
-// best-effort match so unknown languages are not silently broken.
-if len(lc.CommentStyles) == 0 && ignoreRe.MatchString(line) {
-return true
-}
+	// If no comment style matched but the marker is present, accept it as a
+	// best-effort match so unknown languages are not silently broken.
+	if len(lc.CommentStyles) == 0 && ignoreRe.MatchString(line) {
+		return true
+	}
 
-return false
+	return false
 }
 
 // extractIgnoreTypeFromLine extracts the ignore type keyword from a line.
 func extractIgnoreTypeFromLine(line string) string {
-m := ignoreRe.FindStringSubmatch(line)
-if len(m) > 1 {
-return m[1]
-}
-return ""
+	m := ignoreRe.FindStringSubmatch(line)
+	if len(m) > 1 {
+		return m[1]
+	}
+	return ""
 }
 
 // symbolInfo contains information about a found symbol.
 type symbolInfo struct {
-name string
-line int // 1-based
+	name string
+	line int // 1-based
 }
 
 // findNextSymbol searches for the next symbol definition after startLine.
 // It uses language-specific function patterns when available, with a set of
 // universal fallback patterns for common languages.
 func findNextSymbol(lines []string, startLine int, lc language.LanguageConfig) symbolInfo {
-// Compile language function patterns on-demand.
-var patterns []*regexp.Regexp
-for _, p := range lc.FunctionPatterns {
-if re, err := regexp.Compile(p); err == nil {
-patterns = append(patterns, re)
-}
-}
+	// Compile language function patterns on-demand.
+	var patterns []*regexp.Regexp
+	for _, p := range lc.FunctionPatterns {
+		if re, err := regexp.Compile(p); err == nil {
+			patterns = append(patterns, re)
+		}
+	}
 
-// Universal fallback patterns that cover the most common definition styles
-// across languages so even unconfigured languages work reasonably.
-universalPatterns := []*regexp.Regexp{
-regexp.MustCompile(`func\s+(\w+)\s*\(`),
-regexp.MustCompile(`(?:async\s+)?def\s+(\w+[?!]?)`),
-regexp.MustCompile(`(?:async\s+)?function\s+(\w+)\s*\(`),
-regexp.MustCompile(`(?:pub\s+)?fn\s+(\w+)\s*[<(]`),
-regexp.MustCompile(`sub\s+(\w+)\s*[{(]`),
-regexp.MustCompile(`defp?\s+(\w+[?!]?)`),
-}
-allPatterns := append(patterns, universalPatterns...)
+	// Universal fallback patterns that cover the most common definition styles
+	// across languages so even unconfigured languages work reasonably.
+	universalPatterns := []*regexp.Regexp{
+		regexp.MustCompile(`func\s+(\w+)\s*\(`),
+		regexp.MustCompile(`(?:async\s+)?def\s+(\w+[?!]?)`),
+		regexp.MustCompile(`(?:async\s+)?function\s+(\w+)\s*\(`),
+		regexp.MustCompile(`(?:pub\s+)?fn\s+(\w+)\s*[<(]`),
+		regexp.MustCompile(`sub\s+(\w+)\s*[{(]`),
+		regexp.MustCompile(`defp?\s+(\w+[?!]?)`),
+	}
+	allPatterns := append(patterns, universalPatterns...)
 
-for i := startLine; i < len(lines) && i < startLine+10; i++ {
-line := strings.TrimSpace(lines[i])
-if line == "" {
-continue
-}
+	for i := startLine; i < len(lines) && i < startLine+10; i++ {
+		line := strings.TrimSpace(lines[i])
+		if line == "" {
+			continue
+		}
 
-for _, re := range allPatterns {
-if m := re.FindStringSubmatch(line); len(m) > 1 && m[1] != "" {
-return symbolInfo{name: m[1], line: i + 1}
-}
-}
-}
+		for _, re := range allPatterns {
+			if m := re.FindStringSubmatch(line); len(m) > 1 && m[1] != "" {
+				return symbolInfo{name: m[1], line: i + 1}
+			}
+		}
+	}
 
-return symbolInfo{}
+	return symbolInfo{}
 }
 
 // findSymbolEnd estimates the line where the symbol body ends.
 func findSymbolEnd(lines []string, startLine int, symbolName string) int {
-for i := startLine; i < len(lines) && i < startLine+50; i++ {
-line := strings.TrimSpace(lines[i])
-if strings.Contains(line, symbolName) &&
-(strings.Contains(line, "{") || strings.Contains(line, "(")) {
-braceCount := 0
-for j := i; j < len(lines); j++ {
-scan := strings.TrimSpace(lines[j])
-braceCount += strings.Count(scan, "{") - strings.Count(scan, "}")
-if braceCount <= 0 &&
-(strings.Contains(scan, "}") ||
-strings.HasSuffix(scan, ")") ||
-strings.HasSuffix(scan, ";")) {
-return j + 1
-}
-}
-}
-}
-return startLine + 10
+	for i := startLine; i < len(lines) && i < startLine+50; i++ {
+		line := strings.TrimSpace(lines[i])
+		if strings.Contains(line, symbolName) &&
+			(strings.Contains(line, "{") || strings.Contains(line, "(")) {
+			braceCount := 0
+			for j := i; j < len(lines); j++ {
+				scan := strings.TrimSpace(lines[j])
+				braceCount += strings.Count(scan, "{") - strings.Count(scan, "}")
+				if braceCount <= 0 &&
+					(strings.Contains(scan, "}") ||
+						strings.HasSuffix(scan, ")") ||
+						strings.HasSuffix(scan, ";")) {
+					return j + 1
+				}
+			}
+		}
+	}
+	return startLine + 10
 }
