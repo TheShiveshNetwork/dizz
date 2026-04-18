@@ -1,171 +1,278 @@
+// Package regex provides a language-agnostic regex/lexical analyzer that works
+// for any language registered in the language registry.  It is the fallback
+// analyzer for all non-Go files; the AST analyzer handles Go.
 package regex
 
 import (
 	"bufio"
 	"os"
-	"path/filepath"
 	"regexp"
 	"strings"
 
+	"github.com/TheShiveshNetwork/dizz/internal/language"
 	"github.com/TheShiveshNetwork/dizz/internal/signals"
 )
 
-// Analyzer implements a simple regex-based analyzer for any language
+// compiledLanguage caches compiled regexps for a LanguageConfig so we only pay
+// the compilation cost once per language.
+type compiledLanguage struct {
+	cfg          language.LanguageConfig
+	fnPatterns   []*regexp.Regexp
+	callPatterns []*regexp.Regexp
+	todoPattern  *regexp.Regexp
+	intentState  *regexp.Regexp
+	intentFeat   *regexp.Regexp
+}
+
+// Analyzer uses the language registry to extract signals from any supported
+// source file.  It is intentionally language-agnostic: all behaviour comes from
+// the LanguageConfig for the detected language.
 type Analyzer struct {
-	patterns map[string]*regexp.Regexp
+	compiled map[string]*compiledLanguage // keyed by language ID
 }
 
-// NewAnalyzer creates a new regex analyzer
+// NewAnalyzer builds the analyzer and pre-compiles patterns for all registered
+// languages.
 func NewAnalyzer() *Analyzer {
-	return &Analyzer{
-		patterns: map[string]*regexp.Regexp{
-			"function_js":    regexp.MustCompile(`function\s+(\w+)\s*\(`),
-			"function_py":    regexp.MustCompile(`def\s+(\w+)\s*\(`),
-			"function_rust":  regexp.MustCompile(`fn\s+(\w+)\s*\(`),
-			"function_c":     regexp.MustCompile(`\w+\s+(\w+)\s*\([^)]*\)\s*\{`),
-			"todo":           regexp.MustCompile(`(?i)^\s*(//|#|/\*|\*)\s*(TODO|FIXME|XXX|HACK|NOTE):\s*(.+)`),
-			"intent_state":   regexp.MustCompile(`@dizz:state\s+(\w+)`),
-			"intent_feature": regexp.MustCompile(`@dizz:feature\s+(\w+)`),
-		},
+	a := &Analyzer{compiled: make(map[string]*compiledLanguage)}
+	for _, lc := range language.All() {
+		a.compiled[lc.ID] = compile(lc)
 	}
+	return a
 }
 
-// Language returns "regex"
-func (a *Analyzer) Language() string {
-	return "regex"
-}
+func compile(lc language.LanguageConfig) *compiledLanguage {
+	cl := &compiledLanguage{cfg: lc}
 
-// Supports checks if we should use regex analyzer
-// Returns true for common code files
-func (a *Analyzer) Supports(file string) bool {
-	ext := filepath.Ext(file)
-	supportedExts := map[string]bool{
-		".js":   true,
-		".ts":   true,
-		".jsx":  true,
-		".tsx":  true,
-		".py":   true,
-		".rs":   true,
-		".c":    true,
-		".cpp":  true,
-		".h":    true,
-		".hpp":  true,
-		".java": true,
-		".rb":   true,
-		".php":  true,
+	for _, p := range lc.FunctionPatterns {
+		if re, err := regexp.Compile(p); err == nil {
+			cl.fnPatterns = append(cl.fnPatterns, re)
+		}
 	}
-	return supportedExts[ext]
-}
-
-// Analyze extracts signals using regex patterns
-func (a *Analyzer) Analyze(files []string) (*signals.SignalSet, error) {
-	sigSet := &signals.SignalSet{}
-
-	for _, filePath := range files {
-		if err := a.analyzeFile(filePath, sigSet); err != nil {
-			continue // Skip files with errors
+	for _, p := range lc.CallPatterns {
+		if re, err := regexp.Compile(p); err == nil {
+			cl.callPatterns = append(cl.callPatterns, re)
 		}
 	}
 
+	// Build a TODO pattern that matches any of the language's comment prefixes.
+	cl.todoPattern = buildTodoPattern(lc)
+	cl.intentState = regexp.MustCompile(`@dizz:state\s+(\w+)`)
+	cl.intentFeat = regexp.MustCompile(`@dizz:feature\s+(\w+)`)
+	return cl
+}
+
+// buildTodoPattern creates a single regexp that matches TODO/FIXME/etc. in any
+// comment style defined for the language.
+func buildTodoPattern(lc language.LanguageConfig) *regexp.Regexp {
+	var prefixes []string
+	for _, cs := range lc.CommentStyles {
+		if cs.LinePrefix != "" {
+			prefixes = append(prefixes, regexp.QuoteMeta(cs.LinePrefix))
+		}
+	}
+	if len(prefixes) == 0 {
+		// Fallback: accept // or # if no prefix defined
+		prefixes = []string{`//`, `#`}
+	}
+	joined := strings.Join(prefixes, "|")
+	return regexp.MustCompile(`(?i)^\s*(?:` + joined + `|\*|/\*)\s*(TODO|FIXME|XXX|HACK|NOTE):\s*(.+)`)
+}
+
+// Language returns a descriptive identifier for this analyzer.
+func (a *Analyzer) Language() string { return "regex" }
+
+// Supports returns true for every file whose language is in the registry and is
+// not Go (Go is handled by the AST analyzer with higher accuracy).
+func (a *Analyzer) Supports(file string) bool {
+	lc, ok := language.Detect(file)
+	if !ok {
+		return false
+	}
+	return lc.ID != "go"
+}
+
+// Analyze extracts signals for all given files.
+func (a *Analyzer) Analyze(files []string) (*signals.SignalSet, error) {
+	sigSet := &signals.SignalSet{}
+	for _, filePath := range files {
+		_ = a.analyzeFile(filePath, sigSet) // skip individual file errors
+	}
 	return sigSet, nil
 }
 
-// analyzeFile analyzes a single file
+// analyzeFile processes a single file line-by-line.
 func (a *Analyzer) analyzeFile(filePath string, sigSet *signals.SignalSet) error {
-	file, err := os.Open(filePath)
+	lc, ok := language.Detect(filePath)
+	if !ok {
+		return nil
+	}
+	cl := a.compiled[lc.ID]
+	if cl == nil {
+		return nil
+	}
+
+	f, err := os.Open(filePath)
 	if err != nil {
 		return err
 	}
-	defer file.Close()
+	defer f.Close()
 
-	scanner := bufio.NewScanner(file)
+	// Determine accuracy tier label for metadata.
+	tier := tierLabel(lc.DefaultTier)
+
+	scanner := bufio.NewScanner(f)
 	lineNum := 0
-	lang := a.detectLanguage(filePath)
-
 	for scanner.Scan() {
 		lineNum++
 		line := scanner.Text()
 
-		a.extractFunctions(line, filePath, lang, lineNum, sigSet)
-
-		a.extractTodos(line, filePath, lang, lineNum, sigSet)
-
-		a.extractIntents(line, filePath, lang, lineNum, sigSet)
+		a.extractFunctions(line, filePath, lc.Name, lineNum, tier, cl, sigSet)
+		a.extractCalls(line, filePath, lc.Name, lineNum, tier, cl, sigSet)
+		a.extractTodos(line, filePath, lc.Name, lineNum, cl, sigSet)
+		a.extractIntents(line, filePath, lc.Name, lineNum, cl, sigSet)
 	}
 
 	return scanner.Err()
 }
 
-// extractFunctions finds function definitions
-func (a *Analyzer) extractFunctions(line, filePath, lang string, lineNum int, sigSet *signals.SignalSet) {
-	patterns := []string{"function_js", "function_py", "function_rust", "function_c"}
-
-	for _, patternName := range patterns {
-		if matches := a.patterns[patternName].FindStringSubmatch(line); matches != nil && len(matches) > 1 {
-			sig := signals.NewSignal(signals.FunctionDefined, filePath).
-				WithName(matches[1]).
-				WithLine(lineNum).
-				WithLanguage(lang).
-				WithConfidence(0.7) // Lower confidence for regex
-			sigSet.Add(*sig)
-			break // Only match one pattern per line
+// extractFunctions emits FunctionDefined signals.
+func (a *Analyzer) extractFunctions(
+	line, filePath, langName string, lineNum int, tier string,
+	cl *compiledLanguage, sigSet *signals.SignalSet,
+) {
+	for _, re := range cl.fnPatterns {
+		if m := re.FindStringSubmatch(line); m != nil && len(m) > 1 && m[1] != "" {
+			if !cl.cfg.Keywords[m[1]] {
+				sig := signals.NewSignal(signals.FunctionDefined, filePath).
+					WithName(m[1]).
+					WithLine(lineNum).
+					WithLanguage(langName).
+					WithConfidence(confidenceFor(cl.cfg.DefaultTier)).
+					WithMeta("source", "regex").
+					WithMeta("source_tier", tier)
+				sigSet.Add(*sig)
+				return // one definition per line
+			}
 		}
 	}
 }
 
-func (a *Analyzer) extractTodos(line, filePath, lang string, lineNum int, sigSet *signals.SignalSet) {
-	if matches := a.patterns["todo"].FindStringSubmatch(line); matches != nil && len(matches) > 2 {
-		sig := signals.NewSignal(signals.TodoFound, filePath).
-			WithLine(lineNum).
-			WithLanguage(lang).
-			WithMeta("type", strings.ToUpper(matches[1])).
-			WithMeta("text", strings.TrimSpace(matches[2]))
-		sigSet.Add(*sig)
+// extractCalls emits FunctionCalled signals.
+// To avoid treating definition headers as calls, we skip lines that already
+// matched a function definition pattern.
+func (a *Analyzer) extractCalls(
+	line, filePath, langName string, lineNum int, tier string,
+	cl *compiledLanguage, sigSet *signals.SignalSet,
+) {
+	// Skip blank lines and pure comment lines — no call sites there.
+	trimmed := strings.TrimSpace(line)
+	if trimmed == "" {
+		return
+	}
+	for _, cs := range cl.cfg.CommentStyles {
+		if cs.LinePrefix != "" && strings.HasPrefix(trimmed, cs.LinePrefix) {
+			return
+		}
+	}
+
+	// If the line is a function definition, skip it so we do not emit a
+	// spurious FunctionCalled for the definition itself.
+	for _, re := range cl.fnPatterns {
+		if re.MatchString(line) {
+			return
+		}
+	}
+
+	seen := make(map[string]bool)
+	for _, re := range cl.callPatterns {
+		all := re.FindAllStringSubmatch(line, -1)
+		for _, m := range all {
+			if len(m) < 2 || m[1] == "" {
+				continue
+			}
+			name := m[1]
+			if cl.cfg.Keywords[name] || seen[name] {
+				continue
+			}
+			seen[name] = true
+			sig := signals.NewSignal(signals.FunctionCalled, filePath).
+				WithName(name).
+				WithLine(lineNum).
+				WithLanguage(langName).
+				WithConfidence(confidenceFor(cl.cfg.DefaultTier)).
+				WithMeta("source", "regex").
+				WithMeta("source_tier", tier)
+			sigSet.Add(*sig)
+		}
 	}
 }
 
-// extractIntents finds @dizz markers
-func (a *Analyzer) extractIntents(line, filePath, lang string, lineNum int, sigSet *signals.SignalSet) {
-	if matches := a.patterns["intent_state"].FindStringSubmatch(line); matches != nil && len(matches) > 1 {
+// extractTodos emits TodoFound signals.
+func (a *Analyzer) extractTodos(
+	line, filePath, langName string, lineNum int,
+	cl *compiledLanguage, sigSet *signals.SignalSet,
+) {
+	if cl.todoPattern == nil {
+		return
+	}
+	m := cl.todoPattern.FindStringSubmatch(line)
+	if m == nil || len(m) < 3 {
+		return
+	}
+	sig := signals.NewSignal(signals.TodoFound, filePath).
+		WithLine(lineNum).
+		WithLanguage(langName).
+		WithMeta("type", strings.ToUpper(m[1])).
+		WithMeta("text", strings.TrimSpace(m[2]))
+	sigSet.Add(*sig)
+}
+
+// extractIntents emits IntentMarker signals for @dizz: annotations.
+func (a *Analyzer) extractIntents(
+	line, filePath, langName string, lineNum int,
+	cl *compiledLanguage, sigSet *signals.SignalSet,
+) {
+	if m := cl.intentState.FindStringSubmatch(line); m != nil && len(m) > 1 {
 		sig := signals.NewSignal(signals.IntentMarker, filePath).
 			WithLine(lineNum).
-			WithLanguage(lang).
+			WithLanguage(langName).
 			WithMeta("marker_type", "state").
-			WithMeta("value", matches[1])
+			WithMeta("value", m[1])
 		sigSet.Add(*sig)
 	}
-
-	if matches := a.patterns["intent_feature"].FindStringSubmatch(line); matches != nil && len(matches) > 1 {
+	if m := cl.intentFeat.FindStringSubmatch(line); m != nil && len(m) > 1 {
 		sig := signals.NewSignal(signals.IntentMarker, filePath).
 			WithLine(lineNum).
-			WithLanguage(lang).
+			WithLanguage(langName).
 			WithMeta("marker_type", "feature").
-			WithMeta("value", matches[1])
+			WithMeta("value", m[1])
 		sigSet.Add(*sig)
 	}
 }
 
-// detectLanguage infers language from file extension
-func (a *Analyzer) detectLanguage(filePath string) string {
-	ext := filepath.Ext(filePath)
-	langMap := map[string]string{
-		".js":   "javascript",
-		".ts":   "typescript",
-		".jsx":  "javascript",
-		".tsx":  "typescript",
-		".py":   "python",
-		".rs":   "rust",
-		".c":    "c",
-		".cpp":  "cpp",
-		".h":    "c",
-		".hpp":  "cpp",
-		".java": "java",
-		".rb":   "ruby",
-		".php":  "php",
-	}
+// ──────────────────────────────────────────────────────────────────────────────
+// Helpers
+// ──────────────────────────────────────────────────────────────────────────────
 
-	if lang, ok := langMap[ext]; ok {
-		return lang
+func tierLabel(t language.Tier) string {
+	switch t {
+	case language.TierAST:
+		return "ast"
+	case language.TierLexical:
+		return "lexical"
+	default:
+		return "regex"
 	}
-	return "unknown"
+}
+
+func confidenceFor(t language.Tier) float64 {
+	switch t {
+	case language.TierAST:
+		return 1.0
+	case language.TierLexical:
+		return 0.8
+	default:
+		return 0.6
+	}
 }

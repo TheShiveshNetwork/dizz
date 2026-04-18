@@ -4,6 +4,7 @@ import (
 	"os"
 	"strings"
 
+	"github.com/TheShiveshNetwork/dizz/internal/language"
 	"github.com/TheShiveshNetwork/dizz/internal/signals"
 )
 
@@ -93,16 +94,14 @@ func analyzeIgnoreMarkers(filePath string) []signals.Signal {
 	}
 
 	source := string(content)
-	// Determine language from file extension
-	language := "unknown"
-	if strings.HasSuffix(filePath, ".go") {
-		language = "go"
-	} else if strings.HasSuffix(filePath, ".js") || strings.HasSuffix(filePath, ".ts") {
-		language = "javascript"
+
+	// Use the language registry for accurate language detection.
+	langID := "unknown"
+	if lc, ok := language.Detect(filePath); ok {
+		langID = lc.ID
 	}
 
-	// Use the signals package to extract ignore markers
-	ignoreSignals := signals.ExtractIgnoreMarkers(source, filePath, language)
+	ignoreSignals := signals.ExtractIgnoreMarkers(source, filePath, langID)
 
 	// Convert IgnoreSignal to Signal
 	var result []signals.Signal
@@ -114,7 +113,7 @@ func analyzeIgnoreMarkers(filePath string) []signals.Signal {
 			signal := signals.NewSignal(signals.IgnoreFlag, filePath).
 				WithName(symbolName).
 				WithRange(ignoreSig.Line, ignoreSig.Column, ignoreSig.EndLine, ignoreSig.EndColumn).
-				WithLanguage(language).
+				WithLanguage(langID).
 				WithMeta("ignore_type", ignoreType).
 				WithMeta("symbol_name", symbolName) // Also copy symbol_name to new signal
 

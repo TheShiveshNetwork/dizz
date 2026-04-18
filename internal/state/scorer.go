@@ -226,16 +226,19 @@ func (s *Scorer) applyMathematicalScoring(symbols []*Symbol) {
 				percentile75 := agePercentiles[75.0] // 75th percentile for "old"
 				if age >= percentile75 {
 					symbol.State = Abandoned
-					symbol.Confidence = 0.7
+					symbol.Confidence = s.abandonedConfidence(symbol)
 					continue
 				}
 			}
 		}
 
-		// UNUSED: Not called but not old enough to be abandoned
+		// UNUSED: Not called but not old enough to be abandoned.
+		// For symbols extracted with low-accuracy regex (TierC), call detection
+		// is imperfect.  We still report the symbol as unused but reduce the
+		// confidence so downstream consumers and users understand the limitation.
 		if !symbol.IsCalled {
 			symbol.State = Unused
-			symbol.Confidence = 0.6
+			symbol.Confidence = s.unusedConfidence(symbol)
 			continue
 		}
 
@@ -244,6 +247,35 @@ func (s *Scorer) applyMathematicalScoring(symbols []*Symbol) {
 			symbol.State = Active
 			symbol.Confidence = 0.9
 		}
+	}
+}
+
+// unusedConfidence returns an appropriate confidence for the Unused state based
+// on how reliably call-sites were detected for this symbol's language.
+func (s *Scorer) unusedConfidence(sym *Symbol) float64 {
+	switch sym.SignalSource {
+	case "ast":
+		return 0.9 // AST-backed call detection — very reliable
+	case "lexical":
+		return 0.65 // Structural regex — reasonably reliable
+	case "regex":
+		return 0.4 // Low-accuracy fallback — treat with scepticism
+	default:
+		return 0.6 // Legacy / unknown source
+	}
+}
+
+// abandonedConfidence follows the same tier-based logic as unusedConfidence.
+func (s *Scorer) abandonedConfidence(sym *Symbol) float64 {
+	switch sym.SignalSource {
+	case "ast":
+		return 0.85
+	case "lexical":
+		return 0.6
+	case "regex":
+		return 0.35
+	default:
+		return 0.7
 	}
 }
 
@@ -259,19 +291,24 @@ func (s *Scorer) InterpretSignalsWithIntent(sigSet *signals.SignalSet, intentSta
 		key := sig.File + "::" + sig.Name
 
 		if _, exists := symbolIndex[key]; !exists {
+			source := "ast"
+			if src, ok := sig.Metadata["source_tier"].(string); ok && src != "" {
+				source = src
+			}
 			symbolIndex[key] = &Symbol{
-				Name:       sig.Name,
-				File:       sig.File,
-				Line:       sig.Line,
-				Column:     sig.Column,
-				EndLine:    sig.EndLine,
-				EndColumn:  sig.EndColumn,
-				Type:       "function",
-				Language:   sig.Language,
-				IsDefined:  true,
-				IsCalled:   false,
-				HasTodo:    false,
-				ChurnCount: 0,
+				Name:         sig.Name,
+				File:         sig.File,
+				Line:         sig.Line,
+				Column:       sig.Column,
+				EndLine:      sig.EndLine,
+				EndColumn:    sig.EndColumn,
+				Type:         "function",
+				Language:     sig.Language,
+				IsDefined:    true,
+				IsCalled:     false,
+				HasTodo:      false,
+				ChurnCount:   0,
+				SignalSource: source,
 			}
 		}
 	}

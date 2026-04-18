@@ -43,6 +43,10 @@ type Symbol struct {
 
 	// Intent
 	IntentMarker string `json:"intent_marker,omitempty"`
+
+	// Analysis accuracy — one of "ast", "lexical", "regex".
+	// Populated from signal source metadata; omitted for legacy state files.
+	SignalSource string `json:"signal_source,omitempty"`
 }
 
 type Todo struct {
