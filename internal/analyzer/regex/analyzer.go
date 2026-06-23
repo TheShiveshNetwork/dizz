@@ -104,6 +104,15 @@ func (a *Analyzer) Analyze(files []string) (*signals.SignalSet, error) {
 	return sigSet, nil
 }
 
+// AnalyzeFile extracts signals from a single file.
+func (a *Analyzer) AnalyzeFile(file string) ([]signals.Signal, error) {
+	sigSet := &signals.SignalSet{}
+	if err := a.analyzeFile(file, sigSet); err != nil {
+		return nil, err
+	}
+	return sigSet.Signals, nil
+}
+
 // analyzeFile processes a single file line-by-line.
 func (a *Analyzer) analyzeFile(filePath string, sigSet *signals.SignalSet) error {
 	lc, ok := language.Detect(filePath)

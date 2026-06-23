@@ -105,6 +105,18 @@ func matchPattern(path, pattern string) bool {
 
 			return true
 		}
+
+		// Handle **/middle/** pattern (e.g. **/node_modules/**)
+		if len(parts) >= 3 && parts[0] == "" && parts[len(parts)-1] == "" {
+			slashed := "/" + path + "/"
+			for i := 1; i < len(parts)-1; i++ {
+				middle := strings.Trim(parts[i], "/")
+				if middle != "" && !strings.Contains(slashed, "/"+middle+"/") {
+					return false
+				}
+			}
+			return true
+		}
 	}
 
 	// Handle simple wildcard

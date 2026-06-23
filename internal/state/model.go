@@ -72,9 +72,9 @@ type FileContext struct {
 type ProjectState struct {
 	UpdatedAt time.Time              `json:"updated_at"`
 	GitCommit *integrations.Commit   `json:"git_commit,omitempty"`
-	Symbols   []Symbol               `json:"symbols"`
-	Todos     []Todo                 `json:"todos"`
-	Files     []FileContext          `json:"files"`
+	Symbols   []Symbol               `json:"symbols,omitempty"`
+	Todos     []Todo                 `json:"todos,omitempty"`
+	Files     []FileContext          `json:"files,omitempty"`
 	Metadata  map[string]interface{} `json:"metadata,omitempty"`
 }
 
@@ -82,9 +82,9 @@ type ProjectState struct {
 type projectStateRaw struct {
 	UpdatedAt time.Time              `json:"updated_at"`
 	GitCommit interface{}            `json:"git_commit,omitempty"`
-	Symbols   []Symbol               `json:"symbols"`
-	Todos     []Todo                 `json:"todos"`
-	Files     []FileContext          `json:"files"`
+	Symbols   []Symbol               `json:"symbols,omitempty"`
+	Todos     []Todo                 `json:"todos,omitempty"`
+	Files     []FileContext          `json:"files,omitempty"`
 	Metadata  map[string]interface{} `json:"metadata,omitempty"`
 }
 

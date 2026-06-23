@@ -133,8 +133,7 @@ func runStatus() {
 
 	if summary.ByState[state.Planned] > 0 {
 		bar := createBar(summary.ByState[state.Planned], summary.TotalSymbols, ui.BrightYellow)
-		fmt.Printf("    %s %-12s %s %s\n",
-			ui.Warning("⚠"),
+		fmt.Printf("      %-12s %s %s\n",
 			"Planned",
 			ui.Warning(fmt.Sprintf("%3d", summary.ByState[state.Planned])),
 			bar)

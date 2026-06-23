@@ -10,9 +10,10 @@ const (
 	RefsDirName    = "refs"
 	GitRefDirName  = "refs/git"
 	HooksDirName   = "hooks"
+	CacheDirName   = "cache"
 
 	ConfigFile = "config.json"
-	StateFile  = "state.json"
+	StateFile  = "state.json.gz"
 	IntentFile = "intent.json"
 
 	DefaultBranch = "main"
@@ -51,4 +52,16 @@ func IntentFilePath(root string) string {
 
 func HooksDirPath(root string) string {
 	return filepath.Join(root, TrackDirName, HooksDirName)
+}
+
+func CacheDirPath(root string) string {
+	return filepath.Join(root, TrackDirName, CacheDirName)
+}
+
+func CacheManifestPath(root string) string {
+	return filepath.Join(root, TrackDirName, CacheDirName, "manifest.json")
+}
+
+func CacheSignalsDirPath(root string) string {
+	return filepath.Join(root, TrackDirName, CacheDirName, "signals")
 }

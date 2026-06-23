@@ -19,6 +19,10 @@ type Analyzer interface {
 
 	// Analyze extracts signals from the given files
 	Analyze(files []string) (*signals.SignalSet, error)
+
+	// AnalyzeFile extracts signals from a single file.
+	// Returns per-file signals for incremental caching.
+	AnalyzeFile(file string) ([]signals.Signal, error)
 }
 
 // Registry manages all available analyzers
@@ -48,6 +52,36 @@ func (r *Registry) FindAnalyzer(file string) Analyzer {
 	return nil
 }
 
+// AnalyzeFile extracts signals from a single file using the best matching analyzer.
+func (r *Registry) AnalyzeFile(file string) ([]signals.Signal, error) {
+	analyzer := r.FindAnalyzer(file)
+	if analyzer == nil {
+		return nil, nil
+	}
+	return analyzer.AnalyzeFile(file)
+}
+
+// AnalyzeSingleFile runs the full per-file pipeline: main analysis + ignore markers.
+// Used by the incremental cache path.
+func (r *Registry) AnalyzeSingleFile(file string) ([]signals.Signal, error) {
+	var allSignals []signals.Signal
+
+	analyzer := r.FindAnalyzer(file)
+	if analyzer != nil {
+		sigs, err := analyzer.AnalyzeFile(file)
+		if err != nil {
+			return nil, err
+		}
+		allSignals = append(allSignals, sigs...)
+	}
+
+	// Analyze ignore markers for this file
+	ignoreSigs := AnalyzeIgnoreMarkers(file)
+	allSignals = append(allSignals, ignoreSigs...)
+
+	return allSignals, nil
+}
+
 // AnalyzeFiles runs appropriate analyzers on all files
 func (r *Registry) AnalyzeFiles(files []string) (*signals.SignalSet, error) {
 	if len(files) == 0 {
@@ -71,7 +105,7 @@ func (r *Registry) AnalyzeFiles(files []string) (*signals.SignalSet, error) {
 
 	allSignals := &signals.SignalSet{}
 	var wg sync.WaitGroup
-	
+
 	// Use channels to collect results instead of a Mutex to avoid contention
 	// Each analyzer gets one slot, plus one for ignore markers
 	signalChan := make(chan []signals.Signal, len(filesByAnalyzer)+1)
@@ -109,7 +143,7 @@ func (r *Registry) AnalyzeFiles(files []string) (*signals.SignalSet, error) {
 			go func() {
 				defer innerWg.Done()
 				for f := range jobs {
-					sigs := analyzeIgnoreMarkers(f)
+					sigs := AnalyzeIgnoreMarkers(f)
 					mu.Lock()
 					ignoreSigs = append(ignoreSigs, sigs...)
 					mu.Unlock()
@@ -150,7 +184,7 @@ func (r *Registry) AnalyzeFiles(files []string) (*signals.SignalSet, error) {
 // analyzeSequentially handles small projects without parallel overhead
 func (r *Registry) analyzeSequentially(files []string) (*signals.SignalSet, error) {
 	allSignals := &signals.SignalSet{}
-	
+
 	filesByAnalyzer := make(map[Analyzer][]string)
 	for _, file := range files {
 		analyzer := r.FindAnalyzer(file)
@@ -172,7 +206,7 @@ func (r *Registry) analyzeSequentially(files []string) (*signals.SignalSet, erro
 	}
 
 	for _, file := range files {
-		sigs := analyzeIgnoreMarkers(file)
+		sigs := AnalyzeIgnoreMarkers(file)
 		for _, sig := range sigs {
 			allSignals.Add(sig)
 		}
@@ -181,8 +215,8 @@ func (r *Registry) analyzeSequentially(files []string) (*signals.SignalSet, erro
 	return allSignals, nil
 }
 
-// analyzeIgnoreMarkers analyzes a file for intent ignore markers
-func analyzeIgnoreMarkers(filePath string) []signals.Signal {
+// AnalyzeIgnoreMarkers analyzes a file for intent ignore markers
+func AnalyzeIgnoreMarkers(filePath string) []signals.Signal {
 	content, err := os.ReadFile(filePath)
 	if err != nil {
 		return []signals.Signal{}
