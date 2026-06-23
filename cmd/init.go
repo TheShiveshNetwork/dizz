@@ -54,8 +54,8 @@ func runInit() {
 		}
 	}
 
-	objectsDir := config.ObjectsDirPath(trackDir)
-	refsDir := config.RefsDirPath(trackDir)
+	objectsDir := config.ObjectsDirPath(cwd)
+	refsDir := config.RefsDirPath(cwd)
 
 	// create all the necessary dirs
 	dirs := []string{
