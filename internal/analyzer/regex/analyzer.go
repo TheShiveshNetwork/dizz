@@ -70,6 +70,9 @@ func buildTodoPattern(lc language.LanguageConfig) *regexp.Regexp {
 		if cs.LinePrefix != "" {
 			prefixes = append(prefixes, regexp.QuoteMeta(cs.LinePrefix))
 		}
+		if cs.BlockStart != "" {
+			prefixes = append(prefixes, regexp.QuoteMeta(cs.BlockStart))
+		}
 	}
 	if len(prefixes) == 0 {
 		// Fallback: accept // or # if no prefix defined
@@ -127,10 +130,10 @@ func (a *Analyzer) analyzeFile(filePath string, sigSet *signals.SignalSet) error
 		lineNum++
 		line := scanner.Text()
 
-		a.extractFunctions(line, filePath, lc.Name, lineNum, tier, cl, sigSet)
-		a.extractCalls(line, filePath, lc.Name, lineNum, tier, cl, sigSet)
-		a.extractTodos(line, filePath, lc.Name, lineNum, cl, sigSet)
-		a.extractIntents(line, filePath, lc.Name, lineNum, cl, sigSet)
+		a.extractFunctions(line, filePath, lc.ID, lineNum, tier, cl, sigSet)
+		a.extractCalls(line, filePath, lc.ID, lineNum, tier, cl, sigSet)
+		a.extractTodos(line, filePath, lc.ID, lineNum, cl, sigSet)
+		a.extractIntents(line, filePath, lc.ID, lineNum, cl, sigSet)
 	}
 
 	return scanner.Err()
@@ -138,7 +141,7 @@ func (a *Analyzer) analyzeFile(filePath string, sigSet *signals.SignalSet) error
 
 // extractFunctions emits FunctionDefined signals.
 func (a *Analyzer) extractFunctions(
-	line, filePath, langName string, lineNum int, tier string,
+	line, filePath, langID string, lineNum int, tier string,
 	cl *compiledLanguage, sigSet *signals.SignalSet,
 ) {
 	for _, re := range cl.fnPatterns {
@@ -147,7 +150,7 @@ func (a *Analyzer) extractFunctions(
 				sig := signals.NewSignal(signals.FunctionDefined, filePath).
 					WithName(m[1]).
 					WithLine(lineNum).
-					WithLanguage(langName).
+					WithLanguage(langID).
 					WithConfidence(confidenceFor(cl.cfg.DefaultTier)).
 					WithMeta("source", "regex").
 					WithMeta("source_tier", tier)
@@ -162,7 +165,7 @@ func (a *Analyzer) extractFunctions(
 // To avoid treating definition headers as calls, we skip lines that already
 // matched a function definition pattern.
 func (a *Analyzer) extractCalls(
-	line, filePath, langName string, lineNum int, tier string,
+	line, filePath, langID string, lineNum int, tier string,
 	cl *compiledLanguage, sigSet *signals.SignalSet,
 ) {
 	// Skip blank lines and pure comment lines — no call sites there.
@@ -199,7 +202,7 @@ func (a *Analyzer) extractCalls(
 			sig := signals.NewSignal(signals.FunctionCalled, filePath).
 				WithName(name).
 				WithLine(lineNum).
-				WithLanguage(langName).
+				WithLanguage(langID).
 				WithConfidence(confidenceFor(cl.cfg.DefaultTier)).
 				WithMeta("source", "regex").
 				WithMeta("source_tier", tier)
@@ -210,7 +213,7 @@ func (a *Analyzer) extractCalls(
 
 // extractTodos emits TodoFound signals.
 func (a *Analyzer) extractTodos(
-	line, filePath, langName string, lineNum int,
+	line, filePath, langID string, lineNum int,
 	cl *compiledLanguage, sigSet *signals.SignalSet,
 ) {
 	if cl.todoPattern == nil {
@@ -220,9 +223,13 @@ func (a *Analyzer) extractTodos(
 	if m == nil || len(m) < 3 {
 		return
 	}
+	// Determine accuracy tier label for metadata.
+	tier := tierLabel(cl.cfg.DefaultTier)
 	sig := signals.NewSignal(signals.TodoFound, filePath).
 		WithLine(lineNum).
-		WithLanguage(langName).
+		WithLanguage(langID).
+		WithMeta("source", "regex").
+		WithMeta("source_tier", tier).
 		WithMeta("type", strings.ToUpper(m[1])).
 		WithMeta("text", strings.TrimSpace(m[2]))
 	sigSet.Add(*sig)
@@ -230,13 +237,13 @@ func (a *Analyzer) extractTodos(
 
 // extractIntents emits IntentMarker signals for @dizz: annotations.
 func (a *Analyzer) extractIntents(
-	line, filePath, langName string, lineNum int,
+	line, filePath, langID string, lineNum int,
 	cl *compiledLanguage, sigSet *signals.SignalSet,
 ) {
 	if m := cl.intentState.FindStringSubmatch(line); m != nil && len(m) > 1 {
 		sig := signals.NewSignal(signals.IntentMarker, filePath).
 			WithLine(lineNum).
-			WithLanguage(langName).
+			WithLanguage(langID).
 			WithMeta("marker_type", "state").
 			WithMeta("value", m[1])
 		sigSet.Add(*sig)
@@ -244,7 +251,7 @@ func (a *Analyzer) extractIntents(
 	if m := cl.intentFeat.FindStringSubmatch(line); m != nil && len(m) > 1 {
 		sig := signals.NewSignal(signals.IntentMarker, filePath).
 			WithLine(lineNum).
-			WithLanguage(langName).
+			WithLanguage(langID).
 			WithMeta("marker_type", "feature").
 			WithMeta("value", m[1])
 		sigSet.Add(*sig)

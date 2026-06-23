@@ -866,7 +866,7 @@ var extIndex = func() map[string]string {
 	m := make(map[string]string, 128)
 	for _, lc := range languages {
 		for _, ext := range lc.Extensions {
-			m[ext] = lc.ID
+			m[strings.ToLower(ext)] = lc.ID
 		}
 	}
 	return m

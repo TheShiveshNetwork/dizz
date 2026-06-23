@@ -68,7 +68,7 @@ fmt:
 lint:
 	@golangci-lint run
 
-## Install locally (go install)
+## Install locally (copy binary)
 .PHONY: install
 install: build
 	@echo "📦 Installing $(TARGET_NAME) to $(INSTALL_DIR)..."

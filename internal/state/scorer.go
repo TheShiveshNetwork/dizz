@@ -331,10 +331,17 @@ func (s *Scorer) InterpretSignalsWithIntent(sigSet *signals.SignalSet, intentSta
 		key := sig.File + "::" + sig.Name
 
 		if _, exists := symbolIndex[key]; !exists {
-			source := "ast"
-			if src, ok := sig.Metadata["source_tier"].(string); ok && src != "" {
-				source = src
-			}
+				var source string
+				if src, ok := sig.Metadata["source_tier"].(string); ok && src != "" {
+					source = src
+				} else {
+					// Derive default from language: Go has AST analyzer, others use regex fallback
+					if sig.Language == "go" {
+						source = "ast"
+					} else {
+						source = "regex"
+					}
+				}
 			symbolIndex[key] = &Symbol{
 				Name:         sig.Name,
 				File:         sig.File,

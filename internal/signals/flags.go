@@ -41,6 +41,35 @@ var ignoreRe = regexp.MustCompile(`@ignore-(unstable|unused|abandoned)\b`)
 // marker before the more expensive processing begins.
 var ignoreMarkerRe = regexp.MustCompile(`@ignore-(unstable|unused|abandoned)\b`)
 
+// Universal fallback patterns that cover the most common definition styles
+// across languages so even unconfigured languages work reasonably.
+// Compiled once at package init.
+var universalFunctionPatterns = []*regexp.Regexp{
+	regexp.MustCompile(`func\s+(\w+)\s*\(`),
+	regexp.MustCompile(`(?:async\s+)?def\s+(\w+[?!]?)`),
+	regexp.MustCompile(`(?:async\s+)?function\s+(\w+)\s*\(`),
+	regexp.MustCompile(`(?:pub\s+)?fn\s+(\w+)\s*[<(]`),
+	regexp.MustCompile(`sub\s+(\w+)\s*[{(]`),
+	regexp.MustCompile(`defp?\s+(\w+[?!]?)`),
+}
+
+// compiledFunctionPatterns caches compiled function patterns for a LanguageConfig
+// so we only pay the compilation cost once per language.
+var compiledFunctionPatterns = make(map[string][]*regexp.Regexp)
+
+// init compiles function patterns for all registered languages at startup.
+func init() {
+	for _, lc := range language.All() {
+		var patterns []*regexp.Regexp
+		for _, p := range lc.FunctionPatterns {
+			if re, err := regexp.Compile(p); err == nil {
+				patterns = append(patterns, re)
+			}
+		}
+		compiledFunctionPatterns[lc.ID] = patterns
+	}
+}
+
 // ExtractIgnoreMarkers finds @ignore-* patterns in code for any registered
 // language.  It uses the language's CommentStyles so it works correctly with
 // //, #, --, ;, %, and other comment syntaxes.
@@ -148,25 +177,10 @@ type symbolInfo struct {
 // It uses language-specific function patterns when available, with a set of
 // universal fallback patterns for common languages.
 func findNextSymbol(lines []string, startLine int, lc language.LanguageConfig) symbolInfo {
-	// Compile language function patterns on-demand.
-	var patterns []*regexp.Regexp
-	for _, p := range lc.FunctionPatterns {
-		if re, err := regexp.Compile(p); err == nil {
-			patterns = append(patterns, re)
-		}
-	}
+	// Get cached language function patterns
+	patterns := compiledFunctionPatterns[lc.ID]
 
-	// Universal fallback patterns that cover the most common definition styles
-	// across languages so even unconfigured languages work reasonably.
-	universalPatterns := []*regexp.Regexp{
-		regexp.MustCompile(`func\s+(\w+)\s*\(`),
-		regexp.MustCompile(`(?:async\s+)?def\s+(\w+[?!]?)`),
-		regexp.MustCompile(`(?:async\s+)?function\s+(\w+)\s*\(`),
-		regexp.MustCompile(`(?:pub\s+)?fn\s+(\w+)\s*[<(]`),
-		regexp.MustCompile(`sub\s+(\w+)\s*[{(]`),
-		regexp.MustCompile(`defp?\s+(\w+[?!]?)`),
-	}
-	allPatterns := append(patterns, universalPatterns...)
+	allPatterns := append(patterns, universalFunctionPatterns...)
 
 	for i := startLine; i < len(lines) && i < startLine+10; i++ {
 		line := strings.TrimSpace(lines[i])
