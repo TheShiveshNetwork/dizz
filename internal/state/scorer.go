@@ -481,8 +481,7 @@ func (s *Scorer) InterpretSignalsWithIntent(sigSet *signals.SignalSet, intentSta
 		}
 	}
 
-	// Apply
-	// // @ignore-unusedmathematical scoring (percentile-based)
+	// Apply mathematical scoring (percentile-based)
 	var symbolSlice []*Symbol
 	for _, symbol := range symbolIndex {
 		symbolSlice = append(symbolSlice, symbol)
