@@ -160,6 +160,49 @@ Each Intent carries a severity score from 0–3, where 3 represents critical, pr
 
 > Intents are immutable project goals; TODO/FIXME comments are mutable code-level fixes — dizz treats them differently by design.
 
+## Supported Languages
+
+`dizz` supports **34 languages** out of the box through a tiered analysis pipeline:
+
+| Language | Extensions | Analysis Tier |
+|----------|-----------|---------------|
+| Go | `.go` | AST |
+| JavaScript | `.js`, `.mjs`, `.cjs` | Lexical |
+| TypeScript | `.ts`, `.mts`, `.cts` | Lexical |
+| JavaScript (JSX) | `.jsx` | Lexical |
+| TypeScript (TSX) | `.tsx` | Lexical |
+| Python | `.py`, `.pyw` | Lexical |
+| Rust | `.rs` | Lexical |
+| Java | `.java` | Lexical |
+| Kotlin | `.kt`, `.kts` | Lexical |
+| Swift | `.swift` | Lexical |
+| C# | `.cs` | Lexical |
+| Ruby | `.rb`, `.rake`, `.ru` | Lexical |
+| PHP | `.php`, `.phtml` | Lexical |
+| C | `.c` | Regex |
+| C++ | `.cpp`, `.cc`, `.cxx`, `.c++` | Regex |
+| C/C++ Header | `.h`, `.hpp`, `.hxx` | Regex |
+| Scala | `.scala`, `.sc` | Lexical |
+| Lua | `.lua` | Lexical |
+| Shell/Bash | `.sh`, `.bash`, `.zsh`, `.ksh`, `.fish` | Regex |
+| Haskell | `.hs`, `.lhs` | Regex |
+| Elixir | `.ex`, `.exs` | Lexical |
+| R | `.r`, `.R` | Regex |
+| Julia | `.jl` | Lexical |
+| Dart | `.dart` | Lexical |
+| Perl | `.pl`, `.pm`, `.perl` | Regex |
+| Nim | `.nim` | Lexical |
+| Zig | `.zig` | Lexical |
+| Clojure | `.clj`, `.cljs`, `.cljc`, `.edn` | Lexical |
+| Erlang | `.erl`, `.hrl` | Lexical |
+| OCaml | `.ml`, `.mli` | Regex |
+| F# | `.fs`, `.fsi`, `.fsx` | Regex |
+| SQL | `.sql` | Regex |
+| MATLAB | `.m` | Regex |
+| Terraform/HCL | `.tf`, `.tfvars` | Regex |
+
+New languages are added by registering a `LanguageConfig` in the internal registry — no core changes needed.
+
 ## Symbol States
 
 Symbol states are derived by combining usage signals, intent markers, and historical Git churn.

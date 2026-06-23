@@ -142,8 +142,7 @@ func runStatus() {
 
 	if summary.ByState[state.Unused] > 0 {
 		bar := createBar(summary.ByState[state.Unused], summary.TotalSymbols, ui.BrightCyan)
-		fmt.Printf("    %s%-12s %s %s\n",
-			ui.Info("⚪"),
+		fmt.Printf("      %-12s %s %s\n",
 			"Unused",
 			ui.Info(fmt.Sprintf("%3d", summary.ByState[state.Unused])),
 			bar)

@@ -2,10 +2,10 @@ package analyzer
 
 import (
 	"os"
-	"path/filepath"
 	"strings"
 	"sync"
 
+	"github.com/TheShiveshNetwork/dizz/internal/language"
 	"github.com/TheShiveshNetwork/dizz/internal/signals"
 )
 
@@ -189,10 +189,16 @@ func analyzeIgnoreMarkers(filePath string) []signals.Signal {
 	}
 
 	source := string(content)
-	language := detectLanguage(filePath)
+
+	// Use the language registry for accurate language detection.
+	langID := "unknown"
+	if lc, ok := language.Detect(filePath); ok {
+		langID = lc.ID
+	}
 
 	// Use the signals package to extract ignore markers
-	ignoreSignals := signals.ExtractIgnoreMarkers(source, filePath, language)
+	// Use the signals package to extract ignore markers
+	ignoreSignals := signals.ExtractIgnoreMarkers(source, filePath, langID)
 
 	var result []signals.Signal
 	for _, ignoreSig := range ignoreSignals {
@@ -202,7 +208,7 @@ func analyzeIgnoreMarkers(filePath string) []signals.Signal {
 			signal := signals.NewSignal(signals.IgnoreFlag, filePath).
 				WithName(symbolName).
 				WithRange(ignoreSig.Line, ignoreSig.Column, ignoreSig.EndLine, ignoreSig.EndColumn).
-				WithLanguage(language).
+				WithLanguage(langID).
 				WithMeta("ignore_type", ignoreType).
 				WithMeta("symbol_name", symbolName)
 
@@ -211,30 +217,6 @@ func analyzeIgnoreMarkers(filePath string) []signals.Signal {
 	}
 
 	return result
-}
-
-func detectLanguage(filePath string) string {
-	ext := strings.ToLower(filepath.Ext(filePath))
-	langMap := map[string]string{
-		".go":   "go",
-		".js":   "javascript",
-		".ts":   "typescript",
-		".jsx":  "javascript",
-		".tsx":  "typescript",
-		".py":   "python",
-		".rs":   "rust",
-		".rb":   "ruby",
-		".php":  "php",
-		".java": "java",
-		".c":    "c",
-		".cpp":  "cpp",
-		".h":    "c",
-		".hpp":  "cpp",
-	}
-	if lang, ok := langMap[ext]; ok {
-		return lang
-	}
-	return "unknown"
 }
 
 // extractIgnoreTypeFromSignal extracts the ignore type from the original comment

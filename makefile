@@ -3,9 +3,17 @@ BINARY_NAME := dizz
 BUILD_DIR   := bin
 MAIN_PKG    := .
 
+# Local development install
+INSTALL_DIR := $(HOME)/.local/bin
+TARGET_NAME := dizz-dev
+
 # Go env
 GO          := go
 GOFLAGS     := -trimpath
+
+# Version injection — uses the latest git tag, falls back to "dev"
+VERSION     := $(shell git describe --tags --abbrev=0 2>/dev/null || echo "dev")
+LDFLAGS     := -X github.com/TheShiveshNetwork/dizz/cmd.version=$(VERSION)
 
 # Default target
 .PHONY: all
@@ -14,9 +22,9 @@ all: build
 ## Build the binary
 .PHONY: build
 build:
-	@echo "🔨 Building $(BINARY_NAME)..."
+	@echo "🔨 Building $(BINARY_NAME) $(VERSION)..."
 	@mkdir -p $(BUILD_DIR)
-	$(GO) build $(GOFLAGS) -o $(BUILD_DIR)/$(BINARY_NAME) $(MAIN_PKG)
+	$(GO) build $(GOFLAGS) -ldflags "$(LDFLAGS)" -o $(BUILD_DIR)/$(BINARY_NAME) $(MAIN_PKG)
 
 ## Run the CLI (after build)
 .PHONY: run
@@ -64,11 +72,19 @@ fmt:
 lint:
 	@golangci-lint run
 
-## Install locally (go install)
+## Install locally (copy binary)
 .PHONY: install
-install:
-	@echo "📦 Installing $(BINARY_NAME)..."
-	@$(GO) install $(MAIN_PKG)
+install: build
+	@echo "📦 Installing $(TARGET_NAME) to $(INSTALL_DIR)..."
+	@mkdir -p $(INSTALL_DIR)
+	@cp $(BUILD_DIR)/$(BINARY_NAME) $(INSTALL_DIR)/$(TARGET_NAME)
+	@chmod +x $(INSTALL_DIR)/$(TARGET_NAME)
+	@echo "✅ Installed as $(TARGET_NAME)"
+
+.PHONY: uninstall
+uninstall:
+	@echo "🗑 Removing $(TARGET_NAME)..."
+	@rm -f $(INSTALL_DIR)/$(TARGET_NAME)
 
 build-site:
 	./scripts/build-site.sh

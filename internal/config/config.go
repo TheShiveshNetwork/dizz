@@ -9,6 +9,7 @@ const (
 	ObjectsDirName = "objects"
 	RefsDirName    = "refs"
 	GitRefDirName  = "refs/git"
+	HooksDirName   = "hooks"
 
 	ConfigFile = "config.json"
 	StateFile  = "state.json"
@@ -46,4 +47,8 @@ func StateFilePath(root string) string {
 
 func IntentFilePath(root string) string {
 	return filepath.Join(root, IntentFile)
+}
+
+func HooksDirPath(root string) string {
+	return filepath.Join(root, TrackDirName, HooksDirName)
 }

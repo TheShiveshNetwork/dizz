@@ -88,14 +88,23 @@ func runInit() {
 	}
 
 	fmt.Printf("✓ Initialized %s\n", projectName)
-	// install post-commit hook
+	// install local post-commit hook (tracked in .dizz/hooks/)
 	if isGitRepo {
-		hookContent := defaults.GitPostCommitHookContent(config.AppName)
-		if err := integrations.InstallPostCommitHook(hookContent); err != nil {
-			fmt.Printf("⚠️  Could not install git hook: %v\n", err)
+		hooksDir := config.HooksDirPath(cwd)
+		hookPath := filepath.Join(hooksDir, "post-commit")
+		hookContent := defaults.LocalPostCommitHookContent(config.AppName)
+
+		if err := integrations.InstallLocalPostCommitHook(hookPath, hookContent); err != nil {
+			fmt.Printf("⚠️  Could not install post-commit hook: %v\n", err)
 			fmt.Println("   You can still use dizz manually with 'dizz snapshot'")
 		} else {
-			fmt.Println("✓ Installed git post-commit hook")
+			fmt.Println("✓ Installed post-commit hook to .dizz/hooks/")
+		}
+
+		if err := integrations.SetLocalHooksPath(); err != nil {
+			fmt.Printf("⚠️  Could not set hooks path: %v\n", err)
+		} else {
+			fmt.Println("✓ Configured git to use hooks from .dizz/hooks/")
 		}
 	}
 	fmt.Printf("  Created %s/\n", trackDir)

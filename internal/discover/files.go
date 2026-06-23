@@ -4,6 +4,8 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+
+	"github.com/TheShiveshNetwork/dizz/internal/language"
 )
 
 // Discover all relevant files in a directory tree
@@ -39,20 +41,36 @@ func Files(root string, include, exclude []string) ([]string, error) {
 	return files, err
 }
 
-// return common code file extensions
+// CodeFiles returns all source files under root that belong to any language
+// registered in the language registry, honoring the given exclude patterns.
+//
+// The include patterns in the project config are respected: if the caller
+// passes non-empty customIncludes they are used instead of the registry-derived
+// extension list.  Pass nil or an empty slice to use the auto-generated list.
 func CodeFiles(root string, exclude []string) ([]string, error) {
-	codeExtensions := []string{
-		"**/*.go",
-		"**/*.js", "**/*.ts", "**/*.jsx", "**/*.tsx",
-		"**/*.py",
-		"**/*.rs",
-		"**/*.c", "**/*.cpp", "**/*.h", "**/*.hpp",
-		"**/*.java",
-		"**/*.rb",
-		"**/*.php",
+	return CodeFilesWithIncludes(root, nil, exclude)
+}
+
+// CodeFilesWithIncludes is like CodeFiles but also accepts explicit include
+// glob patterns (e.g. from config.Include).  When customIncludes is non-empty
+// it is used verbatim; otherwise the extension list is derived from the
+// language registry.
+func CodeFilesWithIncludes(root string, customIncludes, exclude []string) ([]string, error) {
+	var includePatterns []string
+
+	if len(customIncludes) > 0 {
+		// Use caller-supplied patterns directly (e.g. "**/*", "src/**/*.ts")
+		includePatterns = customIncludes
+	} else {
+		// Build from the language registry so new language entries are picked
+		// up automatically without touching this file.
+		exts := language.AllExtensions()
+		for _, ext := range exts {
+			includePatterns = append(includePatterns, "**/*"+ext)
+		}
 	}
 
-	return Files(root, codeExtensions, exclude)
+	return Files(root, includePatterns, exclude)
 }
 
 // matchPattern performs simple glob-like pattern matching
