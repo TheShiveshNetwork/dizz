@@ -229,11 +229,39 @@ func (r *Registry) analyzeSequentially(files []string) (*signals.SignalSet, erro
 		}
 	}
 
-	for _, file := range files {
-		sigs := AnalyzeIgnoreMarkers(file)
-		for _, sig := range sigs {
-			allSignals.Add(sig)
+	if len(files) < 20 {
+		for _, file := range files {
+			sigs := AnalyzeIgnoreMarkers(file)
+			for _, sig := range sigs {
+				allSignals.Add(sig)
+			}
 		}
+	} else {
+		const workerCount = 8
+		jobs := make(chan string, len(files))
+		var innerWg sync.WaitGroup
+		var mu sync.Mutex
+
+		for i := 0; i < workerCount; i++ {
+			innerWg.Add(1)
+			go func() {
+				defer innerWg.Done()
+				for f := range jobs {
+					sigs := AnalyzeIgnoreMarkers(f)
+					mu.Lock()
+					for _, sig := range sigs {
+						allSignals.Add(sig)
+					}
+					mu.Unlock()
+				}
+			}()
+		}
+
+		for _, file := range files {
+			jobs <- file
+		}
+		close(jobs)
+		innerWg.Wait()
 	}
 
 	return allSignals, nil

@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"sync"
 	"time"
 
 	"github.com/TheShiveshNetwork/dizz/internal/analyzer"
@@ -20,6 +21,36 @@ import (
 	"github.com/TheShiveshNetwork/dizz/internal/state"
 	"github.com/TheShiveshNetwork/dizz/internal/store"
 )
+
+var (
+	gitignoreCache      []string
+	gitignoreCacheMtx   sync.Mutex
+	gitignoreCacheMtime time.Time
+)
+
+func cachedGitignore(projectRoot string) ([]string, error) {
+	path := filepath.Join(projectRoot, ".gitignore")
+	info, err := os.Stat(path)
+	if err != nil {
+		return nil, err
+	}
+
+	gitignoreCacheMtx.Lock()
+	defer gitignoreCacheMtx.Unlock()
+
+	if info.ModTime().Equal(gitignoreCacheMtime) && gitignoreCache != nil {
+		return gitignoreCache, nil
+	}
+
+	patterns, err := discover.ParseGitignore(projectRoot)
+	if err != nil {
+		return nil, err
+	}
+
+	gitignoreCache = patterns
+	gitignoreCacheMtime = info.ModTime()
+	return patterns, nil
+}
 
 // AnalysisOptions controls what to include/exclude from analysis
 type AnalysisOptions struct {
@@ -99,7 +130,7 @@ func runCurrentAnalysisAtRoot(projectRoot string, options *AnalysisOptions) (*st
 	excludePatterns := make([]string, len(cfg.Exclude))
 	copy(excludePatterns, cfg.Exclude)
 	if integrations.IsRepo() {
-		if gitignorePatterns, err := discover.ParseGitignore(projectRoot); err == nil {
+		if gitignorePatterns, err := cachedGitignore(projectRoot); err == nil {
 			excludePatterns = append(excludePatterns, gitignorePatterns...)
 		}
 	}
@@ -203,8 +234,6 @@ func runCurrentAnalysisAtRoot(projectRoot string, options *AnalysisOptions) (*st
 				}
 				prevState.Symbols = filteredSymbols
 			}
-			stateStore := store.NewStateStore(trackDir)
-			stateStore.SaveProjectState(prevState)
 			return prevState, nil
 		}
 	}

@@ -3,10 +3,9 @@ package store
 import (
 	"bytes"
 	"compress/gzip"
-	"crypto/sha256"
-	"encoding/hex"
 	"encoding/json"
 	"fmt"
+	"hash/fnv"
 	"os"
 	"path/filepath"
 	"sync"
@@ -214,8 +213,9 @@ func (sc *SignalCache) EvictStale(discoveredFiles map[string]struct{}) {
 }
 
 func (sc *SignalCache) signalFilePath(relPath string) string {
-	h := sha256.Sum256([]byte(relPath))
-	return filepath.Join(sc.signalsDir, hex.EncodeToString(h[:]))
+	h := fnv.New64a()
+	h.Write([]byte(relPath))
+	return filepath.Join(sc.signalsDir, fmt.Sprintf("%016x", h.Sum64()))
 }
 
 func (sc *SignalCache) loadSignals(relPath string) ([]signals.Signal, bool) {

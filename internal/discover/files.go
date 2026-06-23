@@ -4,9 +4,26 @@ import (
 	"io/fs"
 	"path/filepath"
 	"strings"
+	"sync"
 
 	"github.com/TheShiveshNetwork/dizz/internal/language"
 )
+
+var (
+	knownExtsOnce sync.Once
+	knownExts     map[string]bool
+)
+
+func extensionSet() map[string]bool {
+	knownExtsOnce.Do(func() {
+		exts := language.AllExtensions()
+		knownExts = make(map[string]bool, len(exts))
+		for _, ext := range exts {
+			knownExts[ext] = true
+		}
+	})
+	return knownExts
+}
 
 // Discover all relevant files in a directory tree
 func Files(root string, include, exclude []string) ([]string, error) {
@@ -137,12 +154,27 @@ func matchPattern(path, pattern string) bool {
 	return false
 }
 
+// patternsAreExtensionBased returns true when the patterns look like the
+// auto-generated set from the language registry (**/*.go, **/*.ts, etc.).
+func patternsAreExtensionBased(patterns []string) bool {
+	return len(patterns) > 1 && strings.HasPrefix(patterns[0], "**/*.")
+}
+
 func shouldInclude(path, root string, patterns []string) bool {
 	if len(patterns) == 0 {
 		return true
 	}
 
 	relPath, _ := filepath.Rel(root, path)
+
+	// Fast path: auto-generated patterns are all **/*.ext. Check the file
+	// extension against known language extensions in O(1) instead of
+	// looping over all N patterns.
+	if patternsAreExtensionBased(patterns) {
+		if ext := filepath.Ext(relPath); ext != "" && extensionSet()[ext] {
+			return true
+		}
+	}
 
 	for _, pattern := range patterns {
 		if matchPattern(relPath, pattern) {
