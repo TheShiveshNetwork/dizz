@@ -25,6 +25,14 @@ type Analyzer interface {
 	AnalyzeFile(file string) ([]signals.Signal, error)
 }
 
+// AnalyzerWithContent is an optional interface that analyzers can implement to
+// accept pre-read file content, avoiding redundant I/O when the content is
+// already available (e.g. from the cache slow path's SHA-256 hashing).
+type AnalyzerWithContent interface {
+	Analyzer
+	AnalyzeFileContent(file string, content []byte) ([]signals.Signal, error)
+}
+
 // Registry manages all available analyzers
 type Registry struct {
 	analyzers []Analyzer
@@ -62,13 +70,24 @@ func (r *Registry) AnalyzeFile(file string) ([]signals.Signal, error) {
 }
 
 // AnalyzeSingleFile runs the full per-file pipeline: main analysis + ignore markers.
-// Used by the incremental cache path.
-func (r *Registry) AnalyzeSingleFile(file string) ([]signals.Signal, error) {
+// Used by the incremental cache path.  When content is non-nil it is used instead
+// of re-reading the file from disk.
+func (r *Registry) AnalyzeSingleFile(file string, content []byte) ([]signals.Signal, error) {
 	var allSignals []signals.Signal
 
 	analyzer := r.FindAnalyzer(file)
 	if analyzer != nil {
-		sigs, err := analyzer.AnalyzeFile(file)
+		var sigs []signals.Signal
+		var err error
+		if content != nil {
+			if awc, ok := analyzer.(AnalyzerWithContent); ok {
+				sigs, err = awc.AnalyzeFileContent(file, content)
+			} else {
+				sigs, err = analyzer.AnalyzeFile(file)
+			}
+		} else {
+			sigs, err = analyzer.AnalyzeFile(file)
+		}
 		if err != nil {
 			return nil, err
 		}
@@ -76,8 +95,13 @@ func (r *Registry) AnalyzeSingleFile(file string) ([]signals.Signal, error) {
 	}
 
 	// Analyze ignore markers for this file
-	ignoreSigs := AnalyzeIgnoreMarkers(file)
-	allSignals = append(allSignals, ignoreSigs...)
+	if content != nil {
+		ignoreSigs := AnalyzeIgnoreMarkersFromSource(string(content), file)
+		allSignals = append(allSignals, ignoreSigs...)
+	} else {
+		ignoreSigs := AnalyzeIgnoreMarkers(file)
+		allSignals = append(allSignals, ignoreSigs...)
+	}
 
 	return allSignals, nil
 }
@@ -215,22 +239,25 @@ func (r *Registry) analyzeSequentially(files []string) (*signals.SignalSet, erro
 	return allSignals, nil
 }
 
-// AnalyzeIgnoreMarkers analyzes a file for intent ignore markers
+// AnalyzeIgnoreMarkers analyzes a file for intent ignore markers.
+// It reads the file from disk and delegates to AnalyzeIgnoreMarkersFromSource.
 func AnalyzeIgnoreMarkers(filePath string) []signals.Signal {
 	content, err := os.ReadFile(filePath)
 	if err != nil {
 		return []signals.Signal{}
 	}
+	return AnalyzeIgnoreMarkersFromSource(string(content), filePath)
+}
 
-	source := string(content)
-
+// AnalyzeIgnoreMarkersFromSource analyzes pre-read file content for intent ignore markers.
+// This avoids an extra file read when the content is already available.
+func AnalyzeIgnoreMarkersFromSource(source string, filePath string) []signals.Signal {
 	// Use the language registry for accurate language detection.
 	langID := "unknown"
 	if lc, ok := language.Detect(filePath); ok {
 		langID = lc.ID
 	}
 
-	// Use the signals package to extract ignore markers
 	// Use the signals package to extract ignore markers
 	ignoreSignals := signals.ExtractIgnoreMarkers(source, filePath, langID)
 

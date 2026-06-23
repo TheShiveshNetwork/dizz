@@ -68,7 +68,7 @@ func (s *Scorer) calculateProximity(symbol *Symbol, intent Intent) float64 {
 
 // Enhanced scoring: score_enhanced(f) = score(f) × intent_weight
 func (s *Scorer) calculateEnhancedScore(symbol *Symbol, intentState *IntentState) float64 {
-	baseScore := s.calculateInstabilityScore(symbol)
+	baseScore := symbol.InstabilityScore
 	intentWeight := s.calculateIntentWeight(symbol, intentState)
 	return baseScore * intentWeight
 }
@@ -319,9 +319,20 @@ func (s *Scorer) abandonedConfidence(sym *Symbol) float64 {
 	}
 }
 
-// InterpretSignalsWithIntent converts signals with intent enhancement
-func (s *Scorer) InterpretSignalsWithIntent(sigSet *signals.SignalSet, intentState *IntentState) *ProjectState {
+// InterpretSignalsWithIntent converts signals with intent enhancement.
+// When prevState is non-nil, InstabilityScore is carried forward for symbols
+// whose name and location are unchanged, avoiding redundant git calls.
+func (s *Scorer) InterpretSignalsWithIntent(sigSet *signals.SignalSet, intentState *IntentState, prevState *ProjectState) *ProjectState {
 	ps := NewProjectState()
+
+	// Build previous symbol index for git-data carry-forward
+	prevIndex := make(map[string]*Symbol)
+	if prevState != nil {
+		for i := range prevState.Symbols {
+			sym := &prevState.Symbols[i]
+			prevIndex[sym.File+"::"+sym.Name] = sym
+		}
+	}
 
 	// Build symbol index
 	symbolIndex := make(map[string]*Symbol)
@@ -331,17 +342,17 @@ func (s *Scorer) InterpretSignalsWithIntent(sigSet *signals.SignalSet, intentSta
 		key := sig.File + "::" + sig.Name
 
 		if _, exists := symbolIndex[key]; !exists {
-				var source string
-				if src, ok := sig.Metadata["source_tier"].(string); ok && src != "" {
-					source = src
+			var source string
+			if src, ok := sig.Metadata["source_tier"].(string); ok && src != "" {
+				source = src
+			} else {
+				// Derive default from language: Go has AST analyzer, others use regex fallback
+				if sig.Language == "go" {
+					source = "ast"
 				} else {
-					// Derive default from language: Go has AST analyzer, others use regex fallback
-					if sig.Language == "go" {
-						source = "ast"
-					} else {
-						source = "regex"
-					}
+					source = "regex"
 				}
+			}
 			symbolIndex[key] = &Symbol{
 				Name:         sig.Name,
 				File:         sig.File,
@@ -360,12 +371,19 @@ func (s *Scorer) InterpretSignalsWithIntent(sigSet *signals.SignalSet, intentSta
 		}
 	}
 
+	// Build indexes for O(1) lookups
+	nameIndex := make(map[string][]*Symbol)
+	fileIndex := make(map[string][]*Symbol)
+	for _, symbol := range symbolIndex {
+		nameIndex[symbol.Name] = append(nameIndex[symbol.Name], symbol)
+		fileIndex[symbol.File] = append(fileIndex[symbol.File], symbol)
+	}
+
 	// Process function calls
 	for _, sig := range sigSet.ByType(signals.FunctionCalled) {
-		// Match calls to definitions
-		for key, symbol := range symbolIndex {
-			if symbol.Name == sig.Name {
-				symbolIndex[key].IsCalled = true
+		if symbols, ok := nameIndex[sig.Name]; ok {
+			for _, symbol := range symbols {
+				symbol.IsCalled = true
 			}
 		}
 	}
@@ -396,67 +414,71 @@ func (s *Scorer) InterpretSignalsWithIntent(sigSet *signals.SignalSet, intentSta
 	}
 
 	// Mark symbols with Todos (function-level association)
-	for key, symbol := range symbolIndex {
-		if todos, exists := todosByFile[symbol.File]; exists {
-			for _, todo := range todos {
-				if todo.Line >= symbol.Line && todo.Line <= symbol.EndLine {
-					symbolIndex[key].HasTodo = true
+	for file, todos := range todosByFile {
+		if symbols, ok := fileIndex[file]; ok {
+			for _, symbol := range symbols {
+				for _, todo := range todos {
+					if todo.Line >= symbol.Line && todo.Line <= symbol.EndLine {
+						symbol.HasTodo = true
+						break
+					}
+				}
+			}
+		}
+	}
+
+	// Match intent markers to symbols in the same file and line range
+	for _, sig := range sigSet.ByType(signals.IntentMarker) {
+		if symbols, ok := fileIndex[sig.File]; ok {
+			for _, symbol := range symbols {
+				if sig.Line >= symbol.Line && sig.Line <= symbol.EndLine {
+					if markerType, ok := sig.Metadata["marker_type"].(string); ok && markerType == "state" {
+						if value, ok := sig.Metadata["value"].(string); ok {
+							symbol.IntentMarker = value
+						}
+					}
+				}
+			}
+		}
+	}
+
+	// Process intent ignore markers
+	ignoreSignals := sigSet.ByType(signals.IgnoreFlag)
+	for _, sig := range ignoreSignals {
+		if symbols, ok := fileIndex[sig.File]; ok {
+			for _, symbol := range symbols {
+				matched := false
+				if symbolName, ok := sig.Metadata["symbol_name"].(string); ok && symbolName == symbol.Name {
+					matched = true
+				} else if sig.Line >= symbol.Line && sig.Line <= symbol.EndLine {
+					matched = true
+				}
+				if matched {
+					if ignoreType, ok := sig.Metadata["ignore_type"].(string); ok {
+						switch ignoreType {
+						case "unstable", "unused", "abandoned":
+							symbol.State = Active
+							symbol.Confidence = 1.0
+							symbol.IntentMarker = "ignored"
+						}
+					}
 					break
 				}
 			}
 		}
 	}
 
-	for _, sig := range sigSet.ByType(signals.IntentMarker) {
-		// Match to symbols in the same file and line range
-		for key, symbol := range symbolIndex {
-			if symbol.File == sig.File && sig.Line >= symbol.Line && sig.Line <= symbol.EndLine {
-				if markerType, ok := sig.Metadata["marker_type"].(string); ok && markerType == "state" {
-					if value, ok := sig.Metadata["value"].(string); ok {
-						symbolIndex[key].IntentMarker = value
-					}
-				}
-			}
-		}
-	}
-
-	ignoreSignals := sigSet.ByType(signals.IgnoreFlag)
-	for _, sig := range ignoreSignals {
-		// Match to symbols by name first, then by location as fallback
-		for key, symbol := range symbolIndex {
-			// Only match symbols in the same file
-			if symbol.File != sig.File {
-				continue
-			}
-
-			matched := false
-
-			// Primary match: by symbol name
-			if symbolName, ok := sig.Metadata["symbol_name"].(string); ok && symbolName == symbol.Name {
-				matched = true
-			} else if sig.Line >= symbol.Line && sig.Line <= symbol.EndLine {
-				// Fallback: by location range (same file already checked)
-				matched = true
-			}
-
-			if matched {
-				if ignoreType, ok := sig.Metadata["ignore_type"].(string); ok {
-					// Apply ignore logic - override to Active state
-					switch ignoreType {
-					case "unstable", "unused", "abandoned":
-						symbolIndex[key].State = Active
-						symbolIndex[key].Confidence = 1.0         // High confidence for explicit ignore
-						symbolIndex[key].IntentMarker = "ignored" // Mark as explicitly ignored
-					}
-				}
-				break // Only apply to the first matching symbol
-			}
-		}
-	}
-
-	// Score all symbols (basic scoring)
+	// Score all symbols (basic scoring), carrying forward previous InstabilityScore
+	// for unchanged symbols to avoid redundant git calls.
 	for _, symbol := range symbolIndex {
-		s.Score(symbol)
+		if prev, ok := prevIndex[symbol.File+"::"+symbol.Name]; ok &&
+			prev.Line == symbol.Line && prev.EndLine == symbol.EndLine {
+			symbol.InstabilityScore = prev.InstabilityScore
+			symbol.ChurnCount = prev.ChurnCount
+			symbol.LastTouched = prev.LastTouched
+		} else {
+			s.Score(symbol)
+		}
 	}
 
 	// Apply
@@ -477,40 +499,6 @@ func (s *Scorer) InterpretSignalsWithIntent(sigSet *signals.SignalSet, intentSta
 	}
 
 	s.applyMathematicalScoring(symbolSlice)
-
-	// Process intent ignore markers (after scoring to override final states)
-	for _, sig := range ignoreSignals {
-		// Match to symbols by name first, then by location as fallback
-		for key, symbol := range symbolIndex {
-			// Only match symbols in the same file
-			if symbol.File != sig.File {
-				continue
-			}
-
-			matched := false
-
-			// Primary match: by symbol name
-			if symbolName, ok := sig.Metadata["symbol_name"].(string); ok && symbolName == symbol.Name {
-				matched = true
-			} else if sig.Line >= symbol.Line && sig.Line <= symbol.EndLine {
-				// Fallback: by location range (same file already checked)
-				matched = true
-			}
-
-			if matched {
-				if ignoreType, ok := sig.Metadata["ignore_type"].(string); ok {
-					// Apply ignore logic - override to Active state
-					switch ignoreType {
-					case "unstable", "unused", "abandoned":
-						symbolIndex[key].State = Active
-						symbolIndex[key].Confidence = 1.0         // High confidence for explicit ignore
-						symbolIndex[key].IntentMarker = "ignored" // Mark as explicitly ignored
-					}
-				}
-				break // Only apply to the first matching symbol
-			}
-		}
-	}
 
 	// Add all symbols to project state
 	for _, symbol := range symbolIndex {

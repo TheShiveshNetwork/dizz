@@ -3,6 +3,7 @@ package cmd
 import (
 	"encoding/json"
 	"fmt"
+	"io/fs"
 	"os"
 	"path/filepath"
 	"sort"
@@ -58,7 +59,7 @@ func runList() {
 	snapshots := []SnapshotInfo{}
 
 	// Walk objects directory
-	filepath.Walk(objectsDir, func(path string, info os.FileInfo, err error) error {
+	filepath.WalkDir(objectsDir, func(path string, info fs.DirEntry, err error) error {
 		if err != nil || info.IsDir() {
 			return nil
 		}

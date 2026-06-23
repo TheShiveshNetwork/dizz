@@ -148,7 +148,7 @@ func runCurrentAnalysisAtRoot(projectRoot string, options *AnalysisOptions) (*st
 			// MTime changed but content is the same (e.g. git checkout)
 			allSignals = append(allSignals, sigs...)
 		} else {
-			sigs, err := registry.AnalyzeSingleFile(file)
+			sigs, err := registry.AnalyzeSingleFile(file, content)
 			if err != nil {
 				continue
 			}
@@ -214,7 +214,7 @@ func runCurrentAnalysisAtRoot(projectRoot string, options *AnalysisOptions) (*st
 	intentState, _ := intentStore.LoadIntentState()
 
 	scorer := state.NewScorer()
-	projectState := scorer.InterpretSignalsWithIntent(mergedSigSet, intentState)
+	projectState := scorer.InterpretSignalsWithIntent(mergedSigSet, intentState, prevState)
 
 	// Store signal hash in metadata for future comparison
 	if projectState.Metadata == nil {

@@ -29,6 +29,8 @@ type compiledLanguage struct {
 // the LanguageConfig for the detected language.
 type Analyzer struct {
 	compiled map[string]*compiledLanguage // keyed by language ID
+	lastFile string                       // single-entry detection cache
+	lastLang string                       // language ID of lastFile
 }
 
 // NewAnalyzer builds the analyzer and pre-compiles patterns for all registered
@@ -88,11 +90,26 @@ func (a *Analyzer) Language() string { return "regex" }
 // Supports returns true for every file whose language is in the registry and is
 // not Go (Go is handled by the AST analyzer with higher accuracy).
 func (a *Analyzer) Supports(file string) bool {
-	lc, ok := language.Detect(file)
+	lc, ok := a.detectCached(file)
 	if !ok {
 		return false
 	}
 	return lc.ID != "go"
+}
+
+// detectCached returns the detected language for file, reusing the previous
+// result if the same file is queried again.  This avoids redundant detection
+// in the common pattern: Supports(file) → AnalyzeFile(file).
+func (a *Analyzer) detectCached(file string) (language.LanguageConfig, bool) {
+	if a.lastFile == file && a.lastLang != "" {
+		return language.Get(a.lastLang)
+	}
+	lc, ok := language.Detect(file)
+	if ok {
+		a.lastFile = file
+		a.lastLang = lc.ID
+	}
+	return lc, ok
 }
 
 // Analyze extracts signals for all given files.
@@ -106,8 +123,17 @@ func (a *Analyzer) Analyze(files []string) (*signals.SignalSet, error) {
 
 // AnalyzeFile extracts signals from a single file.
 func (a *Analyzer) AnalyzeFile(file string) ([]signals.Signal, error) {
+	content, err := os.ReadFile(file)
+	if err != nil {
+		return nil, err
+	}
+	return a.AnalyzeFileContent(file, content)
+}
+
+// AnalyzeFileContent extracts signals from a single file using pre-read content.
+func (a *Analyzer) AnalyzeFileContent(file string, content []byte) ([]signals.Signal, error) {
 	sigSet := &signals.SignalSet{}
-	if err := a.analyzeFile(file, sigSet); err != nil {
+	if err := a.analyzeFileFromContent(file, string(content), sigSet); err != nil {
 		return nil, err
 	}
 	return sigSet.Signals, nil
@@ -115,7 +141,7 @@ func (a *Analyzer) AnalyzeFile(file string) ([]signals.Signal, error) {
 
 // analyzeFile processes a single file line-by-line.
 func (a *Analyzer) analyzeFile(filePath string, sigSet *signals.SignalSet) error {
-	lc, ok := language.Detect(filePath)
+	lc, ok := a.detectCached(filePath)
 	if !ok {
 		return nil
 	}
@@ -130,19 +156,36 @@ func (a *Analyzer) analyzeFile(filePath string, sigSet *signals.SignalSet) error
 	}
 	defer f.Close()
 
-	// Determine accuracy tier label for metadata.
 	tier := tierLabel(lc.DefaultTier)
+	return a.scanFile(filePath, bufio.NewScanner(f), lc.ID, tier, cl, sigSet)
+}
 
-	scanner := bufio.NewScanner(f)
+// analyzeFileFromContent is like analyzeFile but uses pre-read content.
+func (a *Analyzer) analyzeFileFromContent(filePath string, content string, sigSet *signals.SignalSet) error {
+	lc, ok := a.detectCached(filePath)
+	if !ok {
+		return nil
+	}
+	cl := a.compiled[lc.ID]
+	if cl == nil {
+		return nil
+	}
+	tier := tierLabel(lc.DefaultTier)
+	return a.scanFile(filePath, bufio.NewScanner(strings.NewReader(content)), lc.ID, tier, cl, sigSet)
+}
+
+// scanFile is the shared line-by-line scanning core used by both
+// analyzeFile and analyzeFileFromContent.
+func (a *Analyzer) scanFile(filePath string, scanner *bufio.Scanner, langID string, tier string, cl *compiledLanguage, sigSet *signals.SignalSet) error {
 	lineNum := 0
 	for scanner.Scan() {
 		lineNum++
 		line := scanner.Text()
 
-		a.extractFunctions(line, filePath, lc.ID, lineNum, tier, cl, sigSet)
-		a.extractCalls(line, filePath, lc.ID, lineNum, tier, cl, sigSet)
-		a.extractTodos(line, filePath, lc.ID, lineNum, cl, sigSet)
-		a.extractIntents(line, filePath, lc.ID, lineNum, cl, sigSet)
+		a.extractFunctions(line, filePath, langID, lineNum, tier, cl, sigSet)
+		a.extractCalls(line, filePath, langID, lineNum, tier, cl, sigSet)
+		a.extractTodos(line, filePath, langID, lineNum, cl, sigSet)
+		a.extractIntents(line, filePath, langID, lineNum, cl, sigSet)
 	}
 
 	return scanner.Err()

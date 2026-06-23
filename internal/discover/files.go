@@ -1,7 +1,7 @@
 package discover
 
 import (
-	"os"
+	"io/fs"
 	"path/filepath"
 	"strings"
 
@@ -12,7 +12,7 @@ import (
 func Files(root string, include, exclude []string) ([]string, error) {
 	var files []string
 
-	err := filepath.Walk(root, func(path string, info os.FileInfo, err error) error {
+	err := filepath.WalkDir(root, func(path string, info fs.DirEntry, err error) error {
 		if err != nil {
 			return nil
 		}

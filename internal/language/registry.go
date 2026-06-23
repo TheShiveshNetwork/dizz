@@ -44,8 +44,8 @@ type LanguageConfig struct {
 	// Regex patterns for structure extraction.
 	// Every pattern MUST capture the symbol name in capture group 1.
 	FunctionPatterns []string
-	TypePatterns     []string  // class / struct / interface declarations
-	ImportPatterns   []string  // import/require/use statements
+	TypePatterns     []string // class / struct / interface declarations
+	ImportPatterns   []string // import/require/use statements
 
 	// Regex patterns for usage extraction (call-site detection).
 	// Each pattern MUST capture the called name in capture group 1.
@@ -872,6 +872,25 @@ var extIndex = func() map[string]string {
 	return m
 }()
 
+// langIndex maps language ID → LanguageConfig. Built once at init time.
+var langIndex = func() map[string]LanguageConfig {
+	m := make(map[string]LanguageConfig, len(languages))
+	for _, lc := range languages {
+		m[lc.ID] = lc
+	}
+	return m
+}()
+
+// allExtensions is the cached result of AllExtensions, computed at init time.
+var allExtensions []string
+
+func init() {
+	allExtensions = make([]string, 0, len(extIndex))
+	for ext := range extIndex {
+		allExtensions = append(allExtensions, ext)
+	}
+}
+
 // All returns the full list of registered language configs.
 func All() []LanguageConfig {
 	return languages
@@ -880,21 +899,13 @@ func All() []LanguageConfig {
 // Get returns the LanguageConfig for a given language ID.
 // The second return value is false when the ID is not registered.
 func Get(id string) (LanguageConfig, bool) {
-	for _, lc := range languages {
-		if lc.ID == id {
-			return lc, true
-		}
-	}
-	return LanguageConfig{}, false
+	lc, ok := langIndex[id]
+	return lc, ok
 }
 
 // AllExtensions returns every file extension that has a registered language.
 func AllExtensions() []string {
-	exts := make([]string, 0, len(extIndex))
-	for ext := range extIndex {
-		exts = append(exts, ext)
-	}
-	return exts
+	return allExtensions
 }
 
 // ──────────────────────────────────────────────────────────────────────────────

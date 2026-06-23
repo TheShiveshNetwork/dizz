@@ -77,6 +77,3 @@ Two bugs were fixed in the gitignore → dizz pattern pipeline:
 | Scorer | ~1-10ms | **~0ms** (skipped when signal set identical) |
 | Git batch analysis | ~200-700ms | **~0ms** (carried forward or skipped) |
 | State serialization | ~10-50ms | ~10-50ms (unchanged, but gzip reduces I/O) |
-```
-
-No new external dependencies. All changes use only stdlib (`compress/gzip`, `crypto/sha256`, `encoding/json`, `sync`).

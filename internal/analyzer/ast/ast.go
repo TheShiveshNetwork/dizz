@@ -49,10 +49,19 @@ func (a *Analyzer) Analyze(files []string) (*signals.SignalSet, error) {
 
 // AnalyzeFile extracts signals from a single Go file.
 func (a *Analyzer) AnalyzeFile(file string) ([]signals.Signal, error) {
+	content, err := os.ReadFile(file)
+	if err != nil {
+		return nil, nil
+	}
+	return a.AnalyzeFileContent(file, content)
+}
+
+// AnalyzeFileContent extracts signals from a single Go file using pre-read content.
+func (a *Analyzer) AnalyzeFileContent(file string, content []byte) ([]signals.Signal, error) {
 	sigSet := &signals.SignalSet{}
 	fset := token.NewFileSet()
 
-	f, err := parser.ParseFile(fset, file, nil, parser.ParseComments)
+	f, err := parser.ParseFile(fset, file, content, parser.ParseComments)
 	if err != nil {
 		return nil, nil
 	}
