@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 	"os/exec"
+	"path/filepath"
 	"regexp"
 	"strconv"
 	"strings"
@@ -475,6 +476,89 @@ func processFunctionBatch(ranges []string, result *GitBatchResult) error {
 	}
 
 	return nil
+}
+
+// InstallGlobalRouterHook creates the global router hook and sets
+// git --global core.hooksPath so it fires on every commit in any repo.
+func InstallGlobalRouterHook(hooksDir string) error {
+	if err := os.MkdirAll(hooksDir, 0755); err != nil {
+		return fmt.Errorf("create hooks dir: %w", err)
+	}
+
+	hookPath := filepath.Join(hooksDir, "post-commit")
+	content := `#!/usr/bin/env sh
+
+# dizz global router hook
+# Delegates to .dizz/hooks/post-commit if it exists in the current repo.
+
+DIZZ_HOOKS=".dizz/hooks/post-commit"
+
+if [ -f "$DIZZ_HOOKS" ] && [ -x "$DIZZ_HOOKS" ]; then
+    git config core.hooksPath ".dizz/hooks" 2>/dev/null || true
+    exec "$DIZZ_HOOKS"
+fi
+`
+	if err := os.WriteFile(hookPath, []byte(content), 0755); err != nil {
+		return fmt.Errorf("write router hook: %w", err)
+	}
+
+	cmd := exec.Command("git", "config", "--global", "core.hooksPath", hooksDir)
+	if out, err := cmd.CombinedOutput(); err != nil {
+		return fmt.Errorf("set global hooksPath: %s: %w", strings.TrimSpace(string(out)), err)
+	}
+
+	return nil
+}
+
+// InstallLocalPostCommitHook writes the dizz post-commit hook to the given path
+// inside .dizz/hooks/ and ensures it is executable.
+func InstallLocalPostCommitHook(hookPath, hookContent string) error {
+	if err := os.MkdirAll(filepath.Dir(hookPath), 0755); err != nil {
+		return fmt.Errorf("create hooks dir: %w", err)
+	}
+	if err := os.WriteFile(hookPath, []byte(hookContent), 0755); err != nil {
+		return fmt.Errorf("write hook: %w", err)
+	}
+	return nil
+}
+
+// SetLocalHooksPath runs "git config core.hooksPath .dizz/hooks" for the
+// current repository so future commits use the tracked hooks directly.
+func SetLocalHooksPath() error {
+	hooksPath := "." + string(filepath.Separator) + ".dizz" + string(filepath.Separator) + "hooks"
+	cmd := exec.Command("git", "config", "core.hooksPath", hooksPath)
+	if out, err := cmd.CombinedOutput(); err != nil {
+		return fmt.Errorf("set local hooksPath: %s: %w", strings.TrimSpace(string(out)), err)
+	}
+	return nil
+}
+
+// EnsureLocalHooksConfigured checks if .dizz/hooks/post-commit exists and
+// configures the local core.hooksPath accordingly. It is a no-op if the config
+// is already correct, making it safe to call on every command.
+// Returns true if hooks were (re)configured, false if already correct or not applicable.
+func EnsureLocalHooksConfigured(trackDir string) bool {
+	hooksDir := filepath.Join(trackDir, "hooks")
+	hookPath := filepath.Join(hooksDir, "post-commit")
+
+	if _, err := os.Stat(hookPath); os.IsNotExist(err) {
+		return false
+	}
+
+	// Check current hooksPath
+	cmd := exec.Command("git", "config", "core.hooksPath")
+	out, err := cmd.Output()
+	if err == nil {
+		current := strings.TrimSpace(string(out))
+		if current == "."+string(filepath.Separator)+".dizz"+string(filepath.Separator)+"hooks" ||
+			current == ".dizz/hooks" ||
+			current == ".dizz\\hooks" {
+			return false
+		}
+	}
+
+	_ = SetLocalHooksPath()
+	return true
 }
 
 // InvalidateCache clears the git cache (useful for testing or force refresh)

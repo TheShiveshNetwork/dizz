@@ -11,6 +11,10 @@ TARGET_NAME := dizz-dev
 GO          := go
 GOFLAGS     := -trimpath
 
+# Version injection — uses the latest git tag, falls back to "dev"
+VERSION     := $(shell git describe --tags --abbrev=0 2>/dev/null || echo "dev")
+LDFLAGS     := -X github.com/TheShiveshNetwork/dizz/cmd.version=$(VERSION)
+
 # Default target
 .PHONY: all
 all: build
@@ -18,9 +22,9 @@ all: build
 ## Build the binary
 .PHONY: build
 build:
-	@echo "🔨 Building $(BINARY_NAME)..."
+	@echo "🔨 Building $(BINARY_NAME) $(VERSION)..."
 	@mkdir -p $(BUILD_DIR)
-	$(GO) build $(GOFLAGS) -o $(BUILD_DIR)/$(BINARY_NAME) $(MAIN_PKG)
+	$(GO) build $(GOFLAGS) -ldflags "$(LDFLAGS)" -o $(BUILD_DIR)/$(BINARY_NAME) $(MAIN_PKG)
 
 ## Run the CLI (after build)
 .PHONY: run

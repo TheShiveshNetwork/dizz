@@ -102,10 +102,10 @@ func printFocusedState(ps *state.ProjectState) {
 		fmt.Printf("  %s %s\n", ui.Info("Unused:"), ui.Info(fmt.Sprintf("%d", len(unused))))
 	}
 	if len(unstable) > 0 {
-		fmt.Printf("  %s %s\n", ui.Error("   Unstable:"), ui.Error(fmt.Sprintf("%d", len(unstable))))
+		fmt.Printf("  %s %s\n", ui.Error("Unstable:"), ui.Error(fmt.Sprintf("%d", len(unstable))))
 	}
 	if len(abandoned) > 0 {
-		fmt.Printf("  %s %s\n", ui.Muted("   Abandoned:"), ui.Muted(fmt.Sprintf("%d", len(abandoned))))
+		fmt.Printf("  %s %s\n", ui.Muted("Abandoned:"), ui.Muted(fmt.Sprintf("%d", len(abandoned))))
 	}
 	fmt.Println()
 

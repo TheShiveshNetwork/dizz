@@ -542,5 +542,5 @@ func SuggestNextAction(ps *ProjectState) string {
 		return "Review " + abandoned[0].Name + " for removal (" + abandoned[0].File + ")"
 	}
 
-	return "All symbols are active and stable"
+	return "Nothing to do yet. All symbols are active and stable"
 }

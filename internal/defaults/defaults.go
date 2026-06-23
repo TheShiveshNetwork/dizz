@@ -28,29 +28,17 @@ func GitignoreContent() string {
 # Keep config
 !config.json
 !intent.json
-!.gitignore`
+!.gitignore
+
+# Keep hooks (tracked for post-commit snapshot)
+!hooks/
+!hooks/**`
 }
 
-func GitPostCommitHookContent(appName string) string {
+func LocalPostCommitHookContent(appName string) string {
 	return `#!/usr/bin/env sh
 
-# Detect repo remote (best-effort, silent failure)
-REMOTE_URL="$(git config --get remote.origin.url 2>/dev/null || true)"
-
-USE_LOCAL=false
-case "$REMOTE_URL" in
-    *TheShiveshNetwork/dizz*)
-        USE_LOCAL=true
-        ;;
-esac
-
-if [ "$USE_LOCAL" = "true" ] && [ -x "$(pwd)/` + appName + `" ]; then
-    # Use local dev binary ONLY for dizz repo
-    DIZZ_BIN="$(pwd)/` + appName + `"
-else
-    # Fallback to system-installed dizz
-    DIZZ_BIN="$(command -v ` + appName + ` 2>/dev/null || true)"
-fi
+DIZZ_BIN="$(command -v ` + appName + ` 2>/dev/null || true)"
 
 if [ -n "$DIZZ_BIN" ] && [ -x "$DIZZ_BIN" ]; then
     "$DIZZ_BIN" snapshot --auto >/dev/null 2>&1 || true
@@ -58,3 +46,23 @@ fi
 `
 }
 
+// GitPostCommitHookContent is a legacy alias kept for backward compatibility.
+// New code should call LocalPostCommitHookContent instead.
+var GitPostCommitHookContent = LocalPostCommitHookContent
+
+func GlobalRouterHookContent() string {
+	return `#!/usr/bin/env sh
+
+# dizz global router hook
+# This hook runs on every commit in every repo on this machine.
+# It checks if the current repo has dizz hooks and delegates to them.
+
+DIZZ_HOOKS=".dizz/hooks/post-commit"
+
+if [ -f "$DIZZ_HOOKS" ] && [ -x "$DIZZ_HOOKS" ]; then
+    # Configure local hooks path so future commits bypass the router
+    git config core.hooksPath ".dizz/hooks" 2>/dev/null || true
+    exec "$DIZZ_HOOKS"
+fi
+`
+}

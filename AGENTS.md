@@ -144,4 +144,57 @@ dizz intent resolve int_1122334455
 
 ---
 
+## Language Registry
+
+The project supports **34 languages** through `internal/language/registry.go`. Every language is defined as a `LanguageConfig` with extensions, comment styles, regex patterns for function/type/call extraction, and keyword sets. To add a new language, append a `LanguageConfig` to the `languages` slice — no other file needs changing (extension detection and file discovery derive from the registry automatically).
+
+Each language is assigned an **analysis tier** that determines signal accuracy:
+- **AST** (Tier 1): Full parser-backed — only Go currently. Highest confidence.
+- **Lexical** (Tier 2): Structural regex patterns — most mainstream languages. Good accuracy.
+- **Regex** (Tier 3): Regex fallback — C, C++, Shell, Haskell, etc. Lower accuracy; signals are weighted accordingly.
+
+All language tests live in `tests/language_conformance_test.go` and `tests/language_conformance_extended_test.go`. When adding a language, add a conformance test that verifies function definition and call extraction.
+
+---
+
+## Agent Rulesets & Patterns
+
+### Code Structure Rules
+
+1. **Package naming**: All internal packages use short, lowercase, single-word names (`state`, `signals`, `discover`, `store`, `config`, `analyzer`, `integrations`, `language`). Never use underscores or mixedCase.
+
+2. **File organization**: Place all backend/internal code under `internal/`. CLI command implementations go in `cmd/`. Tests go in `tests/` (package `benchmarks`). Benchmark files are named `*_benchmark_test.go`; test-only files use `*_test.go`.
+
+3. **Signal pipeline**: The analysis architecture follows a strict pipeline: `discover.CodeFiles` → `analyzer.Registry.AnalyzeFiles` → `signals.SignalSet` → `state.Scorer.InterpretSignalsWithIntent` → `state.ProjectState`. Never bypass layers — the scorer must interpret signals, not raw analysis output.
+
+4. **Language registry is the single source of truth**: Never hardcode extensions, comment styles, or analysis patterns outside `internal/language/registry.go`. The `discover` package derives file discovery from `language.AllExtensions()`. The regex analyzer derives all behaviour from `LanguageConfig` entries.
+
+### Testing Rules
+
+5. **Every language gets a conformance test**: At minimum, test `FunctionDefined` extraction. Use the `analyzeContent(t, ext, src)` helper from `tests/language_conformance_test.go`. New language entries without a corresponding test will be rejected.
+
+6. **Benchmarks for throughput-sensitive code**: `BenchmarkScorerInterpretation`, `BenchmarkCodeFiles`, and `BenchmarkDetectByExtension` cover the hot path. When adding new analysis passes or modifying the scorer, add or update benchmarks to prevent regressions.
+
+7. **Git-dependent tests must skip gracefully**: Use `if !integrations.IsRepo() { b.Skip("Not in a git repository") }` at the top of any test or benchmark that requires git. Never assume the test is running inside the dizz repo.
+
+8. **Temp files use `t.TempDir()`**: Never create temp files outside the test's temp directory. Use `writeTemp(t, ext, content)` for single-file tests.
+
+### Code Style & Conventions
+
+9. **Zero comments in source code**: Production code must not contain explanatory comments. Intent is captured via `dizz intent` or AGENTS.md, not inline. TODO/FIXME comments are acceptable only in test files.
+
+10. **Error handling**: Return errors to the caller; log only at the CLI layer (cmd/). Internal packages never call `log.Fatal` or `os.Exit`. Use `fmt.Errorf` with `%w` for error wrapping.
+
+11. **No external dependencies beyond stdlib + cobra**: The project currently only depends on `github.com/spf13/cobra` for CLI. New external dependencies require explicit justification and a maintainer review.
+
+12. **Signal metadata conventions**: When adding new `SignalType`s or `Metadata` keys, prefix project-specific keys with the package name (e.g., `"regex.source_tier"`). All confidence values are float64 in [0, 1].
+
+13. **Immutable intents, mutable todos**: TODO/FIXME found in source are ephemeral and re-scanned on every analysis. Intents persisted in `.dizz/intent.json` are immutable project records — never delete or modify them programmatically; only add or resolve.
+
+14. **Config is always optional**: dizz must work with zero configuration. Defaults are defined in `internal/defaults/defaults.go`. Config values in `.dizz/config.json` override defaults — never require config for basic operation.
+
+15. **Snapshot immutability**: Snapshot objects in `.dizz/objects/` are content-addressed and must never be modified after creation. Use `dizz snapshot --auto` to create new snapshots; never overwrite or delete existing ones.
+
+---
+
 **Remember:** `dizz` is a *read‑only* assistant—it never modifies source code. All clean‑up, intent resolution, and state changes are performed by you (human or agent) based on the information `dizz` provides. Use it as a compass, not as an autopilot.
