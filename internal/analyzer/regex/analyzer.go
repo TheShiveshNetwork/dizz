@@ -18,6 +18,7 @@ import (
 type compiledLanguage struct {
 	cfg          language.LanguageConfig
 	fnPatterns   []*regexp.Regexp
+	typePatterns []*regexp.Regexp
 	callPatterns []*regexp.Regexp
 	todoPattern  *regexp.Regexp
 	intentState  *regexp.Regexp
@@ -49,6 +50,11 @@ func compile(lc language.LanguageConfig) *compiledLanguage {
 	for _, p := range lc.FunctionPatterns {
 		if re, err := regexp.Compile(p); err == nil {
 			cl.fnPatterns = append(cl.fnPatterns, re)
+		}
+	}
+	for _, p := range lc.TypePatterns {
+		if re, err := regexp.Compile(p); err == nil {
+			cl.typePatterns = append(cl.typePatterns, re)
 		}
 	}
 	for _, p := range lc.CallPatterns {
@@ -183,6 +189,7 @@ func (a *Analyzer) scanFile(filePath string, scanner *bufio.Scanner, langID stri
 		line := scanner.Text()
 
 		a.extractFunctions(line, filePath, langID, lineNum, tier, cl, sigSet)
+		a.extractTypes(line, filePath, langID, lineNum, tier, cl, sigSet)
 		a.extractCalls(line, filePath, langID, lineNum, tier, cl, sigSet)
 		a.extractTodos(line, filePath, langID, lineNum, cl, sigSet)
 		a.extractIntents(line, filePath, langID, lineNum, cl, sigSet)
@@ -208,6 +215,29 @@ func (a *Analyzer) extractFunctions(
 					WithMeta("source_tier", tier)
 				sigSet.Add(*sig)
 				return // one definition per line
+			}
+		}
+	}
+}
+
+// extractTypes emits FunctionDefined signals for type/const/static declarations
+// defined in TypePatterns.  These are tracked as symbols just like functions.
+func (a *Analyzer) extractTypes(
+	line, filePath, langID string, lineNum int, tier string,
+	cl *compiledLanguage, sigSet *signals.SignalSet,
+) {
+	for _, re := range cl.typePatterns {
+		if m := re.FindStringSubmatch(line); m != nil && len(m) > 1 && m[1] != "" {
+			if !cl.cfg.Keywords[m[1]] {
+				sig := signals.NewSignal(signals.FunctionDefined, filePath).
+					WithName(m[1]).
+					WithLine(lineNum).
+					WithLanguage(langID).
+					WithConfidence(confidenceFor(cl.cfg.DefaultTier)).
+					WithMeta("source", "regex").
+					WithMeta("source_tier", tier)
+				sigSet.Add(*sig)
+				return
 			}
 		}
 	}

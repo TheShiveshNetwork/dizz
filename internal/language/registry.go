@@ -522,6 +522,11 @@ var languages = []LanguageConfig{
 		FunctionPatterns: []string{
 			`(?:pub\s+)?(?:pub\s*\([^)]*\)\s+)?(?:async\s+)?(?:unsafe\s+)?fn\s+(\w+)\s*[<(]`,
 		},
+		TypePatterns: []string{
+			`(?:pub\s+)?const\s+(\w+)\s*:`,
+			`(?:pub\s+)?static\s+(?:mut\s+)?(\w+)\s*:`,
+			`(?:pub\s+)?(?:struct|enum|trait|union|type)\s+(\w+)\s*[<{;]`,
+		},
 		CallPatterns: []string{`\b(\w+)\s*\(`},
 		Keywords:     rustKeywords,
 		DefaultTier:  TierLexical,
