@@ -157,7 +157,7 @@ func runStatus() {
 
 	if summary.ByState[state.Abandoned] > 0 {
 		bar := createBar(summary.ByState[state.Abandoned], summary.TotalSymbols, ui.Gray)
-		fmt.Printf("       %-12s %s %s\n",
+		fmt.Printf("      %-12s %s %s\n",
 			"Abandoned",
 			ui.Muted(fmt.Sprintf("%3d", summary.ByState[state.Abandoned])),
 			bar)
