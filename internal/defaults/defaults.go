@@ -9,12 +9,46 @@ func DefaultConfig(projectName string) *config.Config {
 	return &config.Config{
 		ProjectName: projectName,
 		RootPath:    ".",
-		Include:     []string{"**/*"},
+		// Include is nil by default — CodeFilesWithIncludes falls back to the
+		// language registry's extension list, so only known source-code files
+		// are discovered.  Users can override with explicit patterns in their
+		// .dizz/config.json if they need to analyze non-registry languages.
 		Exclude: []string{
+			// Directories
 			"vendor/**",
 			"node_modules/**",
 			".git/**",
 			".dizz/**",
+
+			// Config, data, and env files (no analysis value)
+			"**/*.json",
+			"**/*.yaml",
+			"**/*.yml",
+			"**/*.toml",
+			"**/*.xml",
+			"**/*.config",
+			"**/*.conf",
+			"**/*.cfg",
+			"**/*.ini",
+			"**/*.env",
+			"**/*.env.*",
+
+			// Documentation and text
+			"**/*.md",
+			"**/*.txt",
+			"**/*.rst",
+
+			// Build and lock files
+			"**/*.lock",
+			"**/Makefile",
+			"**/Dockerfile",
+
+			// Logs and temp
+			"**/*.log",
+			"**/*.tmp",
+			"**/*.swp",
+
+			// OS artifacts
 			"**/.DS_Store",
 			"**/Thumbs.db",
 		},

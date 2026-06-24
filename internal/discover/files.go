@@ -1,18 +1,35 @@
 package discover
 
 import (
-	"os"
+	"io/fs"
 	"path/filepath"
 	"strings"
+	"sync"
 
 	"github.com/TheShiveshNetwork/dizz/internal/language"
 )
+
+var (
+	knownExtsOnce sync.Once
+	knownExts     map[string]bool
+)
+
+func extensionSet() map[string]bool {
+	knownExtsOnce.Do(func() {
+		exts := language.AllExtensions()
+		knownExts = make(map[string]bool, len(exts))
+		for _, ext := range exts {
+			knownExts[ext] = true
+		}
+	})
+	return knownExts
+}
 
 // Discover all relevant files in a directory tree
 func Files(root string, include, exclude []string) ([]string, error) {
 	var files []string
 
-	err := filepath.Walk(root, func(path string, info os.FileInfo, err error) error {
+	err := filepath.WalkDir(root, func(path string, info fs.DirEntry, err error) error {
 		if err != nil {
 			return nil
 		}
@@ -105,6 +122,18 @@ func matchPattern(path, pattern string) bool {
 
 			return true
 		}
+
+		// Handle **/middle/** pattern (e.g. **/node_modules/**)
+		if len(parts) >= 3 && parts[0] == "" && parts[len(parts)-1] == "" {
+			slashed := "/" + path + "/"
+			for i := 1; i < len(parts)-1; i++ {
+				middle := strings.Trim(parts[i], "/")
+				if middle != "" && !strings.Contains(slashed, "/"+middle+"/") {
+					return false
+				}
+			}
+			return true
+		}
 	}
 
 	// Handle simple wildcard
@@ -125,12 +154,35 @@ func matchPattern(path, pattern string) bool {
 	return false
 }
 
+// patternsAreExtensionBased returns true when ALL patterns look like the
+// auto-generated set from the language registry (**/*.go, **/*.ts, etc.).
+func patternsAreExtensionBased(patterns []string) bool {
+	if len(patterns) < 2 {
+		return false
+	}
+	for _, p := range patterns {
+		if !strings.HasPrefix(p, "**/*.") {
+			return false
+		}
+	}
+	return true
+}
+
 func shouldInclude(path, root string, patterns []string) bool {
 	if len(patterns) == 0 {
 		return true
 	}
 
 	relPath, _ := filepath.Rel(root, path)
+
+	// Fast path: auto-generated patterns are all **/*.ext. Check the file
+	// extension against known language extensions in O(1) instead of
+	// looping over all N patterns.
+	if patternsAreExtensionBased(patterns) {
+		if ext := filepath.Ext(relPath); ext != "" && extensionSet()[ext] {
+			return true
+		}
+	}
 
 	for _, pattern := range patterns {
 		if matchPattern(relPath, pattern) {

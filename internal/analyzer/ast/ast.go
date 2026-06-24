@@ -47,6 +47,33 @@ func (a *Analyzer) Analyze(files []string) (*signals.SignalSet, error) {
 	return sigSet, nil
 }
 
+// AnalyzeFile extracts signals from a single Go file.
+func (a *Analyzer) AnalyzeFile(file string) ([]signals.Signal, error) {
+	content, err := os.ReadFile(file)
+	if err != nil {
+		return nil, nil
+	}
+	return a.AnalyzeFileContent(file, content)
+}
+
+// AnalyzeFileContent extracts signals from a single Go file using pre-read content.
+func (a *Analyzer) AnalyzeFileContent(file string, content []byte) ([]signals.Signal, error) {
+	sigSet := &signals.SignalSet{}
+	fset := token.NewFileSet()
+
+	f, err := parser.ParseFile(fset, file, content, parser.ParseComments)
+	if err != nil {
+		return nil, nil
+	}
+
+	a.inspectFile(f, file, fset, sigSet)
+	a.extractImports(f, file, fset, sigSet)
+	a.extractTodos(f, file, fset, sigSet)
+	a.extractIntents(f, file, sigSet)
+
+	return sigSet.Signals, nil
+}
+
 // inspectFile performs a single pass over the AST to extract definitions and calls
 func (a *Analyzer) inspectFile(file *ast.File, filePath string, fset *token.FileSet, sigSet *signals.SignalSet) {
 	ast.Inspect(file, func(n ast.Node) bool {
