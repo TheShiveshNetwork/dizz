@@ -142,6 +142,23 @@ func runCurrentAnalysisAtRoot(projectRoot string, options *AnalysisOptions) (*st
 		return nil, err
 	}
 
+	// Filter out files with @dizz-ignore-file marker (read first 200 bytes each)
+	filtered := make([]string, 0, len(files))
+	for _, f := range files {
+		header := make([]byte, 200)
+		fh, openErr := os.Open(f)
+		if openErr != nil {
+			continue
+		}
+		n, _ := fh.Read(header)
+		fh.Close()
+		if n > 0 && signals.HasFileIgnoreFlag(string(header[:n])) {
+			continue
+		}
+		filtered = append(filtered, f)
+	}
+	files = filtered
+
 	// Build analyzer registry
 	registry := analyzer.NewRegistry()
 	registry.Register(&ast.Analyzer{})

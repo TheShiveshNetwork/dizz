@@ -225,4 +225,40 @@ Key differences from JSON:
 
 ---
 
+## Ignore Flag Architecture
+
+dizz supports comment-based flags to control which code is analyzed:
+
+### File-level: `@dizz-ignore-file`
+Place at the top of any source file (first 200 bytes) to skip the file entirely:
+```go
+// @dizz-ignore-file
+```
+dizz will not analyze any symbols in that file. Useful for generated code, vendored libraries, or test files.
+
+### Symbol-level: `@dizz-ignore-<type>`
+Place on the line before a function/type to override its detected state:
+```go
+// @dizz-ignore-unused
+func helper() {}  // Always treated as Active, never Unused
+
+// @dizz-ignore-unstable
+func volatile() {}  // Never flagged as Unstable
+
+// @dizz-ignore-abandoned
+func legacy() {}  // Never flagged as Abandoned
+```
+
+Supported types: `unused`, `unstable`, `abandoned`.
+
+The older `@ignore-*` prefix (without `dizz-`) is also accepted for backward compatibility. Prefer `@dizz-ignore-*` for new code.
+
+### Best practices
+- Exclude test files via `**/*_test.go` in `.dizz/config.json` (or add `@dizz-ignore-file` at the top of individual test files).
+- Use `@dizz-ignore-unused` for helper functions referenced only through reflection, callbacks, or framework wiring.
+- Use `@dizz-ignore-unstable` for intentionally high-churn code (e.g., active development).
+- Avoid overusing flags — they suppress legitimate analysis results.
+
+---
+
 **Remember:** `dizz` is a *read‑only* assistant—it never modifies source code. All clean‑up, intent resolution, and state changes are performed by you (human or agent) based on the information `dizz` provides. Use it as a compass, not as an autopilot.

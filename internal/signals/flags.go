@@ -33,13 +33,26 @@ func NewIgnoreFlag(file, name string, line, column, endLine, endColumn int, lang
 	}
 }
 
-// ignoreRe matches @ignore-(unstable|unused|abandoned) in any text fragment
+// ignoreRe matches @ignore-* and @dizz-ignore-* in any text fragment
 // that has already been stripped of its comment prefix.
-var ignoreRe = regexp.MustCompile(`@ignore-(unstable|unused|abandoned)\b`)
+var ignoreRe = regexp.MustCompile(`@(?:dizz-)?ignore-(unstable|unused|abandoned)\b`)
 
 // ignoreMarkerRe is used to recognise whether a line even contains an ignore
 // marker before the more expensive processing begins.
-var ignoreMarkerRe = regexp.MustCompile(`@ignore-(unstable|unused|abandoned)\b`)
+var ignoreMarkerRe = regexp.MustCompile(`@(?:dizz-)?ignore-(unstable|unused|abandoned)\b`)
+
+// fileIgnoreRe matches @dizz-ignore-file for whole-file exclusion.
+var fileIgnoreRe = regexp.MustCompile(`@dizz-ignore-file\b`)
+
+// HasFileIgnoreFlag checks whether the first 5 lines of source contain
+// @dizz-ignore-file.  When present, the entire file is skipped during analysis.
+func HasFileIgnoreFlag(source string) bool {
+	end := len(source)
+	if end > 200 {
+		end = 200
+	}
+	return fileIgnoreRe.MatchString(source[:end])
+}
 
 // Universal fallback patterns that cover the most common definition styles
 // across languages so even unconfigured languages work reasonably.
