@@ -150,8 +150,8 @@ func runCurrentAnalysisAtRoot(projectRoot string, options *AnalysisOptions) (*st
 	signalCache := store.NewSignalCache(projectRoot, cacheDir)
 	signalCache.LoadManifest()
 
-	var allSignals []signals.Signal
-	var changedFiles []string
+	allSignals := make([]signals.Signal, 0, len(files)*3)
+	changedFiles := make([]string, 0, len(files))
 
 	// Precompute relative paths once to avoid repeated filepath.Rel in signalCache
 	fileRelMap := make(map[string]string, len(files))
@@ -227,7 +227,7 @@ func runCurrentAnalysisAtRoot(projectRoot string, options *AnalysisOptions) (*st
 		if prevHash, ok := prevState.Metadata["signal_set_hash"].(string); ok && prevHash == signalHashStr {
 			prevState.UpdatedAt = time.Now()
 			if options != nil {
-				var filteredSymbols []state.Symbol
+				filteredSymbols := make([]state.Symbol, 0, len(prevState.Symbols))
 				for _, symbol := range prevState.Symbols {
 					shouldInclude := true
 					if options.IgnoreUnstable && symbol.State == state.Unstable {
@@ -264,7 +264,7 @@ func runCurrentAnalysisAtRoot(projectRoot string, options *AnalysisOptions) (*st
 
 	// Filter symbols based on ignore options
 	if options != nil {
-		var filteredSymbols []state.Symbol
+		filteredSymbols := make([]state.Symbol, 0, len(projectState.Symbols))
 		for _, symbol := range projectState.Symbols {
 			shouldInclude := true
 			if options.IgnoreUnstable && symbol.State == state.Unstable {
@@ -305,7 +305,7 @@ func runCurrentAnalysisAtRoot(projectRoot string, options *AnalysisOptions) (*st
 
 		// Carry forward git data for unchanged symbols;
 		// collect changed symbols for batch git analysis.
-		var changedSymbolIdx []int
+		changedSymbolIdx := make([]int, 0, len(projectState.Symbols))
 		for i := range projectState.Symbols {
 			sym := &projectState.Symbols[i]
 			if _, isChanged := changedSet[sym.File]; !isChanged {

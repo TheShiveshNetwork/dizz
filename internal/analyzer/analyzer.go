@@ -86,7 +86,7 @@ func (r *Registry) AnalyzeFile(file string) ([]signals.Signal, error) {
 // Used by the incremental cache path.  When content is non-nil it is used instead
 // of re-reading the file from disk.
 func (r *Registry) AnalyzeSingleFile(file string, content []byte) ([]signals.Signal, error) {
-	var allSignals []signals.Signal
+	allSignals := make([]signals.Signal, 0, 16)
 
 	analyzer := r.FindAnalyzer(file)
 	if analyzer != nil {
@@ -168,14 +168,16 @@ func (r *Registry) AnalyzeFiles(files []string) (*signals.SignalSet, error) {
 	wg.Add(1)
 	go func() {
 		defer wg.Done()
-		var ignoreSigs []signals.Signal
-		// Limit concurrency for I/O to avoid system resource limits
-		const workerCount = 8
-		jobs := make(chan string)
+		ignoreSigs := make([]signals.Signal, 0, len(files))
+		workers := 8
+		if len(files) < workers {
+			workers = len(files)
+		}
+		jobs := make(chan string, len(files))
 		var innerWg sync.WaitGroup
 		var mu sync.Mutex
 
-		for i := 0; i < workerCount; i++ {
+		for i := 0; i < workers; i++ {
 			innerWg.Add(1)
 			go func() {
 				defer innerWg.Done()
@@ -250,12 +252,15 @@ func (r *Registry) analyzeSequentially(files []string) (*signals.SignalSet, erro
 			}
 		}
 	} else {
-		const workerCount = 8
+		workers := 8
+		if len(files) < workers {
+			workers = len(files)
+		}
 		jobs := make(chan string, len(files))
 		var innerWg sync.WaitGroup
 		var mu sync.Mutex
 
-		for i := 0; i < workerCount; i++ {
+		for i := 0; i < workers; i++ {
 			innerWg.Add(1)
 			go func() {
 				defer innerWg.Done()
@@ -302,7 +307,7 @@ func AnalyzeIgnoreMarkersFromSource(source string, filePath string) []signals.Si
 	// Use the signals package to extract ignore markers
 	ignoreSignals := signals.ExtractIgnoreMarkers(source, filePath, langID)
 
-	var result []signals.Signal
+	result := make([]signals.Signal, 0, len(ignoreSignals))
 	for _, ignoreSig := range ignoreSignals {
 		ignoreType := extractIgnoreTypeFromSignal(ignoreSig, source)
 
@@ -322,17 +327,38 @@ func AnalyzeIgnoreMarkersFromSource(source string, filePath string) []signals.Si
 }
 
 // extractIgnoreTypeFromSignal extracts the ignore type from the original comment
+// using index-based line extraction to avoid splitting the entire source.
 func extractIgnoreTypeFromSignal(ignoreSig signals.IgnoreSignal, source string) string {
-	lines := strings.Split(source, "\n")
-	if ignoreSig.Line > 0 && ignoreSig.Line <= len(lines) {
-		line := lines[ignoreSig.Line-1]
-		if strings.Contains(line, "@ignore-unused") {
-			return "unused"
-		} else if strings.Contains(line, "@ignore-unstable") {
-			return "unstable"
-		} else if strings.Contains(line, "@ignore-abandoned") {
-			return "abandoned"
-		}
+	if ignoreSig.Line <= 0 {
+		return "unknown"
+	}
+	line := nthLine(source, ignoreSig.Line-1)
+	if strings.Contains(line, "@ignore-unused") {
+		return "unused"
+	} else if strings.Contains(line, "@ignore-unstable") {
+		return "unstable"
+	} else if strings.Contains(line, "@ignore-abandoned") {
+		return "abandoned"
 	}
 	return "unknown"
+}
+
+// nthLine returns the 0-indexed line from source without splitting the whole string.
+func nthLine(source string, n int) string {
+	start := 0
+	for i := 0; i < n; i++ {
+		idx := strings.IndexByte(source[start:], '\n')
+		if idx < 0 {
+			return ""
+		}
+		start += idx + 1
+		if start >= len(source) {
+			return ""
+		}
+	}
+	end := strings.IndexByte(source[start:], '\n')
+	if end < 0 {
+		return source[start:]
+	}
+	return source[start : start+end]
 }

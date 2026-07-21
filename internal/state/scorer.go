@@ -90,7 +90,7 @@ func (s *Scorer) calculateInstabilityScore(symbol *Symbol) float64 {
 		changeSize int
 	}
 
-	var events []activityEvent
+	events := make([]activityEvent, 0, len(commits))
 	if len(commits) > 0 {
 		// git log returns newest first, so commits[0] is the latest
 		currentEvent := activityEvent{time: commits[0].Time, changeSize: commits[0].ChangeSize}
@@ -200,7 +200,7 @@ func (s *Scorer) applyMathematicalScoring(symbols []*Symbol) {
 	}
 
 	// 1. INSTABILITY: Collect instability scores for all symbols
-	var instabilityScores []float64
+	instabilityScores := make([]float64, 0, len(symbols))
 	for _, symbol := range symbols {
 		if symbol.InstabilityScore > 0 {
 			instabilityScores = append(instabilityScores, symbol.InstabilityScore)
@@ -208,7 +208,7 @@ func (s *Scorer) applyMathematicalScoring(symbols []*Symbol) {
 	}
 
 	// 2. ABANDONMENT: Calculate time-since-last-modified for unused symbols
-	var ages []float64 // in days
+	ages := make([]float64, 0, len(symbols))
 	for _, symbol := range symbols {
 		if !symbol.IsCalled && symbol.IntentMarker == "" && !symbol.HasTodo {
 			if symbol.LastTouched != nil {
@@ -470,7 +470,7 @@ func (s *Scorer) InterpretSignalsWithIntent(sigSet *signals.SignalSet, intentSta
 	}
 
 	// Apply mathematical scoring (percentile-based)
-	var symbolSlice []*Symbol
+	symbolSlice := make([]*Symbol, 0, len(symbolIndex))
 	for _, symbol := range symbolIndex {
 		symbolSlice = append(symbolSlice, symbol)
 	}

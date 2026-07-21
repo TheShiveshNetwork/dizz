@@ -56,11 +56,14 @@ func (s *StateStore) LoadProjectState() (*state.ProjectState, error) {
 		}
 		defer reader.Close()
 
-		var buf bytes.Buffer
+		buf := bufferPool.Get().(*bytes.Buffer)
+		buf.Reset()
 		if _, err := buf.ReadFrom(reader); err != nil {
+			bufferPool.Put(buf)
 			return nil, fmt.Errorf("failed to decompress state file: %w", err)
 		}
 		data = buf.Bytes()
+		bufferPool.Put(buf)
 	}
 
 	var projectState state.ProjectState
@@ -84,8 +87,11 @@ func (s *StateStore) SaveProjectState(projectState *state.ProjectState) error {
 		return fmt.Errorf("failed to marshal project state: %w", err)
 	}
 
-	var buf bytes.Buffer
-	gzWriter, err := gzip.NewWriterLevel(&buf, gzip.BestSpeed)
+	buf := bufferPool.Get().(*bytes.Buffer)
+	buf.Reset()
+	defer bufferPool.Put(buf)
+
+	gzWriter, err := gzip.NewWriterLevel(buf, gzip.BestSpeed)
 	if err != nil {
 		return fmt.Errorf("failed to create gzip writer: %w", err)
 	}

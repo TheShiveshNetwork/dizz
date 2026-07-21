@@ -16,6 +16,12 @@ import (
 
 const cacheVersion = 1
 
+var bufferPool = sync.Pool{
+	New: func() interface{} {
+		return new(bytes.Buffer)
+	},
+}
+
 // CacheFileMeta tracks the state of a cached file analysis.
 type CacheFileMeta struct {
 	ContentHash string    `json:"content_hash"`
@@ -250,11 +256,14 @@ func (sc *SignalCache) loadSignals(relPath string) ([]signals.Signal, bool) {
 			return nil, false
 		}
 		defer reader.Close()
-		var buf bytes.Buffer
+		buf := bufferPool.Get().(*bytes.Buffer)
+		buf.Reset()
 		if _, err := buf.ReadFrom(reader); err != nil {
+			bufferPool.Put(buf)
 			return nil, false
 		}
 		raw = buf.Bytes()
+		bufferPool.Put(buf)
 	} else {
 		raw = data
 	}
@@ -276,8 +285,11 @@ func (sc *SignalCache) storeSignals(relPath string, sigs []signals.Signal) error
 		return fmt.Errorf("marshal cached signals: %w", err)
 	}
 
-	var buf bytes.Buffer
-	gzWriter, err := gzip.NewWriterLevel(&buf, gzip.BestSpeed)
+	buf := bufferPool.Get().(*bytes.Buffer)
+	buf.Reset()
+	defer bufferPool.Put(buf)
+
+	gzWriter, err := gzip.NewWriterLevel(buf, gzip.BestSpeed)
 	if err != nil {
 		return fmt.Errorf("create gzip: %w", err)
 	}
