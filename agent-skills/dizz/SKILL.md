@@ -132,3 +132,4 @@ Line-oriented, pipe-delimited. First line is the header. No quotes, braces, or i
 - dizz is **read-only** — it never modifies source code
 - All cleanup, intent resolution, and state changes are performed by the agent based on dizz's output
 - Config is always optional — dizz works with zero configuration
+- **Test files**: Test functions (`TestXxx`, `BenchmarkXxx`) are called implicitly by the test framework, so dizz cannot detect their call sites and reports them as "unused". Exclude test files from analysis by adding `**/*_test.go` to the `exclude` list in `.dizz/config.json`. Alternatively, add `// @ignore-unused` before individual test functions to mark them as active.
