@@ -115,13 +115,16 @@ func (sc *SignalCache) SaveManifest() error {
 }
 
 // GetByMTime checks cache using only mtime (no content read needed).
-// Use this for the fast path when files are unlikely to have changed.
 func (sc *SignalCache) GetByMTime(filePath string, mtime time.Time) ([]signals.Signal, bool) {
 	relPath, err := filepath.Rel(sc.projectRoot, filePath)
 	if err != nil {
 		return nil, false
 	}
+	return sc.GetByMTimeRel(relPath, mtime)
+}
 
+// GetByMTimeRel is like GetByMTime but takes a precomputed relative path.
+func (sc *SignalCache) GetByMTimeRel(relPath string, mtime time.Time) ([]signals.Signal, bool) {
 	sc.mu.RLock()
 	meta, ok := sc.manifest.Files[relPath]
 	sc.mu.RUnlock()
@@ -138,7 +141,11 @@ func (sc *SignalCache) Get(filePath string, contentHash string, mtime time.Time)
 	if err != nil {
 		return nil, false
 	}
+	return sc.GetRel(relPath, contentHash, mtime)
+}
 
+// GetRel is like Get but takes a precomputed relative path.
+func (sc *SignalCache) GetRel(relPath string, contentHash string, mtime time.Time) ([]signals.Signal, bool) {
 	sc.mu.RLock()
 	meta, ok := sc.manifest.Files[relPath]
 	sc.mu.RUnlock()
@@ -158,11 +165,14 @@ func (sc *SignalCache) MTimeInCache(filePath string, mtime time.Time) bool {
 	if err != nil {
 		return false
 	}
+	return sc.MTimeInCacheRel(relPath, mtime)
+}
 
+// MTimeInCacheRel is like MTimeInCache but takes a precomputed relative path.
+func (sc *SignalCache) MTimeInCacheRel(relPath string, mtime time.Time) bool {
 	sc.mu.RLock()
 	meta, ok := sc.manifest.Files[relPath]
 	sc.mu.RUnlock()
-
 	return ok && meta.MTime.Equal(mtime)
 }
 
@@ -171,7 +181,11 @@ func (sc *SignalCache) Set(filePath string, contentHash string, mtime time.Time,
 	if err != nil {
 		return err
 	}
+	return sc.SetRel(relPath, contentHash, mtime, sigs)
+}
 
+// SetRel is like Set but takes a precomputed relative path.
+func (sc *SignalCache) SetRel(relPath string, contentHash string, mtime time.Time, sigs []signals.Signal) error {
 	if err := sc.storeSignals(relPath, sigs); err != nil {
 		return err
 	}
@@ -188,7 +202,11 @@ func (sc *SignalCache) Evict(filePath string) {
 	if err != nil {
 		return
 	}
+	sc.EvictRel(relPath)
+}
 
+// EvictRel is like Evict but takes a precomputed relative path.
+func (sc *SignalCache) EvictRel(relPath string) {
 	sc.mu.Lock()
 	delete(sc.manifest.Files, relPath)
 	sc.changed = true
@@ -201,8 +219,7 @@ func (sc *SignalCache) Evict(filePath string) {
 func (sc *SignalCache) EvictStale(discoveredFiles map[string]struct{}) {
 	sc.mu.Lock()
 	for relPath := range sc.manifest.Files {
-		fullPath := filepath.Join(sc.projectRoot, relPath)
-		if _, exists := discoveredFiles[fullPath]; !exists {
+		if _, exists := discoveredFiles[relPath]; !exists {
 			delete(sc.manifest.Files, relPath)
 			sc.changed = true
 			cachePath := sc.signalFilePath(relPath)

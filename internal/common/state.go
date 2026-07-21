@@ -153,20 +153,33 @@ func runCurrentAnalysisAtRoot(projectRoot string, options *AnalysisOptions) (*st
 	var allSignals []signals.Signal
 	var changedFiles []string
 
+	// Precompute relative paths once to avoid repeated filepath.Rel in signalCache
+	fileRelMap := make(map[string]string, len(files))
 	for _, file := range files {
+		relPath, err := filepath.Rel(projectRoot, file)
+		if err != nil {
+			continue
+		}
+		fileRelMap[file] = relPath
+	}
+
+	for _, file := range files {
+		relPath, ok := fileRelMap[file]
+		if !ok {
+			continue
+		}
+
 		info, err := os.Stat(file)
 		if err != nil {
 			continue
 		}
 		mtime := info.ModTime()
 
-		// Fast path: mtime matches cache → no content read needed
-		if sigs, ok := signalCache.GetByMTime(file, mtime); ok {
+		if sigs, ok := signalCache.GetByMTimeRel(relPath, mtime); ok {
 			allSignals = append(allSignals, sigs...)
 			continue
 		}
 
-		// Slow path: mtime differs — read + hash + (re-)analyze
 		content, err := os.ReadFile(file)
 		if err != nil {
 			continue
@@ -174,8 +187,7 @@ func runCurrentAnalysisAtRoot(projectRoot string, options *AnalysisOptions) (*st
 		h := sha256.Sum256(content)
 		contentHash := hex.EncodeToString(h[:])
 
-		if sigs, ok := signalCache.Get(file, contentHash, mtime); ok {
-			// MTime changed but content is the same (e.g. git checkout)
+		if sigs, ok := signalCache.GetRel(relPath, contentHash, mtime); ok {
 			allSignals = append(allSignals, sigs...)
 		} else {
 			sigs, err := registry.AnalyzeSingleFile(file, content)
@@ -183,17 +195,19 @@ func runCurrentAnalysisAtRoot(projectRoot string, options *AnalysisOptions) (*st
 				continue
 			}
 			allSignals = append(allSignals, sigs...)
-			signalCache.Set(file, contentHash, mtime, sigs)
+			signalCache.SetRel(relPath, contentHash, mtime, sigs)
 			changedFiles = append(changedFiles, file)
 		}
 	}
 
 	// Evict cache entries for deleted files
-	discoveredSet := make(map[string]struct{})
-	for _, f := range files {
-		discoveredSet[f] = struct{}{}
+	discoveredRelSet := make(map[string]struct{}, len(files))
+	for _, file := range files {
+		if relPath, ok := fileRelMap[file]; ok {
+			discoveredRelSet[relPath] = struct{}{}
+		}
 	}
-	signalCache.EvictStale(discoveredSet)
+	signalCache.EvictStale(discoveredRelSet)
 	signalCache.SaveManifest()
 
 	// ── Phase 4: Load previous state early for signal-set comparison ──
