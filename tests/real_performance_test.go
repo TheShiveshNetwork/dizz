@@ -109,14 +109,9 @@ func TestRealAnalysisPerformance(t *testing.T) {
 		integrations.InvalidateCache()
 
 		// Simulate just git operations by running batch analysis
-		symbolData := make([]interface{}, len(projectState.Symbols))
+		symbolData := make([]integrations.SymbolRange, len(projectState.Symbols))
 		for i, symbol := range projectState.Symbols {
-			symbolData[i] = struct {
-				File    string
-				Name    string
-				Line    int
-				EndLine int
-			}{
+			symbolData[i] = integrations.SymbolRange{
 				File:    symbol.File,
 				Name:    symbol.Name,
 				Line:    symbol.Line,

@@ -3,7 +3,6 @@ package cmd
 import (
 	"crypto/sha256"
 	"encoding/hex"
-	"encoding/json"
 	"errors"
 	"fmt"
 	"os"
@@ -151,23 +150,36 @@ func runCurrentAnalysisAtRoot(projectRoot string, options *AnalysisOptions) (*st
 	signalCache := store.NewSignalCache(projectRoot, cacheDir)
 	signalCache.LoadManifest()
 
-	var allSignals []signals.Signal
-	var changedFiles []string
+	allSignals := make([]signals.Signal, 0, len(files)*3)
+	changedFiles := make([]string, 0, len(files))
+
+	// Precompute relative paths once to avoid repeated filepath.Rel in signalCache
+	fileRelMap := make(map[string]string, len(files))
+	for _, file := range files {
+		relPath, err := filepath.Rel(projectRoot, file)
+		if err != nil {
+			continue
+		}
+		fileRelMap[file] = relPath
+	}
 
 	for _, file := range files {
+		relPath, ok := fileRelMap[file]
+		if !ok {
+			continue
+		}
+
 		info, err := os.Stat(file)
 		if err != nil {
 			continue
 		}
 		mtime := info.ModTime()
 
-		// Fast path: mtime matches cache → no content read needed
-		if sigs, ok := signalCache.GetByMTime(file, mtime); ok {
+		if sigs, ok := signalCache.GetByMTimeRel(relPath, mtime); ok {
 			allSignals = append(allSignals, sigs...)
 			continue
 		}
 
-		// Slow path: mtime differs — read + hash + (re-)analyze
 		content, err := os.ReadFile(file)
 		if err != nil {
 			continue
@@ -175,8 +187,7 @@ func runCurrentAnalysisAtRoot(projectRoot string, options *AnalysisOptions) (*st
 		h := sha256.Sum256(content)
 		contentHash := hex.EncodeToString(h[:])
 
-		if sigs, ok := signalCache.Get(file, contentHash, mtime); ok {
-			// MTime changed but content is the same (e.g. git checkout)
+		if sigs, ok := signalCache.GetRel(relPath, contentHash, mtime); ok {
 			allSignals = append(allSignals, sigs...)
 		} else {
 			sigs, err := registry.AnalyzeSingleFile(file, content)
@@ -184,17 +195,19 @@ func runCurrentAnalysisAtRoot(projectRoot string, options *AnalysisOptions) (*st
 				continue
 			}
 			allSignals = append(allSignals, sigs...)
-			signalCache.Set(file, contentHash, mtime, sigs)
+			signalCache.SetRel(relPath, contentHash, mtime, sigs)
 			changedFiles = append(changedFiles, file)
 		}
 	}
 
 	// Evict cache entries for deleted files
-	discoveredSet := make(map[string]struct{})
-	for _, f := range files {
-		discoveredSet[f] = struct{}{}
+	discoveredRelSet := make(map[string]struct{}, len(files))
+	for _, file := range files {
+		if relPath, ok := fileRelMap[file]; ok {
+			discoveredRelSet[relPath] = struct{}{}
+		}
 	}
-	signalCache.EvictStale(discoveredSet)
+	signalCache.EvictStale(discoveredRelSet)
 	signalCache.SaveManifest()
 
 	// ── Phase 4: Load previous state early for signal-set comparison ──
@@ -204,10 +217,8 @@ func runCurrentAnalysisAtRoot(projectRoot string, options *AnalysisOptions) (*st
 	// Merge all signals into a SignalSet
 	mergedSigSet := &signals.SignalSet{Signals: allSignals}
 
-	// Compute hash of the merged signal set for identity detection
-	signalJSON, _ := json.Marshal(mergedSigSet)
-	signalHashBytes := sha256.Sum256(signalJSON)
-	signalHashStr := hex.EncodeToString(signalHashBytes[:])
+	// Compute rolling hash of the merged signal set for identity detection
+	signalHashStr := mergedSigSet.Hash()
 
 	// If the signal set is identical to the previous run, skip scoring entirely.
 	// This closes the loop for truly zero-work runs: no file changes, no HEAD
@@ -216,7 +227,7 @@ func runCurrentAnalysisAtRoot(projectRoot string, options *AnalysisOptions) (*st
 		if prevHash, ok := prevState.Metadata["signal_set_hash"].(string); ok && prevHash == signalHashStr {
 			prevState.UpdatedAt = time.Now()
 			if options != nil {
-				var filteredSymbols []state.Symbol
+				filteredSymbols := make([]state.Symbol, 0, len(prevState.Symbols))
 				for _, symbol := range prevState.Symbols {
 					shouldInclude := true
 					if options.IgnoreUnstable && symbol.State == state.Unstable {
@@ -253,7 +264,7 @@ func runCurrentAnalysisAtRoot(projectRoot string, options *AnalysisOptions) (*st
 
 	// Filter symbols based on ignore options
 	if options != nil {
-		var filteredSymbols []state.Symbol
+		filteredSymbols := make([]state.Symbol, 0, len(projectState.Symbols))
 		for _, symbol := range projectState.Symbols {
 			shouldInclude := true
 			if options.IgnoreUnstable && symbol.State == state.Unstable {
@@ -294,7 +305,7 @@ func runCurrentAnalysisAtRoot(projectRoot string, options *AnalysisOptions) (*st
 
 		// Carry forward git data for unchanged symbols;
 		// collect changed symbols for batch git analysis.
-		var changedSymbolIdx []int
+		changedSymbolIdx := make([]int, 0, len(projectState.Symbols))
 		for i := range projectState.Symbols {
 			sym := &projectState.Symbols[i]
 			if _, isChanged := changedSet[sym.File]; !isChanged {
@@ -309,15 +320,10 @@ func runCurrentAnalysisAtRoot(projectRoot string, options *AnalysisOptions) (*st
 
 		// Run batch git analysis only for changed/new symbols
 		if len(changedSymbolIdx) > 0 {
-			symbolData := make([]interface{}, len(changedSymbolIdx))
+			symbolData := make([]integrations.SymbolRange, len(changedSymbolIdx))
 			for j, idx := range changedSymbolIdx {
 				sym := projectState.Symbols[idx]
-				symbolData[j] = struct {
-					File    string
-					Name    string
-					Line    int
-					EndLine int
-				}{
+				symbolData[j] = integrations.SymbolRange{
 					File:    sym.File,
 					Name:    sym.Name,
 					Line:    sym.Line,

@@ -1,23 +1,28 @@
 package signals
 
+import (
+	"encoding/binary"
+	"hash/fnv"
+)
+
 // SignalType represents the type of fact extracted from code
 type SignalType string
 
 const (
 	// Structure signals
-	FunctionDefined	SignalType = "function_defined"
-	FunctionCalled	SignalType = "function_called"
-	ImportFound			SignalType = "import_found"
+	FunctionDefined SignalType = "function_defined"
+	FunctionCalled  SignalType = "function_called"
+	ImportFound     SignalType = "import_found"
 
 	// Intent signals
-	TodoFound			SignalType = "todo_found"
-	TodoRemoved		SignalType = "todo_removed"
-	IntentMarker	SignalType = "intent_marker"
-	IgnoreFlag		SignalType = "intent_ignore"
+	TodoFound    SignalType = "todo_found"
+	TodoRemoved  SignalType = "todo_removed"
+	IntentMarker SignalType = "intent_marker"
+	IgnoreFlag   SignalType = "intent_ignore"
 
 	// Time signals
-	FileTouched		SignalType = "file_touched"
-	FileModified	SignalType = "file_modified"
+	FileTouched  SignalType = "file_touched"
+	FileModified SignalType = "file_modified"
 )
 
 // Signal represents a single fact extracted from the codebase
@@ -105,11 +110,46 @@ func (s *Signal) WithConfidence(conf float64) *Signal {
 // SignalSet is a collection of signals from analysis
 type SignalSet struct {
 	Signals []Signal `json:"signals"`
+	hash    uint64   `json:"-"` // rolling FNV-1a hash for identity detection
 }
 
-// Add appends a signal to the set
+// Add appends a signal to the set and updates the rolling hash
 func (ss *SignalSet) Add(signal Signal) {
 	ss.Signals = append(ss.Signals, signal)
+	ss.hash = ss.hash ^ fnvHash(signal)
+}
+
+// Hash returns the current rolling hash of the signal set.
+// Used for identity detection instead of JSON marshaling + SHA-256.
+func (ss *SignalSet) Hash() string {
+	if ss.hash == 0 {
+		return ""
+	}
+	var buf [8]byte
+	binary.BigEndian.PutUint64(buf[:], ss.hash)
+	return string(buf[:])
+}
+
+// fnvHash computes a FNV-1a hash of a signal for incremental hashing.
+func fnvHash(s Signal) uint64 {
+	h := fnv.New64a()
+	h.Write([]byte(s.Type))
+	h.Write([]byte(s.Name))
+	h.Write([]byte(s.File))
+	var ibuf [8]byte
+	binary.BigEndian.PutUint64(ibuf[:], uint64(s.Line))
+	h.Write(ibuf[:])
+	binary.BigEndian.PutUint64(ibuf[:], uint64(s.EndLine))
+	h.Write(ibuf[:])
+	binary.BigEndian.PutUint64(ibuf[:], uint64(s.Column))
+	h.Write(ibuf[:])
+	binary.BigEndian.PutUint64(ibuf[:], uint64(s.EndColumn))
+	h.Write(ibuf[:])
+	h.Write([]byte(s.Language))
+	var fbuf [8]byte
+	binary.LittleEndian.PutUint64(fbuf[:], uint64(s.Confidence*1000000))
+	h.Write(fbuf[:])
+	return h.Sum64()
 }
 
 // Filter returns signals matching a predicate

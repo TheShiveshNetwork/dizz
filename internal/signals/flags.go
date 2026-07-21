@@ -90,8 +90,8 @@ func ExtractIgnoreMarkers(source, file, langID string) []IgnoreSignal {
 		}
 	}
 
-	var result []IgnoreSignal
 	lines := strings.Split(source, "\n")
+	result := make([]IgnoreSignal, 0, len(lines))
 
 	for lineIdx, line := range lines {
 		if !ignoreMarkerRe.MatchString(line) {

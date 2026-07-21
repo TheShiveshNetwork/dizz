@@ -111,7 +111,7 @@ func (ps *ProjectState) AddTodo(todo Todo) {
 
 // GetSymbolsByState returns all symbols in a given state
 func (ps *ProjectState) GetSymbolsByState(state SymbolState) []Symbol {
-	var result []Symbol
+	result := make([]Symbol, 0, len(ps.Symbols))
 	for _, sym := range ps.Symbols {
 		if sym.State == state {
 			result = append(result, sym)
@@ -122,7 +122,7 @@ func (ps *ProjectState) GetSymbolsByState(state SymbolState) []Symbol {
 
 // GetActiveTodos returns unresolved todos
 func (ps *ProjectState) GetActiveTodos() []Todo {
-	var result []Todo
+	result := make([]Todo, 0, len(ps.Todos))
 	for _, todo := range ps.Todos {
 		if !todo.Resolved {
 			result = append(result, todo)
@@ -254,7 +254,7 @@ func (is *IntentState) AddIntent(intent Intent) {
 
 // GetActiveIntents returns all active intents
 func (is *IntentState) GetActiveIntents() []Intent {
-	var result []Intent
+	result := make([]Intent, 0, len(is.Intents))
 	for _, intent := range is.Intents {
 		if intent.Status == IntentActive {
 			result = append(result, intent)
@@ -266,7 +266,7 @@ func (is *IntentState) GetActiveIntents() []Intent {
 // @ignore-unused
 // TODO: add intent filters
 func (is *IntentState) GetIntentsByType(intentType IntentType) []Intent {
-	var result []Intent
+	result := make([]Intent, 0, len(is.Intents))
 	for _, intent := range is.Intents {
 		if intent.Type == intentType {
 			result = append(result, intent)
@@ -278,7 +278,7 @@ func (is *IntentState) GetIntentsByType(intentType IntentType) []Intent {
 // @ignore-unused
 // TODO: add intent filters
 func (is *IntentState) GetIntentsBySeverity(minSeverity int) []Intent {
-	var result []Intent
+	result := make([]Intent, 0, len(is.Intents))
 	for _, intent := range is.Intents {
 		if intent.Severity >= minSeverity {
 			result = append(result, intent)

@@ -155,13 +155,19 @@ func matchPattern(path, pattern string) bool {
 }
 
 // patternsAreExtensionBased returns true when ALL patterns look like the
-// auto-generated set from the language registry (**/*.go, **/*.ts, etc.).
+// auto-generated set from the language registry (**/*.go, **/*.ts, etc.)
+// AND every referenced extension is a known language extension.
 func patternsAreExtensionBased(patterns []string) bool {
 	if len(patterns) < 2 {
 		return false
 	}
+	exts := extensionSet()
 	for _, p := range patterns {
 		if !strings.HasPrefix(p, "**/*.") {
+			return false
+		}
+		ext := p[4:] // strip "**/*."
+		if !exts[ext] {
 			return false
 		}
 	}
@@ -182,6 +188,9 @@ func shouldInclude(path, root string, patterns []string) bool {
 		if ext := filepath.Ext(relPath); ext != "" && extensionSet()[ext] {
 			return true
 		}
+		// No need to loop through patterns — if the extension doesn't match
+		// any known language extension, no **/*.ext pattern can match.
+		return false
 	}
 
 	for _, pattern := range patterns {
