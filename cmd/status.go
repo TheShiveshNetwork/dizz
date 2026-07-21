@@ -26,7 +26,7 @@ Use this for a quick health check without full analysis.`,
 	},
 }
 
-// @ignore-unused
+// @dizz-ignore-unused
 func init() {
 	rootCmd.AddCommand(statusCmd)
 }
@@ -114,7 +114,7 @@ func runStatus() {
 
 	fmt.Println()
 	fmt.Printf("  %s %s %s\n",
-		ui.Muted("Health:"),
+		ui.Muted("Code Score:"),
 		ui.Colorize(healthIcon, healthColor),
 		ui.Colorize(fmt.Sprintf("%d%%", healthScore), healthColor))
 	fmt.Println()
@@ -219,7 +219,7 @@ func createBar(count, total int, color string) string {
 	return bar
 }
 
-// @ignore-unstable - this function is intentionally excluded from instability analysis
+// @dizz-ignore-unstable - this function is intentionally excluded from instability analysis
 func anotherFunction() {
 	// This function would be excluded from instability analysis
 }

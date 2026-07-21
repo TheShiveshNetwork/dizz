@@ -243,6 +243,29 @@ func (s *Scorer) applyMathematicalScoring(symbols []*Symbol) {
 			continue
 		}
 
+		// HasTodo symbols skipped by carry-forward need Planned set here.
+		if symbol.HasTodo {
+			symbol.State = Planned
+			symbol.Confidence = 0.7
+			continue
+		}
+
+		// Same carry-forward issue for intent markers.
+		if symbol.IntentMarker != "" {
+			switch symbol.IntentMarker {
+			case "planned":
+				symbol.State = Planned
+				symbol.Confidence = 1.0
+			case "active":
+				symbol.State = Active
+				symbol.Confidence = 1.0
+			case "deprecated":
+				symbol.State = Abandoned
+				symbol.Confidence = 1.0
+			}
+			continue
+		}
+
 		// UNSTABLE: High instability score (90th percentile) - APPLIES TO ALL SYMBOLS
 		if instabilityThreshold > 0 && symbol.InstabilityScore >= instabilityThreshold {
 			symbol.State = Unstable

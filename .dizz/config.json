@@ -5,6 +5,7 @@
     "**/*"
   ],
   "exclude": [
+    "**/*_test.go",
     "vendor/**",
     "node_modules/**",
     ".git/**",

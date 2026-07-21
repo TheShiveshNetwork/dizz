@@ -394,6 +394,15 @@ func batchFileLastModified(files map[string]bool, result *GitBatchResult) error 
 		return err
 	}
 
+	// Resolve the git working tree root so we can convert relative paths from
+	// --name-only output back to absolute paths (the caller uses absolute keys).
+	gitRootCmd := exec.Command("git", "rev-parse", "--show-toplevel")
+	gitRootBytes, gitRootErr := gitRootCmd.Output()
+	gitRoot := ""
+	if gitRootErr == nil {
+		gitRoot = strings.TrimSpace(string(gitRootBytes))
+	}
+
 	lines := strings.Split(string(output), "\n")
 	var currentFile string
 
@@ -410,8 +419,13 @@ func batchFileLastModified(files map[string]bool, result *GitBatchResult) error 
 				currentFile = ""
 			}
 		} else {
-			// This is a filename
-			currentFile = line
+			// This is a filename (relative to git root).
+			// Convert to absolute for consistent lookup.
+			if gitRoot != "" && !filepath.IsAbs(line) {
+				currentFile = filepath.Join(gitRoot, line)
+			} else {
+				currentFile = line
+			}
 		}
 	}
 

@@ -7,6 +7,8 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"sort"
+	"strings"
 	"sync"
 	"time"
 
@@ -140,6 +142,23 @@ func runCurrentAnalysisAtRoot(projectRoot string, options *AnalysisOptions) (*st
 		return nil, err
 	}
 
+	// Filter out files with @dizz-ignore-file marker (read first 200 bytes each)
+	filtered := make([]string, 0, len(files))
+	for _, f := range files {
+		header := make([]byte, 200)
+		fh, openErr := os.Open(f)
+		if openErr != nil {
+			continue
+		}
+		n, _ := fh.Read(header)
+		fh.Close()
+		if n > 0 && signals.HasFileIgnoreFlag(string(header[:n])) {
+			continue
+		}
+		filtered = append(filtered, f)
+	}
+	files = filtered
+
 	// Build analyzer registry
 	registry := analyzer.NewRegistry()
 	registry.Register(&ast.Analyzer{})
@@ -215,7 +234,10 @@ func runCurrentAnalysisAtRoot(projectRoot string, options *AnalysisOptions) (*st
 	prevState, _ := prevStateStore.LoadProjectState()
 
 	// Merge all signals into a SignalSet
-	mergedSigSet := &signals.SignalSet{Signals: allSignals}
+	mergedSigSet := &signals.SignalSet{}
+	for _, sig := range allSignals {
+		mergedSigSet.Add(sig)
+	}
 
 	// Compute rolling hash of the merged signal set for identity detection
 	signalHashStr := mergedSigSet.Hash()
@@ -362,7 +384,65 @@ func runCurrentAnalysisAtRoot(projectRoot string, options *AnalysisOptions) (*st
 		// Continue even if saving fails
 	}
 
+	// ── Phase 5: Write context.ton for agent consumption ──
+	snapshotHashes := getSnapshotHashes(trackDir)
+	writeStateTON(trackDir, projectState, intentState, snapshotHashes)
+
 	return projectState, nil
+}
+
+func getSnapshotHashes(trackDir string) []string {
+	objectsDir := config.ObjectsDirPath(trackDir)
+	hashes := []string{}
+	subdirs, err := os.ReadDir(objectsDir)
+	if err != nil {
+		return hashes
+	}
+	for _, sub := range subdirs {
+		if !sub.IsDir() {
+			continue
+		}
+		subPath := filepath.Join(objectsDir, sub.Name())
+		files, err := os.ReadDir(subPath)
+		if err != nil {
+			continue
+		}
+		for _, f := range files {
+			if f.IsDir() {
+				continue
+			}
+			name := f.Name()
+			if !strings.HasSuffix(name, ".json") && !strings.HasSuffix(name, ".delta") {
+				continue
+			}
+			ext := filepath.Ext(name)
+			hash := sub.Name() + strings.TrimSuffix(name, ext)
+			if len(hash) > 8 {
+				hash = hash[:8]
+			}
+			hashes = append(hashes, hash)
+		}
+	}
+	sort.Slice(hashes, func(i, j int) bool {
+		return hashes[i] < hashes[j]
+	})
+	if len(hashes) > 5 {
+		hashes = hashes[len(hashes)-5:]
+	}
+	return hashes
+}
+
+func writeStateTON(trackDir string, ps *state.ProjectState, is *state.IntentState, snapshotHashes []string) {
+	contextTONPath := config.ContextTONFilePath(trackDir)
+	data, _ := state.MarshalStateTON(ps, is, snapshotHashes)
+	if len(data) == 0 {
+		return
+	}
+	tmpPath := contextTONPath + ".tmp"
+	if err := os.WriteFile(tmpPath, data, 0644); err != nil {
+		return
+	}
+	os.Rename(tmpPath, contextTONPath)
 }
 
 // FindProjectRoot searches up directory tree for .dizz directory

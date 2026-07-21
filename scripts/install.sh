@@ -175,3 +175,6 @@ else
     echo -e "${YELLOW}Installed to $INSTALL_DIR/dizz${NC}"
     echo -e "${YELLOW}Restart your terminal or run: export PATH=\"\$PATH:$INSTALL_DIR\"${NC}"
 fi
+
+echo ""
+echo -e "${BLUE}Next:${NC} run 'dizz install-skill' to enable agent skill discovery"

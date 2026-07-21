@@ -86,6 +86,24 @@ func (r *Registry) AnalyzeFile(file string) ([]signals.Signal, error) {
 // Used by the incremental cache path.  When content is non-nil it is used instead
 // of re-reading the file from disk.
 func (r *Registry) AnalyzeSingleFile(file string, content []byte) ([]signals.Signal, error) {
+	// Read content if not provided
+	var src string
+	if content != nil {
+		src = string(content)
+	} else {
+		data, err := os.ReadFile(file)
+		if err != nil {
+			return []signals.Signal{}, nil
+		}
+		src = string(data)
+		content = data
+	}
+
+	// Check for @dizz-ignore-file flag — skip analysis entirely.
+	if signals.HasFileIgnoreFlag(src) {
+		return []signals.Signal{}, nil
+	}
+
 	allSignals := make([]signals.Signal, 0, 16)
 
 	analyzer := r.FindAnalyzer(file)
@@ -109,7 +127,7 @@ func (r *Registry) AnalyzeSingleFile(file string, content []byte) ([]signals.Sig
 
 	// Analyze ignore markers for this file
 	if content != nil {
-		ignoreSigs := AnalyzeIgnoreMarkersFromSource(string(content), file)
+		ignoreSigs := AnalyzeIgnoreMarkersFromSource(src, file)
 		allSignals = append(allSignals, ignoreSigs...)
 	} else {
 		ignoreSigs := AnalyzeIgnoreMarkers(file)
@@ -119,8 +137,58 @@ func (r *Registry) AnalyzeSingleFile(file string, content []byte) ([]signals.Sig
 	return allSignals, nil
 }
 
+// filterIgnoredFiles removes files that have the @dizz-ignore-file marker
+// in their first few lines.  Each file is read (first 200 bytes) once.
+func filterIgnoredFiles(files []string) []string {
+	// Use a worker pool for parallel reads on large projects.
+	n := len(files)
+	if n < 8 {
+		filtered := make([]string, 0, n)
+		for _, f := range files {
+			data, err := os.ReadFile(f)
+			if err != nil || !signals.HasFileIgnoreFlag(string(data)) {
+				filtered = append(filtered, f)
+			}
+		}
+		return filtered
+	}
+
+	// Parallel path for large file sets
+	var mu sync.Mutex
+	filtered := make([]string, 0, n)
+	jobs := make(chan string, n)
+	var wg sync.WaitGroup
+
+	for i := 0; i < 8; i++ {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			for f := range jobs {
+				data, err := os.ReadFile(f)
+				if err != nil || !signals.HasFileIgnoreFlag(string(data)) {
+					mu.Lock()
+					filtered = append(filtered, f)
+					mu.Unlock()
+				}
+			}
+		}()
+	}
+
+	for _, f := range files {
+		jobs <- f
+	}
+	close(jobs)
+	wg.Wait()
+	return filtered
+}
+
 // AnalyzeFiles runs appropriate analyzers on all files
 func (r *Registry) AnalyzeFiles(files []string) (*signals.SignalSet, error) {
+	if len(files) == 0 {
+		return &signals.SignalSet{}, nil
+	}
+
+	files = filterIgnoredFiles(files)
 	if len(files) == 0 {
 		return &signals.SignalSet{}, nil
 	}
@@ -222,6 +290,10 @@ func (r *Registry) AnalyzeFiles(files []string) (*signals.SignalSet, error) {
 
 // analyzeSequentially handles small projects without parallel overhead
 func (r *Registry) analyzeSequentially(files []string) (*signals.SignalSet, error) {
+	files = filterIgnoredFiles(files)
+	if len(files) == 0 {
+		return &signals.SignalSet{}, nil
+	}
 	allSignals := &signals.SignalSet{}
 
 	filesByAnalyzer := make(map[Analyzer][]string)
@@ -333,11 +405,11 @@ func extractIgnoreTypeFromSignal(ignoreSig signals.IgnoreSignal, source string) 
 		return "unknown"
 	}
 	line := nthLine(source, ignoreSig.Line-1)
-	if strings.Contains(line, "@ignore-unused") {
+	if strings.Contains(line, "@ignore-unused") || strings.Contains(line, "@dizz-ignore-unused") {
 		return "unused"
-	} else if strings.Contains(line, "@ignore-unstable") {
+	} else if strings.Contains(line, "@ignore-unstable") || strings.Contains(line, "@dizz-ignore-unstable") {
 		return "unstable"
-	} else if strings.Contains(line, "@ignore-abandoned") {
+	} else if strings.Contains(line, "@ignore-abandoned") || strings.Contains(line, "@dizz-ignore-abandoned") {
 		return "abandoned"
 	}
 	return "unknown"

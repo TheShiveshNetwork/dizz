@@ -160,7 +160,7 @@ func (a *Analyzer) extractImports(file *ast.File, filePath string, fset *token.F
 	}
 }
 
-var todoRegex = regexp.MustCompile(`(?i)\b(TODO|FIXME|XXX|HACK|NOTE):\s*(.*)`)
+var todoRegex = regexp.MustCompile(`(?i)(?://|/\*|\*)\s*(TODO|FIXME|XXX|HACK|NOTE):\s*(.*)`)
 
 func (a *Analyzer) extractTodos(file *ast.File, filePath string, fset *token.FileSet, sigSet *signals.SignalSet) {
 	for _, commentGroup := range file.Comments {
@@ -234,5 +234,5 @@ func IsGoFile(path string) bool {
 		return false
 	}
 
-	return filepath.Ext(path) == ".go" && !strings.HasSuffix(path, "_test.go")
+	return filepath.Ext(path) == ".go"
 }
