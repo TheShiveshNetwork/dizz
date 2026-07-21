@@ -188,21 +188,22 @@ func (a *Analyzer) scanFile(filePath string, scanner *bufio.Scanner, langID stri
 		lineNum++
 		line := scanner.Text()
 
-		a.extractFunctions(line, filePath, langID, lineNum, tier, cl, sigSet)
-		a.extractTypes(line, filePath, langID, lineNum, tier, cl, sigSet)
-		a.extractCalls(line, filePath, langID, lineNum, tier, cl, sigSet)
-		a.extractTodos(line, filePath, langID, lineNum, cl, sigSet)
-		a.extractIntents(line, filePath, langID, lineNum, cl, sigSet)
+		isDef := a.extractDefinitions(line, filePath, langID, lineNum, tier, cl, sigSet)
+		if !isDef {
+			a.extractCalls(line, filePath, langID, lineNum, tier, cl, sigSet)
+		}
+		a.extractAnnotations(line, filePath, langID, lineNum, cl, sigSet)
 	}
 
 	return scanner.Err()
 }
 
-// extractFunctions emits FunctionDefined signals.
-func (a *Analyzer) extractFunctions(
+// extractDefinitions combines function and type definition extraction
+// into a single pass. Returns true if the line matched a definition.
+func (a *Analyzer) extractDefinitions(
 	line, filePath, langID string, lineNum int, tier string,
 	cl *compiledLanguage, sigSet *signals.SignalSet,
-) {
+) bool {
 	for _, re := range cl.fnPatterns {
 		if m := re.FindStringSubmatch(line); m != nil && len(m) > 1 && m[1] != "" {
 			if !cl.cfg.Keywords[m[1]] {
@@ -214,18 +215,10 @@ func (a *Analyzer) extractFunctions(
 					WithMeta("source", "regex").
 					WithMeta("source_tier", tier)
 				sigSet.Add(*sig)
-				return // one definition per line
+				return true
 			}
 		}
 	}
-}
-
-// extractTypes emits FunctionDefined signals for type/const/static declarations
-// defined in TypePatterns.  These are tracked as symbols just like functions.
-func (a *Analyzer) extractTypes(
-	line, filePath, langID string, lineNum int, tier string,
-	cl *compiledLanguage, sigSet *signals.SignalSet,
-) {
 	for _, re := range cl.typePatterns {
 		if m := re.FindStringSubmatch(line); m != nil && len(m) > 1 && m[1] != "" {
 			if !cl.cfg.Keywords[m[1]] {
@@ -237,34 +230,24 @@ func (a *Analyzer) extractTypes(
 					WithMeta("source", "regex").
 					WithMeta("source_tier", tier)
 				sigSet.Add(*sig)
-				return
+				return true
 			}
 		}
 	}
+	return false
 }
 
 // extractCalls emits FunctionCalled signals.
-// To avoid treating definition headers as calls, we skip lines that already
-// matched a function definition pattern.
 func (a *Analyzer) extractCalls(
 	line, filePath, langID string, lineNum int, tier string,
 	cl *compiledLanguage, sigSet *signals.SignalSet,
 ) {
-	// Skip blank lines and pure comment lines — no call sites there.
 	trimmed := strings.TrimSpace(line)
 	if trimmed == "" {
 		return
 	}
 	for _, cs := range cl.cfg.CommentStyles {
 		if cs.LinePrefix != "" && strings.HasPrefix(trimmed, cs.LinePrefix) {
-			return
-		}
-	}
-
-	// If the line is a function definition, skip it so we do not emit a
-	// spurious FunctionCalled for the definition itself.
-	for _, re := range cl.fnPatterns {
-		if re.MatchString(line) {
 			return
 		}
 	}
@@ -293,35 +276,26 @@ func (a *Analyzer) extractCalls(
 	}
 }
 
-// extractTodos emits TodoFound signals.
-func (a *Analyzer) extractTodos(
+// extractAnnotations combines todo and intent marker extraction
+// into a single pass.
+func (a *Analyzer) extractAnnotations(
 	line, filePath, langID string, lineNum int,
 	cl *compiledLanguage, sigSet *signals.SignalSet,
 ) {
-	if cl.todoPattern == nil {
-		return
+	if cl.todoPattern != nil {
+		if m := cl.todoPattern.FindStringSubmatch(line); m != nil && len(m) >= 3 {
+			tier := tierLabel(cl.cfg.DefaultTier)
+			sig := signals.NewSignal(signals.TodoFound, filePath).
+				WithLine(lineNum).
+				WithLanguage(langID).
+				WithMeta("source", "regex").
+				WithMeta("source_tier", tier).
+				WithMeta("type", strings.ToUpper(m[1])).
+				WithMeta("text", strings.TrimSpace(m[2]))
+			sigSet.Add(*sig)
+		}
 	}
-	m := cl.todoPattern.FindStringSubmatch(line)
-	if m == nil || len(m) < 3 {
-		return
-	}
-	// Determine accuracy tier label for metadata.
-	tier := tierLabel(cl.cfg.DefaultTier)
-	sig := signals.NewSignal(signals.TodoFound, filePath).
-		WithLine(lineNum).
-		WithLanguage(langID).
-		WithMeta("source", "regex").
-		WithMeta("source_tier", tier).
-		WithMeta("type", strings.ToUpper(m[1])).
-		WithMeta("text", strings.TrimSpace(m[2]))
-	sigSet.Add(*sig)
-}
 
-// extractIntents emits IntentMarker signals for @dizz: annotations.
-func (a *Analyzer) extractIntents(
-	line, filePath, langID string, lineNum int,
-	cl *compiledLanguage, sigSet *signals.SignalSet,
-) {
 	if m := cl.intentState.FindStringSubmatch(line); m != nil && len(m) > 1 {
 		sig := signals.NewSignal(signals.IntentMarker, filePath).
 			WithLine(lineNum).
