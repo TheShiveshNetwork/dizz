@@ -1,51 +1,44 @@
 ---
 name: dizz
-description: State-aware project assistant for AI agents. Tracks project intents, code health, symbol states, and git context. Use when you need to understand project state, find what to work on next, detect dead or unstable code, or record project decisions.
+description: Always invoke at the start of any coding session on a dizz-initialized project, and before/after making changes. Maintains the project's memory — active intents (goals/TODOs), symbol health (unstable/unused/abandoned code), git-aware churn where available, and immutable snapshots. Use to answer "what should I work on next", "what's unfinished", "what changed since last time", "is this code dead", or to record a decision so future sessions remember it. Read-only, zero-config, works in any repo — git or non-git.
 license: MIT
-compatibility: Designed for AI agents (Claude Code, OpenClaw, Cursor, Gemini CLI, OpenCode, Codex CLI / Copilot)
+compatibility: Claude Code, Cursor, Gemini CLI, OpenCode, Codex CLI / Copilot
 metadata:
   author: TheShiveshNetwork
   version: "1.0.0"
 ---
 
-# dizz Skill
+# dizz
 
-dizz continuously models the project's progress by combining static analysis, Git history, and intent markers. It helps agents remember what has been done, what is planned, and what has been forgotten.
+dizz is this project's memory. It reads git history and source once and returns the state an agent would otherwise burn tokens rediscovering: what's planned, what's breaking, what's dead, what happened last session. `dizz context` is the default first move on any dizz-initialized project — cheaper and more reliable than re-reading files or asking the user to recap.
 
-## When to Invoke
+## Rule: context first, snapshot around every change
 
-- **On first interaction** with a project: run `dizz context` to get a full state overview
-- **Before making changes**: run `dizz snapshot --auto` to record the pre-change baseline
-- **After making changes**: run `dizz snapshot --auto` again, then `dizz log` to verify no unintended states appeared
-- **To find work items**: run `dizz intent list` to see active project intents
-- **To detect dead code**: run `dizz log` and look for `unused` or `abandoned` symbols
-- **To check project health**: run `dizz status` for a quick summary
-- **To record a goal**: run `dizz intent add "description" --type todo --severity 2`
+1. **Start of session** → `dizz context` (always — ~2KB, replaces re-reading state files)
+2. **Before edits** → `dizz snapshot --auto`
+3. **After edits** → `dizz snapshot --auto`, then `dizz log` to confirm no new unstable/unused symbols
+4. **New goal or task surfaces** → `dizz intent add "<msg>" --type <todo|fixme|refactor|question> --severity <1-3>`
+5. **`No dizz project found`** → `dizz init`, then go to step 1
 
-## Procedure
+## Commands
 
-### 1. Initialize (first time)
+| Command | Use for |
+|---|---|
+| `dizz init` | One-time setup, creates `.dizz/` |
+| `dizz context` | Full state dump for agents (TON format) — **default first call** |
+| `dizz status` | Quick human-readable health check |
+| `dizz log` / `dizz log -a` | Symbol-level detail (unstable/unused/abandoned); `-a` includes healthy symbols too |
+| `dizz intent list` | Active goals/tasks |
+| `dizz intent add "<msg>" --type <t> --severity <1-3>` | Record a goal (types: `todo`, `fixme`, `refactor`, `question`) |
+| `dizz intent resolve <id>` | Close a completed intent |
+| `dizz snapshot --auto` | Immutable state checkpoint |
+| `dizz snapshot --diff` | Same, delta-only (compact) |
+| `dizz snapshot list` / `checkout <hash>` / `prune --keep N` | History / rollback / cleanup |
+| `dizz install-skill` | Re-run agent discovery for this skill |
 
-```bash
-dizz init
-```
+## `dizz context` output — TON (Token-Optimized Notation)
 
-Creates `.dizz/` metadata directory. Already initialized projects show current state.
-
-### 2. Get context
-
-```bash
-dizz context
-```
-
-Returns a ~2 KB token-optimized dump of:
-- Active intents (goals, tasks, questions)
-- Unstable symbols (high churn areas needing attention)
-- Unused/abandoned symbols (dead code candidates)
-- Active TODOs from source code
-- Git branch and commit hash
-
-**Output format** (TON - Token-Optimized Notation):
+Pipe-delimited, one record per line, split on `|`, no parser needed:
 
 ```
 Project: myproject | git: main:a1b2c3d
@@ -71,65 +64,26 @@ hash
 a1b2c3d
 ```
 
-Pipe-delimited, one record per line. Split on `|` to parse. No JSON parser needed.
+Symbol states: `active` (used, stable) · `planned` (has TODO/intent) · `unstable` (high churn) · `unused` (never called) · `abandoned` (old + unused).
 
-### 3. Record baseline (before changes)
-
-```bash
-dizz snapshot --auto
-```
-
-Creates a content-addressed, immutable record in `.dizz/objects/`.
-
-### 4. View intents
-
-```bash
-dizz intent list          # List all active intents
-dizz intent add "msg" --type todo --severity 2   # Add new intent
-dizz intent resolve <id>  # Mark intent as completed
-```
-
-### 5. Check health
-
-```bash
-dizz status     # Quick overview: planned work, unstable areas, unused code
-dizz log        # Detailed symbol-level health (unused/abandoned focus)
-dizz log -a     # All symbols including healthy ones
-```
-
-### 6. Snapshot management
-
-```bash
-dizz snapshot --auto            # Create new snapshot
-dizz snapshot list              # List all snapshots
-dizz snapshot checkout <hash>   # View a past snapshot state
-dizz snapshot prune --keep 10   # Clean up old snapshots
-dizz snapshot --diff            # Store only delta (compact)
-```
-
-## Data Format
-
-All intent data is stored in `.dizz/intent.ton` (Token-Optimized Notation):
+Intent storage (`.dizz/intent.ton`) uses the same style:
 
 ```
 id|type|sev|status|msg|scope|tags|created_by|resolution
 int_001|fixme|3|active|Fix critical bug|project|urgent|user|
 ```
 
-Line-oriented, pipe-delimited. First line is the header. No quotes, braces, or indentation. ~90% fewer tokens than equivalent JSON.
+## Failure modes
 
-## Failure Modes
+| Symptom | Cause | Fix |
+|---|---|---|
+| `No dizz project found` | Project not initialized | `dizz init` |
+| Context missing git info | Non-git repo, or no commits yet | Expected and fully supported — dizz works without git, just with less churn/history detail |
+| Data looks stale | `.dizz/` out of date | `dizz snapshot --auto` |
+| `install-skill` finds no agents | No supported agent installed | Install one, or manually link `.agents/skills/dizz/` |
 
-| Symptom | Cause | Resolution |
-|---------|-------|------------|
-| `No dizz project found` | Project not initialized | Run `dizz init` |
-| Missing git info in context | Not a git repo, or no commits | dizz works without git, but context will show less info |
-| Old snapshot data | Stale `.dizz/` state | Run `dizz snapshot --auto` to refresh |
-| `install-skill` no agent dirs found | No supported AI agent installed | Install any supported agent first, or manually link `.agents/skills/dizz/` |
+## Constraints
 
-## Notes
-
-- dizz is **read-only** — it never modifies source code
-- All cleanup, intent resolution, and state changes are performed by the agent based on dizz's output
-- Config is always optional — dizz works with zero configuration
-- **Test files**: Test functions (`TestXxx`, `BenchmarkXxx`) are called implicitly by the test framework, so dizz cannot detect their call sites and reports them as "unused". Exclude test files from analysis by adding `**/*_test.go` to the `exclude` list in `.dizz/config.json`. Alternatively, add `// @ignore-unused` before individual test functions to mark them as active.
+- **Read-only** — dizz never modifies source code. Fixes and intent resolution are the agent's job, based on dizz's output.
+- **Zero-config** by default.
+- Test functions (`TestXxx`, `BenchmarkXxx`) appear "unused" because the test framework calls them implicitly. Exclude them via `"exclude": ["**/*_test.go"]` in `.dizz/config.json`, or mark individually with `// @ignore-unused`.
