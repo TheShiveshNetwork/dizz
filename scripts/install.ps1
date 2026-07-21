@@ -135,6 +135,7 @@ fi
 
     Write-Ok "Dizz installed successfully :)"
     Write-Info "Run: dizz --help"
+    Write-Info "Next: run 'dizz install-skill' to enable agent skill discovery"
 
 } catch {
     Write-Err "Installation failed: $($_.Exception.Message)"

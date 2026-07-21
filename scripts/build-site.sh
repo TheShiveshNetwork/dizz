@@ -15,7 +15,7 @@ ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 SITE_DIR="$ROOT_DIR/site"
 PUBLIC_DIR="$ROOT_DIR/site/public"
 SERVER_DIR="$ROOT_DIR/site/server"
-SCRIPTS_DIR="$ROOT_DIR/site/scripts"
+SCRIPTS_DIR="$ROOT_DIR/scripts"               # install scripts live at root, copied into public
 
 echo -e "${BLUE}Building Dizz WebAssembly project...${NC}"
 
@@ -87,7 +87,7 @@ if [ -d "$ASSETS_DIR" ]; then
 fi
 
 # -----------------------
-# Copy install scripts
+# Copy install scripts (from root scripts/)
 # -----------------------
 if [ -d "$SCRIPTS_DIR" ]; then
   chmod +x "$SCRIPTS_DIR"/*.sh || true

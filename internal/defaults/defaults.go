@@ -1,6 +1,8 @@
 package defaults
 
 import (
+	"strings"
+
 	"github.com/TheShiveshNetwork/dizz/internal/config"
 )
 
@@ -118,39 +120,73 @@ func GlobalSkillMetadata() map[string]interface{} {
 }
 
 func SkillInstructions(projectName string) string {
-	content := "# dizz Skill for " + projectName + "\n\n"
-	content += "dizz is a state-aware project assistant. It tracks intents, code health, and project state.\n\n"
-	content += "## Quick Start\n\n"
-	content += "Run `dizz context` to get a token-optimized project summary.\n\n"
-	content += "## Available Commands\n\n"
-	content += "- `dizz context` - Token-optimized project context for agents\n"
-	content += "- `dizz intent list` - View active intents (what needs doing)\n"
-	content += "- `dizz status` - Project health overview\n"
-	content += "- `dizz log` - Detailed symbol health and todos\n"
-	content += "- `dizz snapshot --auto` - Record current state before making changes\n"
-	content += "- `dizz intent add \"msg\" --type todo` - Add a new intent\n\n"
-	content += "## Data Format\n\n"
-	content += "All intent data is stored in `.dizz/intent.ton` (Token-Optimized Notation) - a line-oriented,\n"
-	content += "pipe-delimited format readable by any agent without a parser.\n"
-	return content
+	var b strings.Builder
+	b.WriteString("---\n")
+	b.WriteString("name: dizz\n")
+	b.WriteString("description: State-aware project assistant. Tracks intents, code health, and symbol states. Use to understand project state, find work items, or detect dead code.\n")
+	b.WriteString("license: MIT\n")
+	b.WriteString("metadata:\n")
+	b.WriteString("  project: " + projectName + "\n")
+	b.WriteString("  version: \"1.0.0\"\n")
+	b.WriteString("---\n")
+	b.WriteString("\n")
+	b.WriteString("# dizz Skill for " + projectName + "\n")
+	b.WriteString("\n")
+	b.WriteString("dizz tracks project intents, code health, and symbol states.\n")
+	b.WriteString("\n")
+	b.WriteString("## Quick Start\n")
+	b.WriteString("\n")
+	b.WriteString("Run dizz context to get a token-optimized project summary.\n")
+	b.WriteString("\n")
+	b.WriteString("## Commands\n")
+	b.WriteString("\n")
+	b.WriteString("- dizz context - Token-optimized project context for agents\n")
+	b.WriteString("- dizz intent list - View active intents (what needs doing)\n")
+	b.WriteString("- dizz status - Project health overview (unstable, unused, abandoned symbols)\n")
+	b.WriteString("- dizz log - Detailed symbol health and todos\n")
+	b.WriteString("- dizz snapshot --auto - Record current state before making changes\n")
+	b.WriteString("- dizz intent add \"msg\" --type todo - Add a new intent\n")
+	b.WriteString("\n")
+	b.WriteString("## Data Format\n")
+	b.WriteString("\n")
+	b.WriteString("All intent data is stored in .dizz/intent.ton (Token-Optimized Notation) -\n")
+	b.WriteString("a line-oriented, pipe-delimited format readable by any agent without a parser.\n")
+	b.WriteString("Split on | to read. No JSON parser needed.\n")
+	return b.String()
 }
 
 func GlobalSkillInstructions() string {
-	content := "# dizz Global Skill\n\n"
-	content += "dizz is a CLI tool that tracks project state, intents, and code health.\n"
-	content += "It is available system-wide after installation.\n\n"
-	content += "## Usage\n\n"
-	content += "To use dizz in any project, run `dizz init` in the project root.\n"
-	content += "This creates the `.dizz/` directory with intent tracking and analysis.\n\n"
-	content += "## Primary Agent Command\n\n"
-	content += "Run `dizz context` inside any initialized project to get a token-optimized summary of:\n"
-	content += "- Active intents (goals, tasks, questions)\n"
-	content += "- Symbol health (active, unstable, unused, abandoned)\n"
-	content += "- TODOs found in source code\n"
-	content += "- Git context (branch, commit)\n\n"
-	content += "The output is in TON format - pipe-delimited, one record per line.\n"
-	content += "No parser needed: split on `|` to read.\n"
-	return content
+	var b strings.Builder
+	b.WriteString("---\n")
+	b.WriteString("name: dizz\n")
+	b.WriteString("description: State-aware project assistant for AI agents. Tracks project state, intents, code health, and symbol states. Use when you need to understand project state, find work items, or detect dead code.\n")
+	b.WriteString("license: MIT\n")
+	b.WriteString("compatibility: Designed for AI agents (Claude Code, OpenClaw, Cursor, Gemini CLI, OpenCode, Codex CLI / Copilot)\n")
+	b.WriteString("metadata:\n")
+	b.WriteString("  version: \"1.0.0\"\n")
+	b.WriteString("---\n")
+	b.WriteString("\n")
+	b.WriteString("# dizz Global Skill\n")
+	b.WriteString("\n")
+	b.WriteString("dizz tracks project state, intents, and code health.\n")
+	b.WriteString("Available system-wide after installation.\n")
+	b.WriteString("\n")
+	b.WriteString("## Usage\n")
+	b.WriteString("\n")
+	b.WriteString("To use dizz in any project, run dizz init in the project root.\n")
+	b.WriteString("This creates the .dizz/ directory with intent tracking and analysis.\n")
+	b.WriteString("\n")
+	b.WriteString("## Primary Agent Command\n")
+	b.WriteString("\n")
+	b.WriteString("Run dizz context inside any initialized project to get a token-optimized summary of:\n")
+	b.WriteString("- Active intents (goals, tasks, questions)\n")
+	b.WriteString("- Symbol health (active, unstable, unused, abandoned)\n")
+	b.WriteString("- TODOs found in source code\n")
+	b.WriteString("- Git context (branch, commit)\n")
+	b.WriteString("\n")
+	b.WriteString("The output is in TON format - pipe-delimited, one record per line.\n")
+	b.WriteString("No parser needed: split on | to read.\n")
+	return b.String()
 }
 
 func GlobalRouterHookContent() string {
