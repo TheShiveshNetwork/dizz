@@ -71,7 +71,7 @@ func runContext() {
 		}
 	}
 
-	intentStore := store.NewIntentStore(config.IntentFilePath(trackDir))
+	intentStore := store.NewIntentStore(config.TrackDirPath(trackDir))
 	intentState, err := intentStore.LoadIntentState()
 	if err != nil {
 		intentState = state.NewIntentState()

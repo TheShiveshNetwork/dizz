@@ -10,7 +10,7 @@
 ![License](https://img.shields.io/github/license/TheShiveshNetwork/dizz)
 ![Languages](https://img.shields.io/badge/languages-34-blue)
 
-> **The only brain your codebase will ever need.**
+> **Give your codebase a brain.**
 
 `dizz` reads your Git history, looks at your code, and tells you what needs doing. TODOs, half-finished work, things changing too often — it tracks all of it. Takes snapshots so you never lose context. Agents love it because it speaks their language.
 

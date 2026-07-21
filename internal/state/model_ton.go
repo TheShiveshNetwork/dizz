@@ -25,10 +25,10 @@ func (is *IntentState) MarshalTON() ([]byte, error) {
 	for _, intent := range is.Intents {
 		resolution := ""
 		if intent.Resolution != nil {
-			resolution = fmt.Sprintf("%s:%s:%s:%s",
+			resolution = fmt.Sprintf("%s:%s:%d:%s",
 				intent.Resolution.Method,
 				intent.Resolution.Description,
-				intent.Resolution.ResolvedAt.Format(time.RFC3339),
+				intent.Resolution.ResolvedAt.Unix(),
 				intent.Resolution.ResolvedBy,
 			)
 		}
@@ -132,8 +132,10 @@ func parseResolution(s string) *Resolution {
 		return nil
 	}
 
-	resolvedAt, err := time.Parse(time.RFC3339, parts[2])
-	if err != nil {
+	var resolvedAt time.Time
+	if unixSec, err := strconv.ParseInt(parts[2], 10, 64); err == nil {
+		resolvedAt = time.Unix(unixSec, 0)
+	} else {
 		resolvedAt = time.Now()
 	}
 

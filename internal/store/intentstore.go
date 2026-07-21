@@ -41,11 +41,15 @@ func (s *IntentStore) LoadIntentState() (*state.IntentState, error) {
 		return is, nil
 	}
 
-	// Fall back to JSON
+	// Fall back to JSON — auto-migrate to TON
 	if data, err := os.ReadFile(jsonPath); err == nil {
 		var intentState state.IntentState
 		if err := json.Unmarshal(data, &intentState); err != nil {
 			return nil, fmt.Errorf("failed to unmarshal intent.json: %w", err)
+		}
+		// Migrate to TON format on first load
+		if err := s.SaveIntentState(&intentState); err != nil {
+			return nil, fmt.Errorf("failed to migrate intent.json to intent.ton: %w", err)
 		}
 		return &intentState, nil
 	}

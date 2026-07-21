@@ -46,7 +46,7 @@ var BaseTemplate = fmt.Sprintf(`<!DOCTYPE html>
                 <div class="logo">
                     <img src="assets/dizz-logo.png" alt="Dizz Logo" width="128" height="128">
                 </div>
-                <p class="tagline">The only brain your codebase will ever need.</p>
+                <p class="tagline">Give your codebase a brain.</p>
                 <div class="version">v{{.Version}}</div>
                 {{end}}
             </header>

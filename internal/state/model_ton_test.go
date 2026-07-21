@@ -189,7 +189,7 @@ func TestUnmarshalTON_OnlyHeader(t *testing.T) {
 }
 
 func TestUnmarshalTON_ResolvedIntent(t *testing.T) {
-	data := []byte("# intents\nid|type|sev|status|msg|resolution\nint_99|todo|1|resolved|done task|fixed:Completed:2026-06-15T10:00:00Z:user\n")
+	data := []byte("# intents\nid|type|sev|status|msg|resolution\nint_99|todo|1|resolved|done task|fixed:Completed:1781776800:user\n")
 	is, err := UnmarshalIntentStateTON(data)
 	if err != nil {
 		t.Fatal(err)
@@ -341,7 +341,7 @@ func TestIntentUnmarshalTONRealFile(t *testing.T) {
 id|type|sev|status|msg|scope|tags|created_by|resolution
 int_1770020361|refactor|2|active|Refactor scoring system to use weights|project|performance,architecture|user|
 int_1770047724|fixme|3|active|improve the speed of the cli|project||user|
-int_1770020251|fixme|3|resolved|Fix cache invalidation race condition|project||user|fixed:Resolved via CLI:2026-02-02T13:48:01+05:30:user
+	int_1770020251|fixme|3|resolved|Fix cache invalidation race condition|project||user|fixed:Resolved via CLI:1768789081:user
 `
 	is, err := UnmarshalIntentStateTON([]byte(content))
 	if err != nil {

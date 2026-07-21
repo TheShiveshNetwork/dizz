@@ -12,103 +12,118 @@ import (
 	"github.com/TheShiveshNetwork/dizz/internal/state"
 )
 
-// gzipMagic is the gzip magic number used to detect gzipped files.
 var gzipMagic = []byte{0x1f, 0x8b}
 
-// StateStore handles persistence of project state
 type StateStore struct {
 	basePath string
 }
 
-// NewStateStore creates a new state store
 func NewStateStore(basePath string) *StateStore {
 	return &StateStore{
 		basePath: basePath,
 	}
 }
 
-// LoadProjectState loads the project state from disk.
-// It auto-detects gzip-compressed files (by magic number) and falls back
-// to uncompressed JSON for backward compatibility.
 func (s *StateStore) LoadProjectState() (*state.ProjectState, error) {
-	statePath := config.StateFilePath(s.basePath)
+	// Try state.ton first (may be gzipped or uncompressed for backward compat)
+	tonPath := config.StateTONFilePath(s.basePath)
+	if data, err := os.ReadFile(tonPath); err == nil {
+		// Auto-detect gzip by magic number
+		if len(data) >= 2 && data[0] == gzipMagic[0] && data[1] == gzipMagic[1] {
+			reader, err := gzip.NewReader(bytes.NewReader(data))
+			if err != nil {
+				return nil, fmt.Errorf("failed to create gzip reader for state.ton: %w", err)
+			}
+			defer reader.Close()
 
-	if _, err := os.Stat(statePath); os.IsNotExist(err) {
-		// Fallback: try the old uncompressed path for backward compatibility
-		oldPath := filepath.Join(s.basePath, "state.json")
-		if _, err := os.Stat(oldPath); err == nil {
-			statePath = oldPath
-		} else {
-			return nil, fmt.Errorf("state file does not exist")
-		}
-	}
-
-	data, err := os.ReadFile(statePath)
-	if err != nil {
-		return nil, fmt.Errorf("failed to read state file: %w", err)
-	}
-
-	// Auto-detect gzip by magic number
-	if len(data) >= 2 && data[0] == gzipMagic[0] && data[1] == gzipMagic[1] {
-		reader, err := gzip.NewReader(bytes.NewReader(data))
-		if err != nil {
-			return nil, fmt.Errorf("failed to create gzip reader: %w", err)
-		}
-		defer reader.Close()
-
-		buf := bufferPool.Get().(*bytes.Buffer)
-		buf.Reset()
-		if _, err := buf.ReadFrom(reader); err != nil {
+			buf := bufferPool.Get().(*bytes.Buffer)
+			buf.Reset()
+			if _, err := buf.ReadFrom(reader); err != nil {
+				bufferPool.Put(buf)
+				return nil, fmt.Errorf("failed to decompress state.ton: %w", err)
+			}
+			data = buf.Bytes()
 			bufferPool.Put(buf)
-			return nil, fmt.Errorf("failed to decompress state file: %w", err)
 		}
-		data = buf.Bytes()
-		bufferPool.Put(buf)
+
+		ps, err := state.UnmarshalProjectStateTON(data)
+		if err != nil {
+			return nil, fmt.Errorf("failed to unmarshal state.ton: %w", err)
+		}
+		return ps, nil
 	}
 
-	var projectState state.ProjectState
-	if err := json.Unmarshal(data, &projectState); err != nil {
-		return nil, fmt.Errorf("failed to unmarshal project state: %w", err)
+	// Fall back to state.json.gz
+	gzPath := config.StateFilePath(s.basePath)
+	if data, err := os.ReadFile(gzPath); err == nil {
+		// Auto-detect gzip by magic number
+		if len(data) >= 2 && data[0] == gzipMagic[0] && data[1] == gzipMagic[1] {
+			reader, err := gzip.NewReader(bytes.NewReader(data))
+			if err != nil {
+				return nil, fmt.Errorf("failed to create gzip reader: %w", err)
+			}
+			defer reader.Close()
+
+			buf := bufferPool.Get().(*bytes.Buffer)
+			buf.Reset()
+			if _, err := buf.ReadFrom(reader); err != nil {
+				bufferPool.Put(buf)
+				return nil, fmt.Errorf("failed to decompress state file: %w", err)
+			}
+			data = buf.Bytes()
+			bufferPool.Put(buf)
+		}
+
+		var projectState state.ProjectState
+		if err := json.Unmarshal(data, &projectState); err != nil {
+			return nil, fmt.Errorf("failed to unmarshal project state: %w", err)
+		}
+		return &projectState, nil
 	}
 
-	return &projectState, nil
+	// Fall back to uncompressed state.json (legacy)
+	oldPath := filepath.Join(s.basePath, "state.json")
+	if data, err := os.ReadFile(oldPath); err == nil {
+		var projectState state.ProjectState
+		if err := json.Unmarshal(data, &projectState); err != nil {
+			return nil, fmt.Errorf("failed to unmarshal state.json: %w", err)
+		}
+		return &projectState, nil
+	}
+
+	return nil, fmt.Errorf("state file does not exist")
 }
 
-// SaveProjectState saves the project state to disk as gzip-compressed JSON.
 func (s *StateStore) SaveProjectState(projectState *state.ProjectState) error {
-	statePath := config.StateFilePath(s.basePath)
-
 	if err := os.MkdirAll(s.basePath, 0755); err != nil {
 		return fmt.Errorf("failed to create state directory: %w", err)
 	}
 
-	jsonData, err := json.Marshal(projectState)
+	tonPath := config.StateTONFilePath(s.basePath)
+
+	data, err := projectState.MarshalTON()
 	if err != nil {
-		return fmt.Errorf("failed to marshal project state: %w", err)
+		return fmt.Errorf("failed to marshal state.ton: %w", err)
 	}
 
-	buf := bufferPool.Get().(*bytes.Buffer)
-	buf.Reset()
-	defer bufferPool.Put(buf)
-
-	gzWriter, err := gzip.NewWriterLevel(buf, gzip.BestSpeed)
+	// Compress with gzip for compact on-disk storage (internal-only file, not LLM-facing)
+	var buf bytes.Buffer
+	gzWriter, err := gzip.NewWriterLevel(&buf, gzip.BestSpeed)
 	if err != nil {
 		return fmt.Errorf("failed to create gzip writer: %w", err)
 	}
-
-	if _, err := gzWriter.Write(jsonData); err != nil {
-		return fmt.Errorf("failed to compress state data: %w", err)
+	if _, err := gzWriter.Write(data); err != nil {
+		return fmt.Errorf("failed to compress state.ton data: %w", err)
 	}
-
 	if err := gzWriter.Close(); err != nil {
 		return fmt.Errorf("failed to finalize gzip: %w", err)
 	}
 
-	tmpPath := statePath + ".tmp"
+	tmpPath := tonPath + ".tmp"
 	if err := os.WriteFile(tmpPath, buf.Bytes(), 0644); err != nil {
-		return fmt.Errorf("failed to write state file: %w", err)
+		return fmt.Errorf("failed to write state.ton: %w", err)
 	}
-	return os.Rename(tmpPath, statePath)
+	return os.Rename(tmpPath, tonPath)
 }
 
 // ConfigStore handles persistence of configuration
@@ -127,7 +142,6 @@ func NewConfigStore(basePath string) *ConfigStore {
 func (s *ConfigStore) LoadConfig() (*config.Config, error) {
 	configPath := filepath.Join(s.basePath, "config.json")
 
-	// If file doesn't exist, return error
 	if _, err := os.Stat(configPath); os.IsNotExist(err) {
 		return nil, fmt.Errorf("config file does not exist")
 	}

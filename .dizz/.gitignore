@@ -1,7 +1,7 @@
 # Ignore everything by default
 *
 
-# Keep config
+# Keep config and intents (team-shared), but NOT generated state/context (local-only)
 !config.json
-!intent.json
+!intent.ton
 !.gitignore

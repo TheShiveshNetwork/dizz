@@ -217,7 +217,10 @@ func runCurrentAnalysisAtRoot(projectRoot string, options *AnalysisOptions) (*st
 	prevState, _ := prevStateStore.LoadProjectState()
 
 	// Merge all signals into a SignalSet
-	mergedSigSet := &signals.SignalSet{Signals: allSignals}
+	mergedSigSet := &signals.SignalSet{}
+	for _, sig := range allSignals {
+		mergedSigSet.Add(sig)
+	}
 
 	// Compute rolling hash of the merged signal set for identity detection
 	signalHashStr := mergedSigSet.Hash()
@@ -364,7 +367,7 @@ func runCurrentAnalysisAtRoot(projectRoot string, options *AnalysisOptions) (*st
 		// Continue even if saving fails
 	}
 
-	// ── Phase 5: Write state.ton for agent consumption ──
+	// ── Phase 5: Write context.ton for agent consumption ──
 	snapshotHashes := getSnapshotHashes(trackDir)
 	writeStateTON(trackDir, projectState, intentState, snapshotHashes)
 
@@ -413,16 +416,16 @@ func getSnapshotHashes(trackDir string) []string {
 }
 
 func writeStateTON(trackDir string, ps *state.ProjectState, is *state.IntentState, snapshotHashes []string) {
-	stateTONPath := config.StateTONFilePath(trackDir)
+	contextTONPath := config.ContextTONFilePath(trackDir)
 	data, _ := state.MarshalStateTON(ps, is, snapshotHashes)
 	if len(data) == 0 {
 		return
 	}
-	tmpPath := stateTONPath + ".tmp"
+	tmpPath := contextTONPath + ".tmp"
 	if err := os.WriteFile(tmpPath, data, 0644); err != nil {
 		return
 	}
-	os.Rename(tmpPath, stateTONPath)
+	os.Rename(tmpPath, contextTONPath)
 }
 
 // FindProjectRoot searches up directory tree for .dizz directory

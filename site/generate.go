@@ -104,7 +104,7 @@ func getSiteData() SiteData {
 	release, _ := getLatestRelease()
 	return SiteData{
 		Title:       "Dizz",
-		Description: "The only brain your codebase will ever need. Git-native project analysis for humans and AI agents.",
+		Description: "Give your codebase a brain. Project state-aware analysis and tasks tracking with long term intents for humans and AI agents.",
 		Domain:      domain,
 		Version:     release.Version,
 		Path:        "/",

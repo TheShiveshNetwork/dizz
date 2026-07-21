@@ -12,10 +12,11 @@ const (
 	HooksDirName   = "hooks"
 	CacheDirName   = "cache"
 
-	ConfigFile   = "config.json"
-	StateFile    = "state.json.gz"
-	StateTONFile = "state.ton"
-	IntentFile   = "intent.json"
+	ConfigFile     = "config.json"
+	StateFile      = "state.json.gz"
+	StateTONFile   = "state.ton.gz"
+	ContextTONFile = "context.ton"
+	IntentFile     = "intent.json"
 
 	DefaultBranch = "main"
 )
@@ -49,6 +50,10 @@ func StateFilePath(root string) string {
 
 func StateTONFilePath(root string) string {
 	return filepath.Join(root, StateTONFile)
+}
+
+func ContextTONFilePath(root string) string {
+	return filepath.Join(root, ContextTONFile)
 }
 
 func DeltaFilePath(root string, hash string) string {
