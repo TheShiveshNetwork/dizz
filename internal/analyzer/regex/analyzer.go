@@ -93,6 +93,18 @@ func buildTodoPattern(lc language.LanguageConfig) *regexp.Regexp {
 // Language returns a descriptive identifier for this analyzer.
 func (a *Analyzer) Language() string { return "regex" }
 
+// SupportedExtensions returns all registered language extensions except Go.
+func (a *Analyzer) SupportedExtensions() []string {
+	all := language.AllExtensions()
+	nonGo := make([]string, 0, len(all)-1)
+	for _, ext := range all {
+		if ext != ".go" {
+			nonGo = append(nonGo, ext)
+		}
+	}
+	return nonGo
+}
+
 // Supports returns true for every file whose language is in the registry and is
 // not Go (Go is handled by the AST analyzer with higher accuracy).
 func (a *Analyzer) Supports(file string) bool {

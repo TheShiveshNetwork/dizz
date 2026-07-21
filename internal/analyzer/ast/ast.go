@@ -20,6 +20,11 @@ func (a *Analyzer) Language() string {
 	return "go"
 }
 
+// SupportedExtensions returns Go file extensions.
+func (a *Analyzer) SupportedExtensions() []string {
+	return []string{".go"}
+}
+
 // Supports checks if file is a Go file
 func (a *Analyzer) Supports(file string) bool {
 	return IsGoFile(file)

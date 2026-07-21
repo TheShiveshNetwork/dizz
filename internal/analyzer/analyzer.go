@@ -14,6 +14,10 @@ type Analyzer interface {
 	// Language returns the language this analyzer supports
 	Language() string
 
+	// SupportedExtensions returns the file extensions this analyzer handles.
+	// Used to build a fast O(1) lookup table in the registry.
+	SupportedExtensions() []string
+
 	// Supports checks if this analyzer can handle the given file
 	Supports(file string) bool
 
@@ -35,26 +39,35 @@ type AnalyzerWithContent interface {
 
 // Registry manages all available analyzers
 type Registry struct {
-	analyzers []Analyzer
+	analyzers     []Analyzer
+	extToAnalyzer map[string]Analyzer
 }
 
 // NewRegistry creates a new analyzer registry
 func NewRegistry() *Registry {
 	return &Registry{
-		analyzers: make([]Analyzer, 0),
+		analyzers:     make([]Analyzer, 0),
+		extToAnalyzer: make(map[string]Analyzer),
 	}
 }
 
-// Register adds an analyzer to the registry
+// Register adds an analyzer to the registry and builds an extension lookup.
 func (r *Registry) Register(analyzer Analyzer) {
 	r.analyzers = append(r.analyzers, analyzer)
+	for _, ext := range analyzer.SupportedExtensions() {
+		r.extToAnalyzer[ext] = analyzer
+	}
 }
 
-// FindAnalyzer returns the best analyzer for a given file
+// FindAnalyzer returns the best analyzer for a given file using the
+// extension-based O(1) lookup table.
 func (r *Registry) FindAnalyzer(file string) Analyzer {
-	for _, analyzer := range r.analyzers {
-		if analyzer.Supports(file) {
-			return analyzer
+	for i := len(file) - 1; i >= 0; i-- {
+		if file[i] == '.' {
+			if a, ok := r.extToAnalyzer[file[i:]]; ok {
+				return a
+			}
+			break
 		}
 	}
 	return nil
