@@ -49,6 +49,7 @@ func renderMarkdown(content string) (string, error) {
 	htmlContent = strings.ReplaceAll(htmlContent, `<h2>Commands</h2>`, `<h2 id="commands">Commands</h2>`)
 	htmlContent = strings.ReplaceAll(htmlContent, `<h2>Symbol States</h2>`, `<h2 id="symbol-states">Symbol States</h2>`)
 	htmlContent = strings.ReplaceAll(htmlContent, `<h2>Architecture Overview</h2>`, `<h2 id="architecture">Architecture Overview</h2>`)
+	htmlContent = strings.ReplaceAll(htmlContent, `<h2>AI Agent Integration</h2>`, `<h2 id="ai-agent-integration">AI Agent Integration</h2>`)
 
 	return htmlContent, nil
 }
@@ -103,7 +104,7 @@ func getSiteData() SiteData {
 	release, _ := getLatestRelease()
 	return SiteData{
 		Title:       "Dizz",
-		Description: "Progress-aware Dev CLI Tool. Know what to work on next.",
+		Description: "The only brain your codebase will ever need. Git-native project analysis for humans and AI agents.",
 		Domain:      domain,
 		Version:     release.Version,
 		Path:        "/",
@@ -116,7 +117,7 @@ func getDocsData() SiteData {
 	release, _ := getLatestRelease()
 	return SiteData{
 		Title:       "Documentation",
-		Description: "Complete documentation for Dizz - Progress-aware Dev CLI Tool",
+		Description: "Complete documentation for dizz — the Git-native project historian with AI agent integration.",
 		Domain:      domain,
 		Version:     release.Version,
 		Path:        "/docs",
@@ -134,8 +135,8 @@ func getLatestRelease() (*ReleaseInfo, error) {
 	output, err := cmd.Output()
 	if err != nil {
 		return &ReleaseInfo{
-			Version:	"dev",
-			Tag:			"",
+			Version: "dev",
+			Tag:     "",
 		}, fmt.Errorf("failed to get latest tag: %v", err)
 	}
 

@@ -28,6 +28,7 @@ var BaseTemplate = fmt.Sprintf(`<!DOCTYPE html>
                 <li><a href="/docs">Overview</a></li>
                 <li><a href="#quick-start">Quick Start</a></li>
                 <li><a href="#commands">Commands</a></li>
+                <li><a href="#ai-agent-integration">AI Agent Integration</a></li>
                 <li><a href="#symbol-states">Symbol States</a></li>
                 <li><a href="#architecture">Architecture</a></li>
             </ul>
@@ -45,7 +46,7 @@ var BaseTemplate = fmt.Sprintf(`<!DOCTYPE html>
                 <div class="logo">
                     <img src="assets/dizz-logo.png" alt="Dizz Logo" width="128" height="128">
                 </div>
-                <p class="tagline">Know what to work on next.</p>
+                <p class="tagline">The only brain your codebase will ever need.</p>
                 <div class="version">v{{.Version}}</div>
                 {{end}}
             </header>

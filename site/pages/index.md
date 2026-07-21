@@ -19,14 +19,17 @@
 <button class="copy-btn" onclick="copyCommand()">Copy</button>
 </div>
 
+<blockquote>
+<strong>Important:</strong> After installing, run <code>dizz install-skill</code> to enable AI agent discovery. Agents like Claude Code, Cursor, and Gemini CLI can then use dizz automatically.
+</blockquote>
+
 <h1>Dizz</h1>
 
 <h2>Overview</h2>
 
-`dizz` is a local, Git-aware developer CLI that analyzes your codebase to understand **progress**, not just correctness.  
-It helps developers answer the question **“What should I work on next?”** by detecting unused code, planned work (TODOs), unstable areas, and forgotten or abandoned logic using static analysis and Git context.
+`dizz` reads your Git history, looks at your code, and tells you what needs doing. TODOs, half-finished work, things changing too often — it tracks all of it. Takes snapshots so you never lose context. Agents love it because it speaks their language.
 
-Unlike linters or task managers, `dizz` models **developer intent and code evolution**. It runs fully offline, requires no configuration to start, and works across multiple languages through a unified signal-based architecture.
+No setup. No internet. Won't touch your code.
 
 <h2>Features</h2>
 
@@ -35,37 +38,37 @@ Unlike linters or task managers, `dizz` models **developer intent and code evolu
 <div class="feature">
 <h1>🧠</h1>
 <h3>Code Intelligence</h3>
-<p>Understands your codebase structure and relationships beyond simple text matching.</p>
+<p>Reads your Git history and analyzes your code to surface what needs attention. No configuration needed.</p>
 </div>
 
 <div class="feature">
-<h1>🎯</h1>
-<h3>Precision Analysis</h3>
-<p>Language-aware AST parsing provides accurate insights across multiple programming languages.</p>
+<h1>🤖</h1>
+<h3>AI Agent Ready</h3>
+<p>Speaks TON — a token-optimized format AI agents understand instantly. Auto-discovers via <code>dizz install-skill</code>.</p>
 </div>
 
 <div class="feature">
 <h1>⚡</h1>
 <h3>Millisecond Performance</h3>
-<p>Enterprise-grade analysis in milliseconds, not minutes. No network calls, no tokens.</p>
+<p>Enterprise-grade analysis in milliseconds, not minutes. No network calls, no tokens, no cloud.</p>
 </div>
 
 <div class="feature">
 <h1>📊</h1>
-<h3>State Scoring</h3>
-<p>Proprietary algorithm combines usage patterns, TODOs, and git history for actionable insights.</p>
-</div>
-
-<div class="feature">
-<h1>🔄</h1>
-<h3>Time-Aware Insights</h3>
-<p>Tracks code evolution and stability to identify what's working vs what needs attention.</p>
+<h3>State Tracking</h3>
+<p>Tracks every symbol as active, planned, unstable, unused, or abandoned — based on real usage and Git history.</p>
 </div>
 
 <div class="feature">
 <h1>🔒</h1>
 <h3>Immutable Snapshots</h3>
 <p>Content-addressed project states for perfect version control and historical analysis.</p>
+</div>
+
+<div class="feature">
+<h1>🎯</h1>
+<h3>Intent System</h3>
+<p>Long-lived project intents separate from throwaway TODOs. Never lose track of why you wrote something.</p>
 </div>
 
 </div>
@@ -75,18 +78,6 @@ Unlike linters or task managers, `dizz` models **developer intent and code evolu
 <div class="commands-grid">
 
 <div class="command-card">
-<div class="command-name">dizz version</div>
-<div class="command-desc">Show current version and build information.</div>
-<div class="command-usage">dizz version [--verbose]</div>
-</div>
-
-<div class="command-card">
-<div class="command-name">dizz upgrade</div>
-<div class="command-desc">Upgrade to the latest version automatically.</div>
-<div class="command-usage">dizz upgrade</div>
-</div>
-
-<div class="command-card">
 <div class="command-name">dizz init</div>
 <div class="command-desc">Initialize dizz in your project directory.</div>
 <div class="command-usage">dizz init</div>
@@ -94,20 +85,38 @@ Unlike linters or task managers, `dizz` models **developer intent and code evolu
 
 <div class="command-card">
 <div class="command-name">dizz log</div>
-<div class="command-desc">Show what needs attention in your codebase.</div>
+<div class="command-desc">Full analysis — planned work, unstable areas, unused and abandoned code.</div>
 <div class="command-usage">dizz log [--all] [--verbose]</div>
 </div>
 
 <div class="command-card">
 <div class="command-name">dizz status</div>
-<div class="command-desc">Quick project health check with visual indicators.</div>
+<div class="command-desc">Quick project health snapshot with visual indicators.</div>
 <div class="command-usage">dizz status</div>
 </div>
 
 <div class="command-card">
+<div class="command-name">dizz context</div>
+<div class="command-desc">Token-optimized project dump for AI agents (~2 KB). Pipe-delimited, no parser needed.</div>
+<div class="command-usage">dizz context [--intents] [--symbols] [--todos]</div>
+</div>
+
+<div class="command-card">
 <div class="command-name">dizz snapshot</div>
-<div class="command-desc">Create an immutable snapshot of project state.</div>
-<div class="command-usage">dizz snapshot [--auto]</div>
+<div class="command-desc">Create immutable, content-addressed state records with delta support.</div>
+<div class="command-usage">dizz snapshot [--auto] [--diff]</div>
+</div>
+
+<div class="command-card">
+<div class="command-name">dizz intent</div>
+<div class="command-desc">Track long-lived project goals separate from throwaway TODOs.</div>
+<div class="command-usage">dizz intent add|list|resolve</div>
+</div>
+
+<div class="command-card">
+<div class="command-name">dizz install-skill</div>
+<div class="command-desc">Auto-detect AI agents and install the dizz skill for automatic discovery.</div>
+<div class="command-usage">dizz install-skill</div>
 </div>
 
 <div class="command-card">
@@ -123,9 +132,15 @@ Unlike linters or task managers, `dizz` models **developer intent and code evolu
 </div>
 
 <div class="command-card">
-<div class="command-name">dizz intent</div>
-<div class="command-desc">Manage intentional TODO markers and track planned work.</div>
-<div class="command-usage">dizz intent add|list|resolve</div>
+<div class="command-name">dizz version</div>
+<div class="command-desc">Show current version and build information.</div>
+<div class="command-usage">dizz version [--verbose]</div>
+</div>
+
+<div class="command-card">
+<div class="command-name">dizz upgrade</div>
+<div class="command-desc">Upgrade to the latest version automatically.</div>
+<div class="command-usage">dizz upgrade</div>
 </div>
 
 </div>

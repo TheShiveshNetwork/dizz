@@ -1,55 +1,16 @@
 # Dizz
 
-`dizz` is a local, Git-aware developer CLI that analyzes your codebase and answers one core question:
+> **The only brain your codebase will ever need.**
 
-> **“What should I work on next?”**
+`dizz` reads your Git history, looks at your code, and tells you what needs doing. TODOs, half-finished work, things changing too often — it tracks all of it. Takes snapshots so you never lose context. Agents love it because it speaks their language.
 
-## Overview
-
-`dizz` is a local, Git-aware developer CLI that analyzes your codebase to understand **progress**, not just correctness.  
-It helps developers answer the question **“What should I work on next?”** by detecting unused code, planned work (TODOs), unstable areas, and forgotten or abandoned logic using static analysis and Git context.
-
-Unlike linters or task managers, `dizz` models **developer intent and code evolution**. It runs fully offline, requires no configuration to start, and works across multiple languages through a unified, signal-based architecture that separates language parsing from state interpretation.
-
-## Why dizz?
-
-> **Git tracks truth.
-> dizz tracks understanding.**
-
-Modern projects fail not because of bugs, but because of:
-
-* Lost context
-* Forgotten TODOs
-* Unused or half-connected code
-* Unclear priorities after time away
-
-`dizz` continuously models your project’s **state of progress** and surfaces what actually deserves your attention.
+No setup. No internet. Won't touch your code.
 
 ## What dizz is not
 
 - Not a linter
 - Not a task manager
 - Not an AI agent that edits your code or executes changes autonomously
-
-## Installation
-
-### Linux & macOS
-
-```bash
-curl -fsSL https://dizz.shitworks.co/install.sh | bash
-```
-
-### Windows
-
-```bash
-powershell -c "irm https://dizz.shitworks.co/install.ps1 | iex"
-```
-
-After installation, restart your shell and verify it using:
-
-```bash
-dizz version
-```
 
 ## Quick Start
 
@@ -60,33 +21,67 @@ dizz status
 dizz log
 ```
 
+> **Important**: After installing dizz, run `dizz install-skill` to enable AI agent discovery. This detects Claude Code, Cursor, Gemini CLI, OpenCode, and other agents, then installs a discoverable skill so they can use dizz automatically.
+
 ## Commands
 
 ### `dizz init`
 
-Initializes `.dizz/` metadata in your project.
+Initializes `.dizz/` metadata in your project. Creates the tracking directory, config, gitignore, and a project-level agent skill at `.agents/skills/dizz/`.
 
 ### `dizz log`
 
-Full project analysis.
-
-Shows:
-
-* Planned work
-* Unstable areas
-* Unused code
-* Abandoned code
+Full project analysis. Shows planned work, unstable areas, unused code, and abandoned code.
 
 **Flags**
 
 * `--all, -a` — include healthy symbols
 * `--verbose, -v` — detailed reasoning
 
-Internally, this command builds a project-wide state graph from static analysis signals and Git metadata.
-
 ### `dizz status`
 
-Quick health snapshot with visual indicators.
+Quick health snapshot with visual indicators. Shows how many symbols are in each state (active, planned, unstable, unused, abandoned) and active TODO count.
+
+### `dizz context`
+
+Token-optimized project dump designed for AI agents. Outputs everything an agent needs in ~2 KB using TON format (pipe-delimited, one record per line). No parser needed — split on `|`.
+
+**Sections:**
+
+* Project info (name, git branch, commit)
+* Active intents (goals, tasks, questions)
+* Unstable symbols (high churn)
+* Unused / abandoned symbols (dead code candidates)
+* Active TODOs from source code
+* Recent snapshot hashes
+
+**Flags:**
+
+* `--intents` — show intents only
+* `--symbols` — show symbols only
+* `--todos` — show todos only
+
+**Output example:**
+
+```
+Project: myproject | git: main:a1b2c3d
+
+# intents
+id|type|sev|status|msg
+int_001|refactor|2|active|Refactor scoring system
+
+# symbols:unstable
+name|file|line|churn
+Scorer.InterpretSignalsWithIntent|internal/state/scorer.go|12|12
+
+# symbols:unused
+name|file|line|state
+oldHelper|internal/util/helpers.go|45|unused
+
+# todos
+file|line|type|text
+cmd/main.go|42|TODO|handle edge case
+```
 
 ### `dizz snapshot`
 
@@ -94,10 +89,16 @@ Creates an immutable snapshot of project state.
 
 * Content-addressed (Git-like)
 * Stored in `.dizz/objects/`
+* Supports deltas (`--diff`) for efficient storage
+* Checkpoints every 10 deltas
 
-Flags:
+**Flags**
 
-* `--auto` — for Git hooks
+* `--auto` — for Git hooks (non-interactive)
+* `--diff` — store only the delta from the last snapshot
+* `list` — show all snapshots
+* `checkout <hash>` — inspect a past snapshot
+* `prune --keep N` — remove old snapshots, keep the N most recent
 
 ### `dizz list`
 
@@ -109,34 +110,55 @@ Instant context recovery after time away.
 
 Optimized for:
 
-> “I haven’t touched this project in weeks.”
+> "I haven't touched this project in weeks."
 
 ### `dizz intent`
 
-Manage human-authored intent.
+Manage human-authored intent separate from source-level TODO/FIXME comments.
 
-`dizz` separates intent from implementation: comment-based TODO/FIXME markers track disposable code fixes, while immutable Intents record long-lived project goals (todo, refactor, fixme, question, hack, temporary) that persist as part of the project’s evolving narrative.
+Intents are immutable project goals. Unlike TODOs (which are re-scanned on every analysis), intents persist in `.dizz/intent.ton` until explicitly resolved. They carry a severity score from 0-3.
 
-Add an intent
 ```bash
 dizz intent add "Refactor auth layer" --severity 2 --type todo
-```
-List all intents
-```bash
 dizz intent list
-```
-Resolve and intent (mark it completed)
-```bash
 dizz intent resolve int_1770020361
 ```
 
-> Intents are immutable project goals; TODO/FIXME comments are mutable code-level fixes — dizz treats them differently by design.
+Types: `todo`, `fixme`, `refactor`, `question`, `hack`, `temporary`
 
-Each Intent carries a severity score from 0–3, where 3 represents critical, project-shaping intent and 0 represents low-impact or exploratory intent.
+### `dizz install-skill`
+
+Scans your system for installed AI agents and installs the dizz skill into their skill directories. After this, agents like Claude Code, Cursor, Gemini CLI, and OpenCode can discover and invoke dizz automatically.
+
+```bash
+dizz install-skill
+```
+
+Supported agents: Claude Code, Cursor, Gemini CLI, OpenCode, Codex CLI / Copilot.
+
+The canonical skill definition lives in the repository at `agent-skills/dizz/SKILL.md` and follows the [Agent Skills Specification](https://agentskills.io).
+
+## AI Agent Integration
+
+dizz is built for AI agents from the ground up. Key features:
+
+**`dizz context`** — A single ~2 KB command that replaces reading 100+ KB of state files. Outputs in TON format (Token-Optimized Notation): pipe-delimited, line-oriented, no JSON overhead. Any agent can parse it by splitting on `|`.
+
+**`dizz install-skill`** — Auto-discovers installed AI agents and installs a skill for each. The skill tells agents what dizz does and how to use it. Agents discover skills automatically via the `.agents/skills/` convention.
+
+**`dizz intent`** — Agents can query, add, and resolve project intents programmatically. No need to parse ad-hoc TODO comments in source files.
+
+**TON Format** — All intent data uses TON:
+```ton
+id|type|sev|status|msg|scope|tags|created_by
+int_001|fixme|3|active|Fix critical bug|project|urgent|user
+```
+
+~90% fewer tokens than equivalent JSON. No quotes, braces, or indentation.
 
 ## Symbol States
 
-Symbol states are derived by combining usage signals, intent markers, and historical Git churn.
+Every symbol in your codebase is classified into one of five states, derived from usage signals, intent markers, and Git history:
 
 | State       | Meaning              |
 | ----------- | -------------------- |
@@ -150,8 +172,6 @@ Symbol states are derived by combining usage signals, intent markers, and histor
 
 ### The Four Dimensions of Project State
 
-Every project has four dimensions that `dizz` models explicitly:
-
 | Dimension     | What It Represents | How It's Derived      |
 | ------------- | ------------------ | --------------------- |
 | **Structure** | What exists        | AST parsing, regex    |
@@ -162,16 +182,16 @@ Every project has four dimensions that `dizz` models explicitly:
 ### High-Level Architecture
 
 ```
-┌─────────────────────────────────────────────────────────┐
-│                    CLI Commands                         │
-│      (init, log, status, snapshot, list, resume)        │
-└───────────────────────┬─────────────────────────────────┘
+┌──────────────────────────────────────────────────────────┐
+│                    CLI Commands                           │
+│   (init, log, status, context, snapshot, intent, list)    │
+└───────────────────────┬──────────────────────────────────┘
                          │
                          ▼
-┌─────────────────────────────────────────────────────────┐
-│                  Orchestration                          │
-│         (Coordinates all other layers)                  │
-└───┬───────────┬─────────────┬────────────┬──────────────┘
+┌──────────────────────────────────────────────────────────┐
+│                  Orchestration                            │
+│         (Coordinates all other layers)                    │
+└───┬───────────┬─────────────┬────────────┬───────────────┘
     │           │             │            │
     ▼           ▼             ▼            ▼
 ┌─────────┐ ┌──────────┐ ┌─────────┐ ┌─────────┐
@@ -183,22 +203,22 @@ Every project has four dimensions that `dizz` models explicitly:
                    │
                    ▼
             ┌──────────────┐
-            │   Signals    │  ← universal facts
+            │   Signals    │
             └──────┬───────┘
                    │
                    ▼
             ┌──────────────┐
-            │ State Engine │  ← interpretation
+            │ State Engine │
             └──────┬───────┘
                    │
                    ▼
             ┌──────────────┐
-            │ Project State│  ← understanding
+            │ Project State│
             └──────────────┘
 ```
 
 ## License
 
-[LICENSE](https://github.com/TheShiveshNetwork/dizz/blob/main/LICENSE)
+[MIT](https://github.com/TheShiveshNetwork/dizz/blob/main/LICENSE)
 
-Built with ❤️ for developers who hate wasting time deciding what to work on next.
+Built with love for developers who hate wasting time deciding what to work on next.
