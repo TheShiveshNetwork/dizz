@@ -234,5 +234,5 @@ func IsGoFile(path string) bool {
 		return false
 	}
 
-	return filepath.Ext(path) == ".go" && !strings.HasSuffix(path, "_test.go")
+	return filepath.Ext(path) == ".go"
 }
