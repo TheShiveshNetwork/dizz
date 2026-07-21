@@ -6,11 +6,15 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/TheShiveshNetwork/dizz/internal/config"
 	"github.com/TheShiveshNetwork/dizz/internal/state"
 )
 
-// IntentStore handles persistence of intent state
+const IntentTONFile = "intent.ton"
+const IntentJSONFile = "intent.json"
+
+// IntentStore handles persistence of intent state.
+// Primary format is TON (intent.ton) for token efficiency.
+// Falls back to JSON (intent.json) for backward compatibility.
 type IntentStore struct {
 	basePath string
 }
@@ -22,45 +26,49 @@ func NewIntentStore(basePath string) *IntentStore {
 	}
 }
 
-// LoadIntentState loads the intent state from disk
+// LoadIntentState loads the intent state from disk.
+// Prefers intent.ton, falls back to intent.json.
 func (s *IntentStore) LoadIntentState() (*state.IntentState, error) {
-	intentPath := config.IntentFilePath(s.basePath)
+	tonPath := filepath.Join(s.basePath, IntentTONFile)
+	jsonPath := filepath.Join(s.basePath, IntentJSONFile)
 
-	// If file doesn't exist, return new state
-	if _, err := os.Stat(intentPath); os.IsNotExist(err) {
-		return state.NewIntentState(), nil
+	// Try TON first
+	if data, err := os.ReadFile(tonPath); err == nil {
+		is, err := state.UnmarshalIntentStateTON(data)
+		if err != nil {
+			return nil, fmt.Errorf("failed to unmarshal intent.ton: %w", err)
+		}
+		return is, nil
 	}
 
-	data, err := os.ReadFile(intentPath)
-	if err != nil {
-		return nil, fmt.Errorf("failed to read intent file: %w", err)
+	// Fall back to JSON
+	if data, err := os.ReadFile(jsonPath); err == nil {
+		var intentState state.IntentState
+		if err := json.Unmarshal(data, &intentState); err != nil {
+			return nil, fmt.Errorf("failed to unmarshal intent.json: %w", err)
+		}
+		return &intentState, nil
 	}
 
-	var intentState state.IntentState
-	if err := json.Unmarshal(data, &intentState); err != nil {
-		return nil, fmt.Errorf("failed to unmarshal intent state: %w", err)
-	}
-
-	return &intentState, nil
+	return state.NewIntentState(), nil
 }
 
-// SaveIntentState saves the intent state to disk
+// SaveIntentState saves the intent state to disk as TON format.
 func (s *IntentStore) SaveIntentState(intentState *state.IntentState) error {
-	intentPath := filepath.Join(s.basePath, "intent.json")
-
-	// Ensure directory exists
 	if err := os.MkdirAll(s.basePath, 0755); err != nil {
 		return fmt.Errorf("failed to create intent directory: %w", err)
 	}
 
-	data, err := json.MarshalIndent(intentState, "", "  ")
+	intentPath := filepath.Join(s.basePath, IntentTONFile)
+
+	data, err := intentState.MarshalTON()
 	if err != nil {
 		return fmt.Errorf("failed to marshal intent state: %w", err)
 	}
 
-	if err := os.WriteFile(intentPath, data, 0644); err != nil {
+	tmpPath := intentPath + ".tmp"
+	if err := os.WriteFile(tmpPath, data, 0644); err != nil {
 		return fmt.Errorf("failed to write intent file: %w", err)
 	}
-
-	return nil
+	return os.Rename(tmpPath, intentPath)
 }

@@ -21,6 +21,7 @@ It continuously models the project’s progress by combining static analysis, Gi
 | **Snapshots** (`dizz snapshot`) | Content‑addressed, immutable records of the whole‑project state stored in `.dizz/objects/`. | Allows agents to compare before/after states, roll back to a known clean point, or audit progress over time. |
 | **Intent system** (`dizz intent`) | Separates disposable TODO/FIXME comments from long‑lived, immutable project goals. | Agents can query, add, or resolve intents without parsing ad‑hoc comments. |
 | **Log & status** (`dizz log`, `dizz status`) | Summarizes planned work, unstable areas, unused/abandoned code. | Gives a concise, actionable “what‑to‑work‑on‑next” view. |
+| **Agent context** (`dizz context`) | Token-optimized TON-format dump of active intents, symbol health, todos, and git state. | Single ~2 KB command that replaces reading 100+ KB of state files. Primary entry point for agents. |
 
 ---
 
@@ -67,20 +68,19 @@ It continuously models the project’s progress by combining static analysis, Gi
    ```bash
    dizz init
    ```
-   (Ensures the `.dizz/` metadata exists.)
+   (Ensures the `.dizz/` metadata exists. Use `dizz init --agent` for agent-optimized setup with TON format.)
 
-2. **Snapshot before changes**  
+2. **Assess current state**  
+   ```bash
+   dizz context
+   ```
+   Token-optimized dump of active intents, symbol health, todos, and git state (~2 KB).
+
+3. **Snapshot before changes**  
    ```bash
    dizz snapshot --auto
    ```
-   Records the pre‑change state.
-
-3. **Assess current state**  
-   ```bash
-   dizz status
-   dizz log   # or `dizz log -a` for full detail
-   ```
-   Identify what to work on (e.g., high‑severity intents, unstable symbols, obvious unused code).
+   Records the pre‑change state (compact JSON, no indentation).
 
 4. **Implement changes**  
    - Prefer addressing `planned` symbols (TODOs/intent) before touching stable `active` code.  
@@ -189,11 +189,33 @@ All language tests live in `tests/language_conformance_test.go` and `tests/langu
 
 12. **Signal metadata conventions**: When adding new `SignalType`s or `Metadata` keys, prefix project-specific keys with the package name (e.g., `"regex.source_tier"`). All confidence values are float64 in [0, 1].
 
-13. **Immutable intents, mutable todos**: TODO/FIXME found in source are ephemeral and re-scanned on every analysis. Intents persisted in `.dizz/intent.json` are immutable project records — never delete or modify them programmatically; only add or resolve.
+13. **Immutable intents, mutable todos**: TODO/FIXME found in source are ephemeral and re-scanned on every analysis. Intents persisted in `.dizz/intent.ton` (token-optimized format) are immutable project records — never delete or modify them programmatically; only add or resolve.
 
 14. **Config is always optional**: dizz must work with zero configuration. Defaults are defined in `internal/defaults/defaults.go`. Config values in `.dizz/config.json` override defaults — never require config for basic operation.
 
-15. **Snapshot immutability**: Snapshot objects in `.dizz/objects/` are content-addressed and must never be modified after creation. Use `dizz snapshot --auto` to create new snapshots; never overwrite or delete existing ones.
+15. **Snapshot immutability**: Snapshot objects in `.dizz/objects/` are content-addressed and must never be modified after creation. Use `dizz snapshot --auto` to create new snapshots; never overwrite or delete existing ones. Snapshots use compact JSON (no indentation) for reduced size.
+
+---
+
+---
+
+## Token-Optimized Notation (TON)
+
+The project uses **TON** (Token-Optimized Notation) for storing intent data. TON is a line-oriented, pipe-delimited format that eliminates JSON structural overhead.
+
+**Intent file (`.dizz/intent.ton`) example:**
+```ton
+id|type|sev|status|msg|scope|tags
+int_001|fixme|3|active|Fix critical bug|project|urgent
+```
+
+Key differences from JSON:
+- No quotes, braces, or indentation (~90% fewer tokens)
+- One line per record, pipe-delimited fields
+- First line is the header declaring column names
+- Agents can read it directly with minimal token cost
+
+**Reading TON**: Any agent can parse it by splitting on `|` — no JSON parser needed.
 
 ---
 

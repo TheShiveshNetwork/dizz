@@ -21,7 +21,6 @@ var initCmd = &cobra.Command{
 	},
 }
 
-// @ignore-unused
 func init() {
 	rootCmd.AddCommand(initCmd)
 }
@@ -32,18 +31,16 @@ func runInit() {
 	trackDir := config.TrackDirPath(cwd)
 	dizzConfigPath := config.ConfigFilePath(trackDir)
 
-	// return if dizz config already exists
 	if _, err := os.Stat(dizzConfigPath); err == nil {
-		fmt.Println("✓ dizz already initialized")
+		fmt.Println("dizz already initialized")
 		fmt.Printf("  Project: %s\n", projectName)
 		fmt.Printf("  Path: %s\n", trackDir)
 		return
 	}
 
-	// check git status
 	isGitRepo := integrations.IsRepo()
 	if !isGitRepo {
-		fmt.Println("⚠️  Not a git repository")
+		fmt.Println("Not a git repository")
 		fmt.Println("   Run 'git init' first, or continue without git integration")
 		fmt.Print("\nContinue anyway? [y/N]: ")
 		var response string
@@ -57,7 +54,6 @@ func runInit() {
 	objectsDir := config.ObjectsDirPath(cwd)
 	refsDir := config.RefsDirPath(cwd)
 
-	// create all the necessary dirs
 	dirs := []string{
 		trackDir,
 		objectsDir,
@@ -71,7 +67,6 @@ func runInit() {
 		}
 	}
 
-	// create dizz config
 	dizzConfig := defaults.DefaultConfig(projectName)
 	data, _ := json.MarshalIndent(dizzConfig, "", "  ")
 	if err := os.WriteFile(dizzConfigPath, data, 0644); err != nil {
@@ -79,7 +74,6 @@ func runInit() {
 		os.Exit(1)
 	}
 
-	// add not needed files to gitignore (which can be regenerated)
 	gitignorePath := filepath.Join(trackDir, ".gitignore")
 	gitignoreContent := defaults.GitignoreContent()
 	if err := os.WriteFile(gitignorePath, []byte(gitignoreContent), 0644); err != nil {
@@ -87,24 +81,26 @@ func runInit() {
 		os.Exit(1)
 	}
 
-	fmt.Printf("✓ Initialized %s\n", projectName)
-	// install local post-commit hook (tracked in .dizz/hooks/)
+	createProjectSkill(cwd, projectName)
+
+	fmt.Printf("Initialized %s\n", projectName)
+
 	if isGitRepo {
 		hooksDir := config.HooksDirPath(cwd)
 		hookPath := filepath.Join(hooksDir, "post-commit")
 		hookContent := defaults.LocalPostCommitHookContent(config.AppName)
 
 		if err := integrations.InstallLocalPostCommitHook(hookPath, hookContent); err != nil {
-			fmt.Printf("⚠️  Could not install post-commit hook: %v\n", err)
+			fmt.Printf("Could not install post-commit hook: %v\n", err)
 			fmt.Println("   You can still use dizz manually with 'dizz snapshot'")
 		} else {
-			fmt.Println("✓ Installed post-commit hook to .dizz/hooks/")
+			fmt.Println("Installed post-commit hook to .dizz/hooks/")
 		}
 
 		if err := integrations.SetLocalHooksPath(); err != nil {
-			fmt.Printf("⚠️  Could not set hooks path: %v\n", err)
+			fmt.Printf("Could not set hooks path: %v\n", err)
 		} else {
-			fmt.Println("✓ Configured git to use hooks from .dizz/hooks/")
+			fmt.Println("Configured git to use hooks from .dizz/hooks/")
 		}
 	}
 	fmt.Printf("  Created %s/\n", trackDir)
@@ -114,5 +110,28 @@ func runInit() {
 		fmt.Println("  Git integration: disabled")
 	}
 	fmt.Printf("  Project: %s\n", projectName)
+	fmt.Printf("  Agent skill: .agents/skills/dizz/\n")
 	fmt.Printf("\nNext: Run '%s log' to see your project state\n", config.AppName)
+	fmt.Printf("      Run '%s context' for agent-optimized project context\n", config.AppName)
+}
+
+func createProjectSkill(cwd, projectName string) {
+	skillDir := filepath.Join(cwd, ".agents", "skills", "dizz")
+	if err := os.MkdirAll(skillDir, 0755); err != nil {
+		fmt.Printf("Warning: could not create skill directory: %v\n", err)
+		return
+	}
+
+	skillMeta := defaults.SkillMetadata(projectName)
+	metaJSON, _ := json.MarshalIndent(skillMeta, "", "  ")
+	metaPath := filepath.Join(skillDir, "skill.json")
+	if err := os.WriteFile(metaPath, metaJSON, 0644); err != nil {
+		fmt.Printf("Warning: could not write skill.json: %v\n", err)
+	}
+
+	skillContent := defaults.SkillInstructions(projectName)
+	skillPath := filepath.Join(skillDir, "SKILL.md")
+	if err := os.WriteFile(skillPath, []byte(skillContent), 0644); err != nil {
+		fmt.Printf("Warning: could not write SKILL.md: %v\n", err)
+	}
 }
