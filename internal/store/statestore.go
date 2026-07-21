@@ -85,7 +85,7 @@ func (s *StateStore) SaveProjectState(projectState *state.ProjectState) error {
 	}
 
 	var buf bytes.Buffer
-	gzWriter, err := gzip.NewWriterLevel(&buf, gzip.DefaultCompression)
+	gzWriter, err := gzip.NewWriterLevel(&buf, gzip.BestSpeed)
 	if err != nil {
 		return fmt.Errorf("failed to create gzip writer: %w", err)
 	}

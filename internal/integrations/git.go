@@ -305,9 +305,16 @@ type GitBatchResult struct {
 	HeadHash         string
 }
 
+// SymbolRange specifies a symbol's location for batch git analysis.
+type SymbolRange struct {
+	File    string
+	Name    string
+	Line    int
+	EndLine int
+}
+
 // BatchGitAnalysis performs git operations in bulk for much better performance
-// Expected improvement: 70% faster than individual git calls
-func BatchGitAnalysis(symbols []interface{}) (*GitBatchResult, error) {
+func BatchGitAnalysis(symbols []SymbolRange) (*GitBatchResult, error) {
 	result := &GitBatchResult{
 		FileLastModified: make(map[string]time.Time),
 		FunctionChurn:    make(map[string]int),
@@ -323,7 +330,6 @@ func BatchGitAnalysis(symbols []interface{}) (*GitBatchResult, error) {
 	// Check cache first
 	cache.mu.RLock()
 	if cache.lastHeadHash == headHash && len(cache.fileLastModified) > 0 {
-		// Return cached results
 		result.FileLastModified = make(map[string]time.Time)
 		result.FunctionChurn = make(map[string]int)
 		for k, v := range cache.fileLastModified {
@@ -338,21 +344,13 @@ func BatchGitAnalysis(symbols []interface{}) (*GitBatchResult, error) {
 	cache.mu.RUnlock()
 
 	// Collect unique files and function ranges
-	files := make(map[string]bool)
-	functionRanges := make(map[string]bool)
+	files := make(map[string]bool, len(symbols))
+	functionRanges := make(map[string]bool, len(symbols))
 
-	for _, symbol := range symbols {
-		switch s := symbol.(type) {
-		case struct {
-			File    string
-			Name    string
-			Line    int
-			EndLine int
-		}:
-			files[s.File] = true
-			rangeKey := fmt.Sprintf("%s:%d:%d", s.File, s.Line, s.EndLine)
-			functionRanges[rangeKey] = true
-		}
+	for _, s := range symbols {
+		files[s.File] = true
+		rangeKey := fmt.Sprintf("%s:%d:%d", s.File, s.Line, s.EndLine)
+		functionRanges[rangeKey] = true
 	}
 
 	// Batch file last modified analysis
@@ -429,52 +427,53 @@ func batchFileLastModified(files map[string]bool, result *GitBatchResult) error 
 	return nil
 }
 
-// batchFunctionChurn gets churn for all function ranges efficiently
+// batchFunctionChurn gets churn for all function ranges using parallel git calls.
 func batchFunctionChurn(functionRanges map[string]bool, result *GitBatchResult) error {
-	// Process function ranges in batches to avoid command line length limits
-	batchSize := 50
 	ranges := make([]string, 0, len(functionRanges))
-
 	for rangeKey := range functionRanges {
 		ranges = append(ranges, rangeKey)
 	}
-
-	for i := 0; i < len(ranges); i += batchSize {
-		end := i + batchSize
-		if end > len(ranges) {
-			end = len(ranges)
-		}
-
-		batch := ranges[i:end]
-		if err := processFunctionBatch(batch, result); err != nil {
-			return err
-		}
+	if len(ranges) == 0 {
+		return nil
 	}
 
-	return nil
-}
+	// Process in parallel using a worker pool.
+	// git log -L calls are I/O-bound, so parallelism helps significantly.
+	workers := 8
+	if len(ranges) < workers {
+		workers = len(ranges)
+	}
+	jobs := make(chan string, len(ranges))
+	var wg sync.WaitGroup
+	var mu sync.Mutex
 
-// processFunctionBatch processes a batch of function ranges
-func processFunctionBatch(ranges []string, result *GitBatchResult) error {
+	for i := 0; i < workers; i++ {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			for rangeKey := range jobs {
+				parts := strings.Split(rangeKey, ":")
+				if len(parts) != 3 {
+					continue
+				}
+				file := parts[0]
+				startLine, _ := strconv.Atoi(parts[1])
+				endLine, _ := strconv.Atoi(parts[2])
+
+				if churn, err := GetFunctionChurn(file, "", startLine, endLine, 50); err == nil {
+					mu.Lock()
+					result.FunctionChurn[rangeKey] = churn
+					mu.Unlock()
+				}
+			}
+		}()
+	}
+
 	for _, rangeKey := range ranges {
-		// Parse "file:startLine:endLine" format
-		parts := strings.Split(rangeKey, ":")
-		if len(parts) != 3 {
-			continue
-		}
-
-		file := parts[0]
-		startLine, _ := strconv.Atoi(parts[1])
-		endLine, _ := strconv.Atoi(parts[2])
-
-		// Get churn for this function
-		if churn, err := GetFunctionChurn(file, "", startLine, endLine, 20); err == nil {
-			result.FunctionChurn[rangeKey] = churn
-		} else {
-			result.FunctionChurn[rangeKey] = 0
-		}
+		jobs <- rangeKey
 	}
-
+	close(jobs)
+	wg.Wait()
 	return nil
 }
 

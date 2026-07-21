@@ -18,14 +18,9 @@ func TestGitPerformanceComparison(t *testing.T) {
 	symbols := createTestSymbols(175) // Realistic project size
 
 	// Prepare symbol data for batch processing
-	symbolData := make([]interface{}, len(symbols))
+	symbolData := make([]integrations.SymbolRange, len(symbols))
 	for i, symbol := range symbols {
-		symbolData[i] = struct {
-			File    string
-			Name    string
-			Line    int
-			EndLine int
-		}{
+		symbolData[i] = integrations.SymbolRange{
 			File:    symbol.File,
 			Name:    symbol.Name,
 			Line:    symbol.Line,

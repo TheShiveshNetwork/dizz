@@ -3,7 +3,6 @@ package cmd
 import (
 	"crypto/sha256"
 	"encoding/hex"
-	"encoding/json"
 	"errors"
 	"fmt"
 	"os"
@@ -204,10 +203,8 @@ func runCurrentAnalysisAtRoot(projectRoot string, options *AnalysisOptions) (*st
 	// Merge all signals into a SignalSet
 	mergedSigSet := &signals.SignalSet{Signals: allSignals}
 
-	// Compute hash of the merged signal set for identity detection
-	signalJSON, _ := json.Marshal(mergedSigSet)
-	signalHashBytes := sha256.Sum256(signalJSON)
-	signalHashStr := hex.EncodeToString(signalHashBytes[:])
+	// Compute rolling hash of the merged signal set for identity detection
+	signalHashStr := mergedSigSet.Hash()
 
 	// If the signal set is identical to the previous run, skip scoring entirely.
 	// This closes the loop for truly zero-work runs: no file changes, no HEAD
@@ -309,15 +306,10 @@ func runCurrentAnalysisAtRoot(projectRoot string, options *AnalysisOptions) (*st
 
 		// Run batch git analysis only for changed/new symbols
 		if len(changedSymbolIdx) > 0 {
-			symbolData := make([]interface{}, len(changedSymbolIdx))
+			symbolData := make([]integrations.SymbolRange, len(changedSymbolIdx))
 			for j, idx := range changedSymbolIdx {
 				sym := projectState.Symbols[idx]
-				symbolData[j] = struct {
-					File    string
-					Name    string
-					Line    int
-					EndLine int
-				}{
+				symbolData[j] = integrations.SymbolRange{
 					File:    sym.File,
 					Name:    sym.Name,
 					Line:    sym.Line,

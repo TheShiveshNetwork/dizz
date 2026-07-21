@@ -137,33 +137,20 @@ func (s *Scorer) calculateInstabilityScore(symbol *Symbol) float64 {
 	return score
 }
 
-// calculatePercentiles computes percentiles for a list of scores
-func (s *Scorer) calculatePercentiles(scores []float64) map[float64]float64 {
-	if len(scores) == 0 {
-		return make(map[float64]float64)
+// percentile computes the given percentile (0-100) from a sorted slice.
+func percentile(sorted []float64, p float64) float64 {
+	if len(sorted) == 0 {
+		return 0
 	}
-
-	// Sort scores ascending
-	sort.Float64s(scores)
-	percentiles := make(map[float64]float64)
-
-	n := float64(len(scores))
-	for p := 0.0; p <= 100.0; p += 1.0 {
-		// Linear interpolation between closest ranks
-		rank := (p / 100.0) * (n - 1)
-		lower := int(math.Floor(rank))
-		upper := int(math.Ceil(rank))
-
-		if lower == upper {
-			percentiles[p] = scores[lower]
-		} else {
-			// Interpolate
-			weight := rank - float64(lower)
-			percentiles[p] = scores[lower]*(1-weight) + scores[upper]*weight
-		}
+	n := float64(len(sorted))
+	rank := (p / 100.0) * (n - 1)
+	lower := int(math.Floor(rank))
+	upper := int(math.Ceil(rank))
+	if lower == upper {
+		return sorted[lower]
 	}
-
-	return percentiles
+	weight := rank - float64(lower)
+	return sorted[lower]*(1-weight) + sorted[upper]*weight
 }
 
 // Score interprets a symbol's state from signals
@@ -231,15 +218,22 @@ func (s *Scorer) applyMathematicalScoring(symbols []*Symbol) {
 		}
 	}
 
-	// Calculate percentiles
-	var instabilityPercentiles map[float64]float64
+	// Compute only the percentiles we actually use (75th and 90th)
+	instabilityThreshold := 0.0
+	ageThreshold := 0.0
+
 	if len(instabilityScores) > 0 {
-		instabilityPercentiles = s.calculatePercentiles(instabilityScores)
+		sortableInstability := make([]float64, len(instabilityScores))
+		copy(sortableInstability, instabilityScores)
+		sort.Float64s(sortableInstability)
+		instabilityThreshold = percentile(sortableInstability, 90.0)
 	}
 
-	var agePercentiles map[float64]float64
 	if len(ages) > 0 {
-		agePercentiles = s.calculatePercentiles(ages)
+		sortableAges := make([]float64, len(ages))
+		copy(sortableAges, ages)
+		sort.Float64s(sortableAges)
+		ageThreshold = percentile(sortableAges, 75.0)
 	}
 
 	// Apply mathematical scoring to ALL symbols
@@ -250,25 +244,19 @@ func (s *Scorer) applyMathematicalScoring(symbols []*Symbol) {
 		}
 
 		// UNSTABLE: High instability score (90th percentile) - APPLIES TO ALL SYMBOLS
-		if len(instabilityPercentiles) > 0 && symbol.InstabilityScore > 0 {
-			percentile90 := instabilityPercentiles[90.0]
-			if symbol.InstabilityScore >= percentile90 {
-				symbol.State = Unstable
-				symbol.Confidence = 0.8 // High confidence for mathematical instability
-				continue
-			}
+		if instabilityThreshold > 0 && symbol.InstabilityScore >= instabilityThreshold {
+			symbol.State = Unstable
+			symbol.Confidence = 0.8 // High confidence for mathematical instability
+			continue
 		}
 
 		// ABANDONED: Old and never called (only for uncalled symbols)
-		if !symbol.IsCalled && symbol.LastTouched != nil {
-			if len(agePercentiles) > 0 {
-				age := time.Since(*symbol.LastTouched).Hours() / 24.0
-				percentile75 := agePercentiles[75.0] // 75th percentile for "old"
-				if age >= percentile75 {
-					symbol.State = Abandoned
-					symbol.Confidence = s.abandonedConfidence(symbol)
-					continue
-				}
+		if !symbol.IsCalled && symbol.LastTouched != nil && ageThreshold > 0 {
+			age := time.Since(*symbol.LastTouched).Hours() / 24.0
+			if age >= ageThreshold {
+				symbol.State = Abandoned
+				symbol.Confidence = s.abandonedConfidence(symbol)
+				continue
 			}
 		}
 
