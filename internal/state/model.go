@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/TheShiveshNetwork/dizz/internal/integrations"
+	"github.com/TheShiveshNetwork/dizz/integrations"
 )
 
 // SymbolState represents the interpreted state of a code symbol

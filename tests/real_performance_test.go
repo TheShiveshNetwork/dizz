@@ -6,7 +6,7 @@ import (
 	"time"
 
 	commonPkg "github.com/TheShiveshNetwork/dizz/internal/common"
-	"github.com/TheShiveshNetwork/dizz/internal/integrations"
+	"github.com/TheShiveshNetwork/dizz/integrations"
 )
 
 // TestRealAnalysisPerformance tests the actual analysis performance in the same way CLI runs
