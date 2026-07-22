@@ -57,6 +57,7 @@ func runContext() {
 	configStore := store.NewConfigStore(config.TrackDirPath(trackDir))
 	if cfg, err := configStore.LoadConfig(); err == nil {
 		info.ProjectName = cfg.ProjectName
+		info.Agentic = cfg.Agentic
 		info.ConfigRoot = cfg.RootPath
 		info.ConfigIncludeCount = len(cfg.Include)
 		info.ConfigExcludeCount = len(cfg.Exclude)

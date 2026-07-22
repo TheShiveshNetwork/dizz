@@ -20,7 +20,18 @@ This is the **global** install of the skill: it applies across every project, no
 - If dizz is installed but this specific project has no dizz metadata yet, ask the user before setting it up — it's their call whether this project should start tracking memory this way, since it's a new decision for a project seeing this skill for the first time.
 - If the project already has dizz metadata, just use it — no need to ask again.
 
-## Step 2: Find the right command by asking dizz, not this file
+## Step 2: Read project agent rules from config first
+
+Project-level agent standards now live in `.dizz/config.json` under `agentic`. Treat this config as the source of truth for agent runs in this repository.
+
+- Run `dizz config show` and check `agentic.description`, `agentic.rules`, `agentic.standards`, and `agentic.instructions`.
+- If the project maintainer gives a new durable rule, add it to config instead of keeping it only in chat:
+  - `dizz config add --rule "..."`  
+  - `dizz config add --standard "..."`  
+  - `dizz config add --instruction "..."`
+  - `dizz config set-description "..."`
+
+## Step 3: Find the right command by asking dizz, not this file
 
 This file does not list dizz's commands or flags, on purpose. The CLI can change after this was written, and a memorized list that's gone stale is worse than none — it leads to confident, wrong invocations.
 

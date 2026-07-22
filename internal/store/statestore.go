@@ -158,3 +158,21 @@ func (s *ConfigStore) LoadConfig() (*config.Config, error) {
 
 	return &cfg, nil
 }
+
+func (s *ConfigStore) SaveConfig(cfg *config.Config) error {
+	if err := os.MkdirAll(s.basePath, 0755); err != nil {
+		return fmt.Errorf("failed to create config directory: %w", err)
+	}
+
+	configPath := filepath.Join(s.basePath, "config.json")
+	data, err := json.MarshalIndent(cfg, "", "  ")
+	if err != nil {
+		return fmt.Errorf("failed to marshal config: %w", err)
+	}
+
+	tmpPath := configPath + ".tmp"
+	if err := os.WriteFile(tmpPath, data, 0644); err != nil {
+		return fmt.Errorf("failed to write config file: %w", err)
+	}
+	return os.Rename(tmpPath, configPath)
+}

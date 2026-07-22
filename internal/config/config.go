@@ -22,10 +22,18 @@ const (
 )
 
 type Config struct {
-	ProjectName string   `json:"project_name"`
-	RootPath    string   `json:"root_path"`
-	Include     []string `json:"include"`
-	Exclude     []string `json:"exclude"`
+	ProjectName string        `json:"project_name"`
+	RootPath    string        `json:"root_path"`
+	Include     []string      `json:"include"`
+	Exclude     []string      `json:"exclude"`
+	Agentic     AgenticConfig `json:"agentic"`
+}
+
+type AgenticConfig struct {
+	Description  string   `json:"description"`
+	Rules        []string `json:"rules"`
+	Standards    []string `json:"standards"`
+	Instructions []string `json:"instructions"`
 }
 
 func TrackDirPath(root string) string {

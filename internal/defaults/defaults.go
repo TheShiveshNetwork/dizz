@@ -54,6 +54,12 @@ func DefaultConfig(projectName string) *config.Config {
 			"**/.DS_Store",
 			"**/Thumbs.db",
 		},
+		Agentic: config.AgenticConfig{
+			Description:  "",
+			Rules:        []string{},
+			Standards:    []string{},
+			Instructions: []string{},
+		},
 	}
 }
 

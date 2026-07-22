@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"strings"
 
+	dizzconfig "github.com/TheShiveshNetwork/dizz/internal/config"
 	"github.com/TheShiveshNetwork/dizz/internal/integrations"
 	"github.com/TheShiveshNetwork/dizz/internal/state"
 	"github.com/TheShiveshNetwork/dizz/internal/store/ton"
@@ -15,6 +16,7 @@ type ContextInfo struct {
 	Branch             string
 	Commit             string
 	HasGit             bool
+	Agentic     			 dizzconfig.AgenticConfig
 	ConfigRoot         string
 	ConfigIncludeCount int
 	ConfigExcludeCount int
@@ -40,6 +42,7 @@ func (r *ContextRenderer) Render(
 		r.writeCommitInfo(&buf, ps.GitCommit)
 	}
 
+	r.writeAgentic(&buf, info.Agentic)
 	r.writeConfigSummary(&buf, info)
 	r.writeIntents(&buf, is)
 	r.writeSymbolSummary(&buf, ps)
@@ -71,6 +74,29 @@ func (r *ContextRenderer) writeConfigSummary(buf *bytes.Buffer, info ContextInfo
 	w := ton.NewWriter(buf)
 	w.WriteHeader("project", "root", "include_count", "exclude_count")
 	w.WriteRecord(info.ProjectName, root, fmt.Sprintf("%d", info.ConfigIncludeCount), fmt.Sprintf("%d", info.ConfigExcludeCount))
+	fmt.Fprintln(buf)
+}
+
+func (r *ContextRenderer) writeAgentic(buf *bytes.Buffer, cfg dizzconfig.AgenticConfig) {
+	if cfg.Description == "" && len(cfg.Rules) == 0 && len(cfg.Standards) == 0 && len(cfg.Instructions) == 0 {
+		return
+	}
+
+	fmt.Fprintln(buf, "# agentic")
+	w := ton.NewWriter(buf)
+	w.WriteHeader("kind", "value")
+	if cfg.Description != "" {
+		w.WriteRecord("description", cfg.Description)
+	}
+	for _, rule := range cfg.Rules {
+		w.WriteRecord("rule", rule)
+	}
+	for _, standard := range cfg.Standards {
+		w.WriteRecord("standard", standard)
+	}
+	for _, instruction := range cfg.Instructions {
+		w.WriteRecord("instruction", instruction)
+	}
 	fmt.Fprintln(buf)
 }
 
