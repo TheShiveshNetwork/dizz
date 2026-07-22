@@ -3,7 +3,6 @@ package render
 import (
 	"bytes"
 	"fmt"
-	"sort"
 	"strings"
 
 	"github.com/TheShiveshNetwork/dizz/internal/integrations"
@@ -12,10 +11,13 @@ import (
 )
 
 type ContextInfo struct {
-	ProjectName string
-	Branch      string
-	Commit      string
-	HasGit      bool
+	ProjectName        string
+	Branch             string
+	Commit             string
+	HasGit             bool
+	ConfigRoot         string
+	ConfigIncludeCount int
+	ConfigExcludeCount int
 }
 
 type ContextRenderer struct{}
@@ -38,10 +40,9 @@ func (r *ContextRenderer) Render(
 		r.writeCommitInfo(&buf, ps.GitCommit)
 	}
 
+	r.writeConfigSummary(&buf, info)
 	r.writeIntents(&buf, is)
-	r.writePlannedSymbols(&buf, ps)
-	r.writeUnstableSymbols(&buf, ps)
-	r.writeUnusedSymbols(&buf, ps)
+	r.writeSymbolSummary(&buf, ps)
 	r.writeTodos(&buf, ps)
 	r.writeSnapshots(&buf, snapshotHashes)
 
@@ -57,7 +58,20 @@ func (r *ContextRenderer) writeProjectInfo(buf *bytes.Buffer, info ContextInfo) 
 }
 
 func (r *ContextRenderer) writeCommitInfo(buf *bytes.Buffer, c *integrations.Commit) {
-	fmt.Fprintf(buf, "# last commit\nhash|msg\ntruncate:%s|%s\n\n", truncate(c.Hash, 7), escapeMsg(c.Message))
+	fmt.Fprintf(buf, "# last commit\nhash|msg\n%s|%s\n\n", truncate(c.Hash, 7), escapeMsg(c.Message))
+}
+
+func (r *ContextRenderer) writeConfigSummary(buf *bytes.Buffer, info ContextInfo) {
+	root := info.ConfigRoot
+	if root == "" {
+		root = "."
+	}
+
+	fmt.Fprintln(buf, "# config")
+	w := ton.NewWriter(buf)
+	w.WriteHeader("project", "root", "include_count", "exclude_count")
+	w.WriteRecord(info.ProjectName, root, fmt.Sprintf("%d", info.ConfigIncludeCount), fmt.Sprintf("%d", info.ConfigExcludeCount))
+	fmt.Fprintln(buf)
 }
 
 func (r *ContextRenderer) writeIntents(buf *bytes.Buffer, is *state.IntentState) {
@@ -75,54 +89,22 @@ func (r *ContextRenderer) writeIntents(buf *bytes.Buffer, is *state.IntentState)
 	fmt.Fprintln(buf)
 }
 
-func (r *ContextRenderer) writePlannedSymbols(buf *bytes.Buffer, ps *state.ProjectState) {
-	planned := ps.GetSymbolsByState(state.Planned)
-	if len(planned) == 0 {
+func (r *ContextRenderer) writeSymbolSummary(buf *bytes.Buffer, ps *state.ProjectState) {
+	summary := ps.GetSummary()
+	if summary.TotalSymbols == 0 {
 		return
 	}
 
-	fmt.Fprintln(buf, "# symbols:planned")
+	fmt.Fprintln(buf, "# symbols")
 	w := ton.NewWriter(buf)
-	w.WriteHeader("name", "file", "line", "confidence")
-	for _, sym := range planned {
-		w.WriteRecord(sym.Name, sym.File, fmt.Sprintf("%d", sym.Line), fmt.Sprintf("%.2f", sym.Confidence))
-	}
-	fmt.Fprintln(buf)
-}
-
-func (r *ContextRenderer) writeUnstableSymbols(buf *bytes.Buffer, ps *state.ProjectState) {
-	unstable := ps.GetSymbolsByState(state.Unstable)
-	if len(unstable) == 0 {
-		return
-	}
-
-	fmt.Fprintln(buf, "# symbols:unstable")
-	w := ton.NewWriter(buf)
-	w.WriteHeader("name", "file", "line", "churn", "instability")
-	sort.Slice(unstable, func(i, j int) bool {
-		return unstable[i].InstabilityScore > unstable[j].InstabilityScore
-	})
-	for _, sym := range unstable {
-		w.WriteRecord(sym.Name, sym.File, fmt.Sprintf("%d", sym.Line),
-			fmt.Sprintf("%d", sym.ChurnCount), r.InstabilityLabel(sym.InstabilityScore))
-	}
-	fmt.Fprintln(buf)
-}
-
-func (r *ContextRenderer) writeUnusedSymbols(buf *bytes.Buffer, ps *state.ProjectState) {
-	unused := ps.GetSymbolsByState(state.Unused)
-	abandoned := ps.GetSymbolsByState(state.Abandoned)
-	all := append(unused, abandoned...)
-	if len(all) == 0 {
-		return
-	}
-
-	fmt.Fprintln(buf, "# symbols:unused")
-	w := ton.NewWriter(buf)
-	w.WriteHeader("name", "file", "line", "state", "confidence")
-	for _, sym := range all {
-		w.WriteRecord(sym.Name, sym.File, fmt.Sprintf("%d", sym.Line),
-			string(sym.State), fmt.Sprintf("%.2f", sym.Confidence))
+	w.WriteHeader("state", "count")
+	states := []state.SymbolState{state.Planned, state.Unstable, state.Unused, state.Abandoned}
+	for _, st := range states {
+		count := summary.ByState[st]
+		if count == 0 {
+			continue
+		}
+		w.WriteRecord(string(st), fmt.Sprintf("%d", count))
 	}
 	fmt.Fprintln(buf)
 }

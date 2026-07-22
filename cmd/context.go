@@ -50,13 +50,16 @@ func runContext() {
 	}
 
 	info := render.ContextInfo{
-		ProjectName: "project",
+		ProjectName: filepath.Base(trackDir),
 		HasGit:      integrations.IsRepo(),
 	}
 
-	configStore := store.NewConfigStore(trackDir)
+	configStore := store.NewConfigStore(config.TrackDirPath(trackDir))
 	if cfg, err := configStore.LoadConfig(); err == nil {
 		info.ProjectName = cfg.ProjectName
+		info.ConfigRoot = cfg.RootPath
+		info.ConfigIncludeCount = len(cfg.Include)
+		info.ConfigExcludeCount = len(cfg.Exclude)
 	}
 
 	if info.HasGit {
@@ -92,8 +95,6 @@ func runContext() {
 		projectState = state.NewProjectState()
 	}
 
-	trackDirName := filepath.Base(trackDir)
-
 	if contextTodosOnly {
 		var buf bytes.Buffer
 		for _, todo := range projectState.GetActiveTodos() {
@@ -104,7 +105,6 @@ func runContext() {
 	}
 
 	renderer := render.NewContextRenderer()
-	info.ProjectName = trackDirName
 	output, err := renderer.Render(projectState, intentState, info, nil)
 	if err != nil {
 		fmt.Fprint(os.Stderr, ui.Error("Error rendering context\n"))

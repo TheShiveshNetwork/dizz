@@ -13,7 +13,7 @@ func TestAnalyze_TodoExtractionFromAnchoredComments(t *testing.T) {
 
 	tmpDir := t.TempDir()
 	testFile := filepath.Join(tmpDir, "example.js")
-content := `// TODO: line comment
+	content := `// TODO: line comment
 const endpoint = "https://example.com/TODO: not-a-comment";
 /* TODO: block comment start
  * TODO: block comment continuation
