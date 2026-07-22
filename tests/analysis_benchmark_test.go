@@ -9,7 +9,7 @@ import (
 	"github.com/TheShiveshNetwork/dizz/internal/analyzer/ast"
 	"github.com/TheShiveshNetwork/dizz/internal/analyzer/regex"
 	commonPkg "github.com/TheShiveshNetwork/dizz/internal/common"
-	"github.com/TheShiveshNetwork/dizz/internal/config"
+	"github.com/TheShiveshNetwork/dizz/config"
 	"github.com/TheShiveshNetwork/dizz/internal/discover"
 	"github.com/TheShiveshNetwork/dizz/internal/integrations"
 	"github.com/TheShiveshNetwork/dizz/internal/store"

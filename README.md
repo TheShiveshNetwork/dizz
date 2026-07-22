@@ -108,11 +108,11 @@ Git tells you *what* changed and *when*. The source code tells you *what* exists
 
 `dizz` is designed as a **state-aware assistant for both humans and AI agents** — the layer an agent reads from instead of a static context file. Every command outputs machine-readable formats by default:
 
-- **`dizz context`** — Single ~2 KB command that replaces reading 100+ KB of state files. Pipe-delimited TON format, no parser needed.
+- **`dizz context`** — Single command optimized for agents first runs to follow up analysis. Pipe-delimited TON format, no parser needed.
 - **`dizz config`** — Single source of truth for persistent agentic project guidance (`agentic.description`, `agentic.rules`, `agentic.standards`, `agentic.instructions`).
-- **`dizz install-skill`** — Auto-discovers installed AI agents (Claude Code, Cursor, Gemini CLI, OpenCode, Codex CLI) and installs a discoverable skill for each.
-- **`dizz intent`** — Agents can query, add, and resolve project intents without parsing ad-hoc comments.
-- **`dizz snapshot --diff`** — Delta-based snapshots for efficient long-term storage (~1-2 KB per change).
+- **`dizz install-skill`** — Installs a global skill for all agent harnesses. Auto-discovers installed AI agents (Claude Code, Cursor, Gemini CLI, OpenCode, Codex CLI) and installs a discoverable skill for each.
+- **`dizz intent`** — Agents can query, add, and resolve project intents directly, without parsing ad-hoc comments or relying on a doc someone forgot to update.
+- **`dizz snapshot --diff`** — Delta-based snapshots for efficient long-term storage, so an agent picking the project back up gets the *change* since it last looked, not the whole state again.
 
 ## Symbol States
 

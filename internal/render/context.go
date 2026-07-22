@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"strings"
 
-	dizzconfig "github.com/TheShiveshNetwork/dizz/internal/config"
+	"github.com/TheShiveshNetwork/dizz/config"
 	"github.com/TheShiveshNetwork/dizz/internal/integrations"
 	"github.com/TheShiveshNetwork/dizz/internal/state"
 	"github.com/TheShiveshNetwork/dizz/internal/store/ton"
@@ -16,7 +16,9 @@ type ContextInfo struct {
 	Branch             string
 	Commit             string
 	HasGit             bool
-	Agentic     			 dizzconfig.AgenticConfig
+	Description        string
+	Conventions        []config.Convention
+	Guardrails         []config.Guardrail
 	ConfigRoot         string
 	ConfigIncludeCount int
 	ConfigExcludeCount int
@@ -42,7 +44,7 @@ func (r *ContextRenderer) Render(
 		r.writeCommitInfo(&buf, ps.GitCommit)
 	}
 
-	r.writeAgentic(&buf, info.Agentic)
+	r.writeAgentic(&buf, info)
 	r.writeConfigSummary(&buf, info)
 	r.writeIntents(&buf, is)
 	r.writeSymbolSummary(&buf, ps)
@@ -77,25 +79,22 @@ func (r *ContextRenderer) writeConfigSummary(buf *bytes.Buffer, info ContextInfo
 	fmt.Fprintln(buf)
 }
 
-func (r *ContextRenderer) writeAgentic(buf *bytes.Buffer, cfg dizzconfig.AgenticConfig) {
-	if cfg.Description == "" && len(cfg.Rules) == 0 && len(cfg.Standards) == 0 && len(cfg.Instructions) == 0 {
+func (r *ContextRenderer) writeAgentic(buf *bytes.Buffer, info ContextInfo) {
+	if info.Description == "" && len(info.Conventions) == 0 && len(info.Guardrails) == 0 {
 		return
 	}
 
 	fmt.Fprintln(buf, "# agentic")
 	w := ton.NewWriter(buf)
 	w.WriteHeader("kind", "value")
-	if cfg.Description != "" {
-		w.WriteRecord("description", cfg.Description)
+	if info.Description != "" {
+		w.WriteRecord("description", info.Description)
 	}
-	for _, rule := range cfg.Rules {
-		w.WriteRecord("rule", rule)
+	for _, convention := range info.Conventions {
+		w.WriteRecord("convention", convention.Rule+"@"+convention.Scope)
 	}
-	for _, standard := range cfg.Standards {
-		w.WriteRecord("standard", standard)
-	}
-	for _, instruction := range cfg.Instructions {
-		w.WriteRecord("instruction", instruction)
+	for _, guardrail := range info.Guardrails {
+		w.WriteRecord("guardrail", guardrail.Path+"|"+guardrail.Action+"|"+guardrail.Reason)
 	}
 	fmt.Fprintln(buf)
 }

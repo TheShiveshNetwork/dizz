@@ -7,7 +7,7 @@ import (
 	"path/filepath"
 
 	commonPkg "github.com/TheShiveshNetwork/dizz/internal/common"
-	"github.com/TheShiveshNetwork/dizz/internal/config"
+	"github.com/TheShiveshNetwork/dizz/config"
 	"github.com/TheShiveshNetwork/dizz/internal/integrations"
 	"github.com/TheShiveshNetwork/dizz/internal/render"
 	"github.com/TheShiveshNetwork/dizz/internal/state"
@@ -19,17 +19,17 @@ import (
 var (
 	contextIntentOnly bool
 	contextSymbolOnly bool
-	contextTodosOnly  bool
+	contextTodosOnly 	bool
 )
 
 var contextCmd = &cobra.Command{
 	Use:   "context",
 	Short: "Token-optimized project context for agents",
 	Long: `Outputs a compact, token-efficient summary of the project state
-in TON (Token-Optimized Notation) format, designed for AI agent consumption.
+	in TON (Token-Optimized Notation) format, designed for AI agent consumption.
 
-Includes active intents, symbol health, todos, and git context
-in a pipe-delimited, single-line-per-record format.`,
+	Includes active intents, symbol health, todos, and git context
+	in a pipe-delimited, single-line-per-record format.`,
 	Run: func(cmd *cobra.Command, args []string) {
 		runContext()
 	},
@@ -57,7 +57,9 @@ func runContext() {
 	configStore := store.NewConfigStore(config.TrackDirPath(trackDir))
 	if cfg, err := configStore.LoadConfig(); err == nil {
 		info.ProjectName = cfg.ProjectName
-		info.Agentic = cfg.Agentic
+		info.Description = cfg.Description
+		info.Conventions = cfg.Conventions
+		info.Guardrails = cfg.Guardrails
 		info.ConfigRoot = cfg.RootPath
 		info.ConfigIncludeCount = len(cfg.Include)
 		info.ConfigExcludeCount = len(cfg.Exclude)
@@ -91,18 +93,35 @@ func runContext() {
 		return
 	}
 
-	projectState, err := commonPkg.EnsureCurrentStateWithAnalysis(nil)
-	if err != nil {
-		projectState = state.NewProjectState()
+	if contextSymbolOnly {
+		projectState, err := commonPkg.EnsureCurrentStateWithAnalysis(nil)
+		if err != nil {
+			projectState = state.NewProjectState()
+		}
+		var buf bytes.Buffer
+		for _, symbol := range projectState.Symbols {
+			fmt.Fprintf(&buf, "%s|%s|%s|%d\n", symbol.File, symbol.Name, symbol.Type, symbol.ChurnCount)
+		}
+		fmt.Print(buf.String())
+		return
 	}
 
 	if contextTodosOnly {
+		projectState, err := commonPkg.EnsureCurrentStateWithAnalysis(nil)
+		if err != nil {
+			projectState = state.NewProjectState()
+		}
 		var buf bytes.Buffer
 		for _, todo := range projectState.GetActiveTodos() {
 			fmt.Fprintf(&buf, "%s|%d|%s|%s\n", todo.File, todo.Line, todo.Type, todo.Text)
 		}
 		fmt.Print(buf.String())
 		return
+	}
+
+	projectState, err := commonPkg.EnsureCurrentStateWithAnalysis(nil)
+	if err != nil {
+		projectState = state.NewProjectState()
 	}
 
 	renderer := render.NewContextRenderer()

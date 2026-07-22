@@ -3,18 +3,17 @@ package defaults
 import (
 	"strings"
 
-	"github.com/TheShiveshNetwork/dizz/internal/config"
+	"github.com/TheShiveshNetwork/dizz/config"
 )
 
 // return a sensible default configuration usable in any project
 func DefaultConfig(projectName string) *config.Config {
 	return &config.Config{
-		ProjectName: projectName,
-		RootPath:    ".",
-		// Include is nil by default — CodeFilesWithIncludes falls back to the
-		// language registry's extension list, so only known source-code files
-		// are discovered.  Users can override with explicit patterns in their
-		// .dizz/config.json if they need to analyze non-registry languages.
+		Version:       1,
+		ProjectName:   projectName,
+		Description:   "",
+		RootPath:      ".",
+		Include:       []string{"**/*"},
 		Exclude: []string{
 			// Directories
 			"vendor/**",
@@ -54,12 +53,6 @@ func DefaultConfig(projectName string) *config.Config {
 			"**/.DS_Store",
 			"**/Thumbs.db",
 		},
-		Agentic: config.AgenticConfig{
-			Description:  "",
-			Rules:        []string{},
-			Standards:    []string{},
-			Instructions: []string{},
-		},
 	}
 }
 
@@ -76,6 +69,7 @@ func GitignoreContent() string {
 !hooks/**`
 }
 
+// LocalPostCommitHookContent returns the content for a local post-commit hook.
 func LocalPostCommitHookContent(appName string) string {
 	return `#!/usr/bin/env sh
 
@@ -109,6 +103,7 @@ func SkillMetadata(projectName string) map[string]interface{} {
 	}
 }
 
+// GlobalSkillMetadata returns the metadata for the global dizz skill.
 func GlobalSkillMetadata() map[string]interface{} {
 	return map[string]interface{}{
 		"name":        "dizz",
@@ -161,6 +156,7 @@ func SkillInstructions(projectName string) string {
 	return b.String()
 }
 
+// GlobalSkillInstructions returns the instructions for the global dizz skill.
 func GlobalSkillInstructions() string {
 	var b strings.Builder
 	b.WriteString("---\n")
@@ -195,6 +191,7 @@ func GlobalSkillInstructions() string {
 	return b.String()
 }
 
+// GlobalRouterHookContent returns the content for the global router hook.
 func GlobalRouterHookContent() string {
 	return `#!/usr/bin/env sh
 
@@ -208,6 +205,6 @@ if [ -f "$DIZZ_HOOKS" ] && [ -x "$DIZZ_HOOKS" ]; then
     # Configure local hooks path so future commits bypass the router
     git config core.hooksPath ".dizz/hooks" 2>/dev/null || true
     exec "$DIZZ_HOOKS"
-fi
+	fi
 `
 }

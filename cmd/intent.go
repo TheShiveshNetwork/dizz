@@ -5,7 +5,7 @@ import (
 	"time"
 
 	commonPkg "github.com/TheShiveshNetwork/dizz/internal/common"
-	"github.com/TheShiveshNetwork/dizz/internal/config"
+	"github.com/TheShiveshNetwork/dizz/config"
 	"github.com/TheShiveshNetwork/dizz/internal/state"
 	"github.com/TheShiveshNetwork/dizz/internal/store"
 	"github.com/TheShiveshNetwork/dizz/internal/ui/render"

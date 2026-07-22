@@ -5,15 +5,17 @@ import (
 	"fmt"
 
 	commonPkg "github.com/TheShiveshNetwork/dizz/internal/common"
-	"github.com/TheShiveshNetwork/dizz/internal/config"
+	"github.com/TheShiveshNetwork/dizz/config"
 	"github.com/TheShiveshNetwork/dizz/internal/store"
 	"github.com/spf13/cobra"
 )
 
 var (
-	configAddRule        string
-	configAddStandard    string
-	configAddInstruction string
+	configAddConventionRule     string
+	configAddConventionScope    string
+	configAddGuardrailPath      string
+	configAddGuardrailAction    string
+	configAddGuardrailReason    string
 )
 
 var configCmd = &cobra.Command{
@@ -27,10 +29,16 @@ var configShowCmd = &cobra.Command{
 	RunE:  runConfigShow,
 }
 
-var configAddCmd = &cobra.Command{
-	Use:   "add",
-	Short: "Add agentic config entries (rule/standard/instruction)",
-	RunE:  runConfigAdd,
+var configAddConventionCmd = &cobra.Command{
+	Use:   "add-convention --rule \"<rule>\" --scope \"<scope>\"",
+	Short: "Add a convention to the config",
+	RunE:  runConfigAddConvention,
+}
+
+var configAddGuardrailCmd = &cobra.Command{
+	Use:   "add-guardrail --path \"<path>\" --action \"<action>\" --reason \"<reason>\"",
+	Short: "Add a guardrail to the config",
+	RunE:  runConfigAddGuardrail,
 }
 
 var configSetDescriptionCmd = &cobra.Command{
@@ -43,12 +51,15 @@ var configSetDescriptionCmd = &cobra.Command{
 func init() {
 	rootCmd.AddCommand(configCmd)
 	configCmd.AddCommand(configShowCmd)
-	configCmd.AddCommand(configAddCmd)
+	configCmd.AddCommand(configAddConventionCmd)
+	configCmd.AddCommand(configAddGuardrailCmd)
 	configCmd.AddCommand(configSetDescriptionCmd)
 
-	configAddCmd.Flags().StringVar(&configAddRule, "rule", "", "Rule to add")
-	configAddCmd.Flags().StringVar(&configAddStandard, "standard", "", "Standard to add")
-	configAddCmd.Flags().StringVar(&configAddInstruction, "instruction", "", "Instruction to add")
+	configAddConventionCmd.Flags().StringVar(&configAddConventionRule, "rule", "", "Rule to add")
+	configAddConventionCmd.Flags().StringVar(&configAddConventionScope, "scope", "", "Scope for the rule (e.g., internal/**)")
+	configAddGuardrailCmd.Flags().StringVar(&configAddGuardrailPath, "path", "", "Path to apply guardrail (e.g., internal/generated/**)")
+	configAddGuardrailCmd.Flags().StringVar(&configAddGuardrailAction, "action", "", "Action to take (read_only, warn, etc.)")
+	configAddGuardrailCmd.Flags().StringVar(&configAddGuardrailReason, "reason", "", "Reason for the guardrail")
 }
 
 func runConfigShow(cmd *cobra.Command, args []string) error {
@@ -65,19 +76,9 @@ func runConfigShow(cmd *cobra.Command, args []string) error {
 	return nil
 }
 
-func runConfigAdd(cmd *cobra.Command, args []string) error {
-	entries := 0
-	if configAddRule != "" {
-		entries++
-	}
-	if configAddStandard != "" {
-		entries++
-	}
-	if configAddInstruction != "" {
-		entries++
-	}
-	if entries != 1 {
-		return fmt.Errorf("exactly one of --rule, --standard, or --instruction must be provided")
+func runConfigAddConvention(cmd *cobra.Command, args []string) error {
+	if configAddConventionRule == "" || configAddConventionScope == "" {
+		return fmt.Errorf("both --rule and --scope must be provided")
 	}
 
 	configStore, cfg, err := loadProjectConfig()
@@ -85,17 +86,33 @@ func runConfigAdd(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	switch {
-	case configAddRule != "":
-		appendUnique(&cfg.Agentic.Rules, configAddRule)
-		fmt.Println("✓ Added rule")
-	case configAddStandard != "":
-		appendUnique(&cfg.Agentic.Standards, configAddStandard)
-		fmt.Println("✓ Added standard")
-	case configAddInstruction != "":
-		appendUnique(&cfg.Agentic.Instructions, configAddInstruction)
-		fmt.Println("✓ Added instruction")
+	convention := config.Convention{
+		Rule:  configAddConventionRule,
+		Scope: configAddConventionScope,
 	}
+	cfg.Conventions = appendUniqueConvention(cfg.Conventions, convention)
+	fmt.Println("✓ Added convention")
+
+	return configStore.SaveConfig(cfg)
+}
+
+func runConfigAddGuardrail(cmd *cobra.Command, args []string) error {
+	if configAddGuardrailPath == "" || configAddGuardrailAction == "" || configAddGuardrailReason == "" {
+		return fmt.Errorf("--path, --action, and --reason must be provided")
+	}
+
+	configStore, cfg, err := loadProjectConfig()
+	if err != nil {
+		return err
+	}
+
+	guardrail := config.Guardrail{
+		Path:   configAddGuardrailPath,
+		Action: configAddGuardrailAction,
+		Reason: configAddGuardrailReason,
+	}
+	cfg.Guardrails = appendUniqueGuardrail(cfg.Guardrails, guardrail)
+	fmt.Println("✓ Added guardrail")
 
 	return configStore.SaveConfig(cfg)
 }
@@ -106,7 +123,7 @@ func runConfigSetDescription(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	cfg.Agentic.Description = args[0]
+	cfg.Description = args[0]
 	if err := configStore.SaveConfig(cfg); err != nil {
 		return err
 	}
@@ -130,11 +147,20 @@ func loadProjectConfig() (*store.ConfigStore, *config.Config, error) {
 	return configStore, cfg, nil
 }
 
-func appendUnique(values *[]string, value string) {
-	for _, existing := range *values {
-		if existing == value {
-			return
+func appendUniqueConvention(conventions []config.Convention, c config.Convention) []config.Convention {
+	for _, existing := range conventions {
+		if existing.Rule == c.Rule && existing.Scope == c.Scope {
+			return conventions
 		}
 	}
-	*values = append(*values, value)
+	return append(conventions, c)
+}
+
+func appendUniqueGuardrail(guardrails []config.Guardrail, g config.Guardrail) []config.Guardrail {
+	for _, existing := range guardrails {
+		if existing.Path == g.Path && existing.Action == g.Action && existing.Reason == g.Reason {
+			return guardrails
+		}
+	}
+	return append(guardrails, g)
 }

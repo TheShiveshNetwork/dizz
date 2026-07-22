@@ -5,37 +5,64 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/TheShiveshNetwork/dizz/internal/config"
-	"github.com/TheShiveshNetwork/dizz/internal/defaults"
+	"github.com/TheShiveshNetwork/dizz/config"
 	"github.com/TheShiveshNetwork/dizz/internal/store"
 )
 
-func TestRunConfigAdd(t *testing.T) {
+func TestRunConfigAddConvention(t *testing.T) {
 	projectRoot := setupDizzProject(t)
 	restore := chdir(t, projectRoot)
 	defer restore()
 
-	configAddRule = "Always run go test before merge"
-	configAddStandard = ""
-	configAddInstruction = ""
-	defer resetConfigAddFlags()
+	configAddConventionRule = "Always run go test before merge"
+	configAddConventionScope = "internal/**"
+	defer resetConfigAddConventionFlags()
 
-	if err := runConfigAdd(nil, nil); err != nil {
+	if err := runConfigAddConvention(nil, nil); err != nil {
 		t.Fatal(err)
 	}
 
 	cfg := mustLoadConfig(t, projectRoot)
-	if len(cfg.Agentic.Rules) != 1 || cfg.Agentic.Rules[0] != "Always run go test before merge" {
-		t.Fatalf("rule not persisted: %#v", cfg.Agentic.Rules)
+	if len(cfg.Conventions) != 1 || cfg.Conventions[0].Rule != "Always run go test before merge" || cfg.Conventions[0].Scope != "internal/**" {
+		t.Fatalf("convention not persisted: %#v", cfg.Conventions)
 	}
 
-	if err := runConfigAdd(nil, nil); err != nil {
+	if err := runConfigAddConvention(nil, nil); err != nil {
 		t.Fatal(err)
 	}
 
 	cfg = mustLoadConfig(t, projectRoot)
-	if len(cfg.Agentic.Rules) != 1 {
-		t.Fatalf("duplicate rule should not be added: %#v", cfg.Agentic.Rules)
+	if len(cfg.Conventions) != 1 {
+		t.Fatalf("duplicate convention should not be added: %#v", cfg.Conventions)
+	}
+}
+
+func TestRunConfigAddGuardrail(t *testing.T) {
+	projectRoot := setupDizzProject(t)
+	restore := chdir(t, projectRoot)
+	defer restore()
+
+	configAddGuardrailPath = "internal/generated/**"
+	configAddGuardrailAction = "read_only"
+	configAddGuardrailReason = "auto-generated"
+	defer resetConfigAddGuardrailFlags()
+
+	if err := runConfigAddGuardrail(nil, nil); err != nil {
+		t.Fatal(err)
+	}
+
+	cfg := mustLoadConfig(t, projectRoot)
+	if len(cfg.Guardrails) != 1 || cfg.Guardrails[0].Path != "internal/generated/**" || cfg.Guardrails[0].Action != "read_only" || cfg.Guardrails[0].Reason != "auto-generated" {
+		t.Fatalf("guardrail not persisted: %#v", cfg.Guardrails)
+	}
+
+	if err := runConfigAddGuardrail(nil, nil); err != nil {
+		t.Fatal(err)
+	}
+
+	cfg = mustLoadConfig(t, projectRoot)
+	if len(cfg.Guardrails) != 1 {
+		t.Fatalf("duplicate guardrail should not be added: %#v", cfg.Guardrails)
 	}
 }
 
@@ -49,8 +76,8 @@ func TestRunConfigSetDescription(t *testing.T) {
 	}
 
 	cfg := mustLoadConfig(t, projectRoot)
-	if cfg.Agentic.Description != "Persistent instructions for agents" {
-		t.Fatalf("description mismatch: %q", cfg.Agentic.Description)
+	if cfg.Description != "Persistent instructions for agents" {
+		t.Fatalf("description mismatch: %q", cfg.Description)
 	}
 }
 
@@ -62,7 +89,15 @@ func setupDizzProject(t *testing.T) string {
 		t.Fatal(err)
 	}
 
-	cfg := defaults.DefaultConfig("test-project")
+	// Create a minimal config with only the required fields
+	cfg := &config.Config{
+		Version:       1,
+		ProjectName:   "test-project",
+		Description:   "",
+		RootPath:      ".",
+		Include:       []string{"**/*"},
+		Exclude:       []string{"**/*_test.go", "vendor/**", "node_modules/**", ".git/**", ".dizz/**"},
+	}
 	configStore := store.NewConfigStore(trackDir)
 	if err := configStore.SaveConfig(cfg); err != nil {
 		t.Fatal(err)
@@ -93,8 +128,13 @@ func chdir(t *testing.T, dir string) func() {
 	}
 }
 
-func resetConfigAddFlags() {
-	configAddRule = ""
-	configAddStandard = ""
-	configAddInstruction = ""
+func resetConfigAddConventionFlags() {
+	configAddConventionRule = ""
+	configAddConventionScope = ""
+}
+
+func resetConfigAddGuardrailFlags() {
+	configAddGuardrailPath = ""
+	configAddGuardrailAction = ""
+	configAddGuardrailReason = ""
 }

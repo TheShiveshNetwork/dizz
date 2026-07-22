@@ -5,7 +5,7 @@ import (
 	"testing"
 	"time"
 
-	dizzconfig "github.com/TheShiveshNetwork/dizz/internal/config"
+	"github.com/TheShiveshNetwork/dizz/config"
 	"github.com/TheShiveshNetwork/dizz/internal/integrations"
 	"github.com/TheShiveshNetwork/dizz/internal/state"
 	"github.com/TheShiveshNetwork/dizz/internal/store/ton"
@@ -234,6 +234,27 @@ func TestContextRenderer_GitInfo(t *testing.T) {
 	}
 }
 
+func TestContextRenderer_GitCommitInfo(t *testing.T) {
+	ps := state.NewProjectState()
+	is := state.NewIntentState()
+
+	ps.GitCommit = &integrations.Commit{
+		Hash:    "abc1234def5678",
+		Message: "feat: add feature",
+		Time:    time.Now(),
+	}
+
+	renderer := NewContextRenderer()
+	output, err := renderer.Render(ps, is, ContextInfo{ProjectName: "p", HasGit: true}, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if !strings.Contains(output, "abc1234") {
+		t.Fatalf("expected commit hash in output: %s", output)
+	}
+}
+
 func TestContextRenderer_MultipleSections(t *testing.T) {
 	ps := state.NewProjectState()
 	is := state.NewIntentState()
@@ -289,57 +310,36 @@ func TestContextRenderer_MultipleSections(t *testing.T) {
 	}
 }
 
-func TestContextRenderer_GitCommitInfo(t *testing.T) {
+func TestContextRenderer_AgenticSection(t *testing.T) {
 	ps := state.NewProjectState()
 	is := state.NewIntentState()
 
-	ps.GitCommit = &integrations.Commit{
-		Hash:    "abc1234def5678",
-		Message: "feat: add feature",
-		Time:    time.Now(),
-	}
-
-	func TestContextRenderer_AgenticSection(t *testing.T) {
-		ps := state.NewProjectState()
-		is := state.NewIntentState()
-
-		renderer := NewContextRenderer()
-		output, err := renderer.Render(ps, is, ContextInfo{
-			ProjectName: "p",
-			Agentic: dizzconfig.AgenticConfig{
-				Description:  "Core project rules",
-				Rules:        []string{"Do not commit secrets"},
-				Standards:    []string{"Use gofmt"},
-				Instructions: []string{"Run dizz context before coding"},
-			},
-		}, nil)
-		if err != nil {
-			t.Fatal(err)
-		}
-
-		if !strings.Contains(output, "# agentic") {
-			t.Fatalf("missing agentic section: %s", output)
-		}
-		for _, expected := range []string{
-			"description|Core project rules",
-			"rule|Do not commit secrets",
-			"standard|Use gofmt",
-			"instruction|Run dizz context before coding",
-		} {
-			if !strings.Contains(output, expected) {
-				t.Fatalf("missing %q in output:\n%s", expected, output)
-			}
-		}
-	}
-
 	renderer := NewContextRenderer()
-	output, err := renderer.Render(ps, is, ContextInfo{ProjectName: "p", HasGit: true}, nil)
+	output, err := renderer.Render(ps, is, ContextInfo{
+		ProjectName: "p",
+		Description: "Core project rules",
+		Conventions: []config.Convention{
+			{Rule: "Do not commit secrets", Scope: "internal/**"},
+		},
+		Guardrails: []config.Guardrail{
+			{Path: "internal/security/**", Action: "warn", Reason: "security-critical"},
+		},
+	}, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	if !strings.Contains(output, "abc1234") {
-		t.Fatalf("expected commit hash in output: %s", output)
+	if !strings.Contains(output, "# agentic") {
+		t.Fatalf("missing agentic section: %s", output)
+	}
+	for _, expected := range []string{
+		"description|Core project rules",
+		"convention|Do not commit secrets@internal/**",
+		"guardrail|internal/security/**\\|warn\\|security-critical",
+	} {
+		if !strings.Contains(output, expected) {
+			t.Fatalf("missing %q in output:\n%s", expected, output)
+		}
 	}
 }
 
