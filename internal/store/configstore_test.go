@@ -14,7 +14,6 @@ func TestConfigStore_SaveLoad(t *testing.T) {
 		Version:         1,
 		ProjectName:     "demo",
 		Description:     "Project guidance",
-		RootPath:        ".",
 		Include:         []string{"**/*.go"},
 		Exclude:         []string{"vendor/**"},
 		Commands: map[string]string{
@@ -65,9 +64,6 @@ func TestConfigStore_SaveLoad(t *testing.T) {
 	}
 	if loaded.Description != cfg.Description {
 		t.Fatalf("description mismatch: got %q want %q", loaded.Description, cfg.Description)
-	}
-	if loaded.RootPath != cfg.RootPath {
-		t.Fatalf("root path mismatch: got %q want %q", loaded.RootPath, cfg.RootPath)
 	}
 	if len(loaded.Include) != len(cfg.Include) || loaded.Include[0] != cfg.Include[0] {
 		t.Fatalf("include mismatch: got %#v want %#v", loaded.Include, cfg.Include)

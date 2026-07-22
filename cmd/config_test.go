@@ -94,7 +94,6 @@ func setupDizzProject(t *testing.T) string {
 		Version:       1,
 		ProjectName:   "test-project",
 		Description:   "",
-		RootPath:      ".",
 		Include:       []string{"**/*"},
 		Exclude:       []string{"**/*_test.go", "vendor/**", "node_modules/**", ".git/**", ".dizz/**"},
 	}

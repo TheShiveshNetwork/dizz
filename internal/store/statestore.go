@@ -141,7 +141,6 @@ func NewConfigStore(basePath string) *ConfigStore {
 // oldConfig is the old configuration structure used for migration.
 type oldConfig struct {
 	ProjectName string        `json:"project_name"`
-	RootPath    string        `json:"root_path"`
 	Include     []string      `json:"include"`
 	Exclude     []string      `json:"exclude"`
 	Agentic     struct {
@@ -158,7 +157,6 @@ func defaultConfig(projectName string) *config.Config {
 		Version:       1,
 		ProjectName:   projectName,
 		Description:   "",
-		RootPath:      ".",
 		Include:       []string{"**/*"},
 		Exclude:       []string{"**/*_test.go", "vendor/**", "node_modules/**", ".git/**", ".dizz/**"},
 	}
@@ -206,7 +204,6 @@ func (s *ConfigStore) LoadConfig() (*config.Config, error) {
 	newCfg := defaultConfig(oldCfg.ProjectName)
 	newCfg.Version = 1
 	newCfg.Description = oldCfg.Agentic.Description
-	newCfg.RootPath = oldCfg.RootPath
 	newCfg.Include = oldCfg.Include
 	newCfg.Exclude = oldCfg.Exclude
 	// Note: The old config did not have Commands, EntryPoints, Conventions, Guardrails, etc.

@@ -12,7 +12,6 @@ func DefaultConfig(projectName string) *config.Config {
 		Version:       1,
 		ProjectName:   projectName,
 		Description:   "",
-		RootPath:      ".",
 		Include:       []string{"**/*"},
 		Exclude: []string{
 			// Directories

@@ -52,7 +52,6 @@ func TestContextTokenReductionAgainstVerboseSymbols(t *testing.T) {
 	configStore := store.NewConfigStore(config.TrackDirPath(projectRoot))
 	if cfg, err := configStore.LoadConfig(); err == nil {
 		contextInfo.ProjectName = cfg.ProjectName
-		contextInfo.ConfigRoot = cfg.RootPath
 		contextInfo.ConfigIncludeCount = len(cfg.Include)
 		contextInfo.ConfigExcludeCount = len(cfg.Exclude)
 	}

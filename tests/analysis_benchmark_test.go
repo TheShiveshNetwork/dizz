@@ -41,7 +41,7 @@ func runExtractionOnly() error {
 		return err
 	}
 
-	analysisRoot := cfg.RootPath
+	analysisRoot := projectRoot
 	if !filepath.IsAbs(analysisRoot) {
 		analysisRoot = filepath.Join(projectRoot, analysisRoot)
 	}

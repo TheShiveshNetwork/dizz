@@ -120,12 +120,8 @@ func runCurrentAnalysisAtRoot(projectRoot string, options *AnalysisOptions) (*st
 		return nil, err
 	}
 
-	// Resolve analysis root
-	analysisRoot := cfg.RootPath
-	if !filepath.IsAbs(analysisRoot) {
-		analysisRoot = filepath.Join(projectRoot, analysisRoot)
-	}
-	analysisRoot = filepath.Clean(analysisRoot)
+	// Resolve analysis root (use project root as default)
+	analysisRoot := projectRoot
 
 	// Merge .gitignore patterns into exclude list (copy first to avoid mutating cfg.Exclude)
 	excludePatterns := make([]string, len(cfg.Exclude))

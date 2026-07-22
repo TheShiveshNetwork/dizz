@@ -27,7 +27,6 @@ type Config struct {
 	Version         int    `json:"version"`
 	ProjectName     string `json:"project_name"`
 	Description     string `json:"description"`
-	RootPath        string `json:"root_path"`
 	Include         []string `json:"include"`
 	Exclude         []string `json:"exclude"`
 	Commands        map[string]string `json:"commands,omitempty"`

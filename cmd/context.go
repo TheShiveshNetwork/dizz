@@ -60,7 +60,6 @@ func runContext() {
 		info.Description = cfg.Description
 		info.Conventions = cfg.Conventions
 		info.Guardrails = cfg.Guardrails
-		info.ConfigRoot = cfg.RootPath
 		info.ConfigIncludeCount = len(cfg.Include)
 		info.ConfigExcludeCount = len(cfg.Exclude)
 	}
