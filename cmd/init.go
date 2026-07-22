@@ -122,12 +122,6 @@ func createProjectSkill(cwd, projectName string) {
 		return
 	}
 
-	skillMeta := defaults.SkillMetadata(projectName)
-	metaJSON, _ := json.MarshalIndent(skillMeta, "", "  ")
-	metaPath := filepath.Join(skillDir, "skill.json")
-	if err := os.WriteFile(metaPath, metaJSON, 0644); err != nil {
-		fmt.Printf("Warning: could not write skill.json: %v\n", err)
-	}
 
 	skillContent := defaults.SkillInstructions(projectName)
 	skillPath := filepath.Join(skillDir, "SKILL.md")

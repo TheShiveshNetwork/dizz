@@ -1,0 +1,7 @@
+#!/usr/bin/env sh
+
+DIZZ_BIN="$(command -v dizz 2>/dev/null || true)"
+
+if [ -n "$DIZZ_BIN" ] && [ -x "$DIZZ_BIN" ]; then
+    "$DIZZ_BIN" snapshot --auto >/dev/null 2>&1 || true
+fi

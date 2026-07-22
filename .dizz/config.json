@@ -1,16 +1,44 @@
 {
+  "version": 1,
   "project_name": "dizz",
-  "root_path": ".",
+  "description": "",
   "include": [
     "**/*"
   ],
   "exclude": [
-    "**/*_test.go",
     "vendor/**",
     "node_modules/**",
     ".git/**",
     ".dizz/**",
+    "**/*.json",
+    "**/*.yaml",
+    "**/*.yml",
+    "**/*.toml",
+    "**/*.xml",
+    "**/*.config",
+    "**/*.conf",
+    "**/*.cfg",
+    "**/*.ini",
+    "**/*.env",
+    "**/*.env.*",
+    "**/*.md",
+    "**/*.txt",
+    "**/*.rst",
+    "**/*.lock",
+    "**/Makefile",
+    "**/Dockerfile",
+    "**/*.log",
+    "**/*.tmp",
+    "**/*.swp",
     "**/.DS_Store",
     "**/Thumbs.db"
-  ]
+  ],
+  "agent_defaults": {
+    "default_lens": "",
+    "min_severity": 0
+  },
+  "links": {
+    "contributing": "",
+    "docs": ""
+  }
 }

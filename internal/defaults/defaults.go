@@ -84,41 +84,6 @@ fi
 // New code should call LocalPostCommitHookContent instead.
 var GitPostCommitHookContent = LocalPostCommitHookContent
 
-func SkillMetadata(projectName string) map[string]interface{} {
-	return map[string]interface{}{
-		"name":        "dizz",
-		"version":     "1.0.0",
-		"description": "State-aware project assistant for agents",
-		"project":     projectName,
-		"global":      false,
-		"commands": []map[string]string{
-			{"name": "context", "description": "Token-optimized project context", "command": "dizz context"},
-			{"name": "intents", "description": "List active project intents", "command": "dizz intent list"},
-			{"name": "intent-add", "description": "Add a new intent", "command": `dizz intent add "message" --type todo --severity 2`},
-			{"name": "status", "description": "Project health overview", "command": "dizz status"},
-			{"name": "snapshot", "description": "Record current project state", "command": "dizz snapshot --auto"},
-			{"name": "log", "description": "Symbol health details", "command": "dizz log"},
-		},
-	}
-}
-
-// GlobalSkillMetadata returns the metadata for the global dizz skill.
-func GlobalSkillMetadata() map[string]interface{} {
-	return map[string]interface{}{
-		"name":        "dizz",
-		"version":     "1.0.0",
-		"description": "State-aware project assistant for AI agents",
-		"global":      true,
-		"commands": []map[string]string{
-			{"name": "context", "description": "Token-optimized project context dump", "command": "dizz context"},
-			{"name": "intents", "description": "View active project intents", "command": "dizz intent list"},
-			{"name": "status", "description": "Project health overview", "command": "dizz status"},
-			{"name": "snapshot", "description": "Record current project state", "command": "dizz snapshot --auto"},
-			{"name": "log", "description": "Symbol health and todos", "command": "dizz log"},
-		},
-	}
-}
-
 func SkillInstructions(projectName string) string {
 	var b strings.Builder
 	b.WriteString("---\n")

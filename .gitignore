@@ -1,6 +1,7 @@
 dizz
 dizz-debug
 !agent-skills/**
+!.agents/skills/dizz
 
 bin/
 
