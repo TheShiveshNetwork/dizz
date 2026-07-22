@@ -58,7 +58,7 @@ func (r *ContextRenderer) writeProjectInfo(buf *bytes.Buffer, info ContextInfo) 
 }
 
 func (r *ContextRenderer) writeCommitInfo(buf *bytes.Buffer, c *integrations.Commit) {
-	fmt.Fprintf(buf, "# last commit\nhash|msg\ntruncate:%s|%s\n\n", truncate(c.Hash, 7), escapeMsg(c.Message))
+	fmt.Fprintf(buf, "# last commit\nhash|msg\n%s|%s\n\n", truncate(c.Hash, 7), escapeMsg(c.Message))
 }
 
 func (r *ContextRenderer) writeConfigSummary(buf *bytes.Buffer, info ContextInfo) {
