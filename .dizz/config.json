@@ -31,7 +31,8 @@
     "**/*.tmp",
     "**/*.swp",
     "**/.DS_Store",
-    "**/Thumbs.db"
+    "**/Thumbs.db",
+    "**/*_test.go"
   ],
   "agent_defaults": {
     "default_lens": "",
