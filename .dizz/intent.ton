@@ -1,10 +1,11 @@
 id|type|sev|status|msg|scope|tags|created_by|resolution
-int_1770020251|fixme|3|resolved|Fix cache invalidation race condition|project||user|fixed:Resolved via CLI:2026-02-02T13:48:01+05:30:user
+int_1770020251|fixme|3|resolved|Fix cache invalidation race condition|project||user|fixed:Resolved via CLI:1784708594:user
 int_1770020361|refactor|2|active|Refactor scoring system to use weights|project|performance,architecture|user|
 int_1770020403|question|1|active|Question: Should we add caching for analysis results?|project||user|
-int_1770047648|todo|2|resolved|take snapshots on every commit|project||user|fixed:Resolved via CLI:2026-02-03T19:06:32+05:30:user
+int_1770047648|todo|2|resolved|take snapshots on every commit|project||user|fixed:Resolved via CLI:1784708594:06:32+05:30:user
 int_1770047724|fixme|3|active|improve the speed of the cli|project||user|
 int_1770049136|question|1|active|should I implement a tree-sitter parser along with a analyzer registry to extend support for languages?|project|improvement|user|
-int_1770049271|todo|2|resolved|add resolveTime to intents to track the time taken to resolve|project|improvement|user|fixed:Resolved via CLI:2026-02-03T19:08:22+05:30:user
-int_1770134102|todo|1|resolved|update scope determination logic in intents to make proximity analysis work and have weight of intents on signals|project|improvement|user|fixed:Resolved via CLI:2026-04-18T22:11:11+05:30:user
+int_1770049271|todo|2|resolved|add resolveTime to intents to track the time taken to resolve|project|improvement|user|fixed:Resolved via CLI:1784708594:08:22+05:30:user
+int_1770134102|todo|1|resolved|update scope determination logic in intents to make proximity analysis work and have weight of intents on signals|project|improvement|user|fixed:Resolved via CLI:1784708594:11:11+05:30:user
 int_1770134147|question|2|active|Add description for intents and comamnd intent describe to get more context|project||user|
+int_1784711161|todo|2|active|test intent|project||user|

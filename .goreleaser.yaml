@@ -26,6 +26,25 @@ builds:
       - goos: windows
         goarch: arm64
 
+  - id: dizzie
+    main: .
+    dir: tui
+    binary: dizzie
+    env:
+      - CGO_ENABLED=0
+    goos:
+      - linux
+      - windows
+      - darwin
+    goarch:
+      - amd64
+      - arm64
+    ldflags:
+      - -s -w -X main.version={{ .Version }}
+    ignore:
+      - goos: windows
+        goarch: arm64
+
 archives:
   - formats: [binary]
     name_template: "{{ .Binary }}-{{ .Os }}-{{ .Arch }}"

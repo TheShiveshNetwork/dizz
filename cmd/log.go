@@ -17,21 +17,21 @@ import (
 var (
 	showAll    bool
 	verboseOut bool
+	dumpFull   bool
 )
 
 var logCmd = &cobra.Command{
 	Use:   "log",
 	Short: "Show what needs your attention",
-	Long: `Analyzes your code and shows:
-- What needs to be implemented (planned)
-- What's changing too much (unstable)
-- What's not being used (unused/abandoned)
+	Long: `Analyzes your code and shows what needs attention.
 
-Focus on what matters. Active code is hidden by default.
+Symbols needing action (planned, unstable, unused, abandoned) are shown by default.
+Active code is hidden unless --dump is used.
 
 Flags:
-  -a, --all     Show all symbols including active ones
-  -v, --verbose   Show detailed analysis info`,
+  -a, --all      Show all items needing action (no per-file limit)
+  -v, --verbose  Show detailed analysis info
+  -d, --dump     Dump every symbol including active with full details`,
 	Run: func(cmd *cobra.Command, args []string) {
 		runLog()
 	},
@@ -40,8 +40,9 @@ Flags:
 // @ignore-unused
 func init() {
 	rootCmd.AddCommand(logCmd)
-	logCmd.Flags().BoolVarP(&showAll, "all", "a", false, "Show all symbols including active ones")
+	logCmd.Flags().BoolVarP(&showAll, "all", "a", false, "Show all items needing action (no per-file limit)")
 	logCmd.Flags().BoolVarP(&verboseOut, "verbose", "v", false, "Show detailed analysis info")
+	logCmd.Flags().BoolVarP(&dumpFull, "dump", "d", false, "Dump every symbol including active with full details")
 }
 
 func runLog() {
@@ -152,3 +153,5 @@ func printFocusedState(ps *state.ProjectState) {
 	suggestion := state.SuggestNextAction(ps)
 	render.LogNextAction(suggestion, summary.TotalSymbols, totalIssues, len(active), showAll)
 }
+
+
