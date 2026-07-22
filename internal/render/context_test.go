@@ -36,6 +36,9 @@ func TestContextRenderer_EmptyProject(t *testing.T) {
 	if !strings.Contains(output, "abc1234") {
 		t.Fatalf("expected commit, got:\n%s", output)
 	}
+	if !strings.Contains(output, "# config") {
+		t.Fatalf("expected config section, got:\n%s", output)
+	}
 }
 
 func TestContextRenderer_ActiveIntents(t *testing.T) {
@@ -127,23 +130,20 @@ func TestContextRenderer_SymbolStates(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	if !strings.Contains(output, "# symbols:unstable") {
-		t.Fatalf("missing unstable section: %s", output)
+	if !strings.Contains(output, "# symbols") {
+		t.Fatalf("missing symbols summary section: %s", output)
 	}
-	if !strings.Contains(output, "# symbols:unused") {
-		t.Fatalf("missing unused section: %s", output)
+	if !strings.Contains(output, "unstable|1") {
+		t.Fatalf("missing unstable count: %s", output)
 	}
-	if !strings.Contains(output, "UnstableFunc") {
-		t.Fatalf("missing unstable symbol: %s", output)
+	if !strings.Contains(output, "unused|1") {
+		t.Fatalf("missing unused count: %s", output)
 	}
-	if !strings.Contains(output, "UnusedFunc") {
-		t.Fatalf("missing unused symbol: %s", output)
+	if !strings.Contains(output, "planned|1") {
+		t.Fatalf("missing planned count: %s", output)
 	}
-	if strings.Contains(output, "StableFunc") {
-		t.Fatalf("stable symbols should not appear: %s", output)
-	}
-	if !strings.Contains(output, "PlannedFunc") {
-		t.Fatalf("planned symbols should appear: %s", output)
+	if strings.Contains(output, "UnstableFunc") || strings.Contains(output, "UnusedFunc") || strings.Contains(output, "PlannedFunc") || strings.Contains(output, "StableFunc") {
+		t.Fatalf("symbol names should not appear in context output: %s", output)
 	}
 }
 
@@ -276,9 +276,9 @@ func TestContextRenderer_MultipleSections(t *testing.T) {
 
 	sections := []string{
 		"Project:",
+		"# config",
 		"# intents",
-		"# symbols:unstable",
-		"# symbols:unused",
+		"# symbols",
 		"# todos",
 	}
 	for _, s := range sections {
@@ -328,7 +328,7 @@ func TestContextRenderer_EdgeCases(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	if !strings.Contains(output, "# symbols:unused") {
-		t.Fatalf("unused section should appear: %s", output)
+	if !strings.Contains(output, "# symbols") {
+		t.Fatalf("symbols summary section should appear: %s", output)
 	}
 }
