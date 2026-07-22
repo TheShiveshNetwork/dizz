@@ -50,3 +50,31 @@ func SeverityColor(sev int) tcell.Style {
 		return StyleMuted
 	}
 }
+
+func IntentTypeStyle(typ string) tcell.Style {
+	var fg, bg tcell.Color
+	switch typ {
+	case "todo":
+		fg = tcell.NewRGBColor(255, 255, 255)
+		bg = tcell.NewRGBColor(40, 100, 180)
+	case "fixme":
+		fg = tcell.NewRGBColor(255, 255, 255)
+		bg = tcell.NewRGBColor(180, 50, 50)
+	case "refactor":
+		fg = tcell.NewRGBColor(255, 255, 255)
+		bg = tcell.NewRGBColor(50, 140, 80)
+	case "question":
+		fg = tcell.NewRGBColor(30, 30, 30)
+		bg = tcell.NewRGBColor(200, 180, 60)
+	case "hack":
+		fg = tcell.NewRGBColor(255, 255, 255)
+		bg = tcell.NewRGBColor(140, 60, 160)
+	case "temporary":
+		fg = tcell.NewRGBColor(200, 200, 200)
+		bg = tcell.NewRGBColor(80, 80, 80)
+	default:
+		fg = tcell.ColorWhite
+		bg = tcell.ColorGray
+	}
+	return tcell.StyleDefault.Foreground(fg).Background(bg)
+}

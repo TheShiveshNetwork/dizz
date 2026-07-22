@@ -36,13 +36,9 @@ func RenderTopBar(c *render.Canvas, data StatusData, y, width int) {
 	}
 }
 
-func RenderStatusBar(c *render.Canvas, data StatusData, focusSidebar bool, y, width int, inputMode bool) {
+func RenderStatusBar(c *render.Canvas, data StatusData, focusZone string, y, width int, inputMode bool) {
 	help := "? help  q quit"
-	focus := "main"
-	if focusSidebar {
-		focus = "sidebar"
-	}
-	focusIndicator := "[" + focus + "]"
+	focusIndicator := "[" + focusZone + "]"
 	modeStr := "NORMAL"
 	modeStyle := render.StyleMuted
 	if inputMode {

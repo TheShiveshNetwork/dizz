@@ -47,6 +47,7 @@ type Summary struct {
 	Unused       int
 	Abandoned    int
 	ActiveTodos  int
+	Intents      int
 	TotalFiles   int
 	ProjectName  string
 	Branch       string

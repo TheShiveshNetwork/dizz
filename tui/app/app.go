@@ -1,6 +1,7 @@
 package app
 
 import (
+	"fmt"
 	"path/filepath"
 	"time"
 
@@ -9,6 +10,8 @@ import (
 	"github.com/TheShiveshNetwork/dizz/tui/ui"
 	"github.com/TheShiveshNetwork/dizz/tui/views"
 	tea "github.com/charmbracelet/bubbletea"
+	"github.com/gdamore/tcell/v2"
+	"github.com/mattn/go-runewidth"
 )
 
 type AnimationTick time.Time
@@ -19,9 +22,9 @@ type ModalState interface {
 }
 
 type Model struct {
-	currentTab   int
-	views        []tea.Model
-	focusSidebar bool
+	currentTab int
+	views      []tea.Model
+	focusZone  string // "sidebar", "intents", "main"
 
 	now         time.Time
 	width       int
@@ -30,17 +33,31 @@ type Model struct {
 	statusData  ui.StatusData
 	err         string
 	initialized bool
+
+	intents    []dizzclient.Intent
+	intentsSel int
+	intentsOff int
+
+	showModal     bool
+	modalType     string
+	resolveIdx    int
+	focusIdx      int
+	addMsg        string
+	addMsgCursor  int
+	addType       int
+	addSev        int
+	validationErr string
 }
 
 func NewModel() *Model {
 	m := &Model{
-		currentTab:   0,
-		focusSidebar: true,
-		width:        80,
-		height:       24,
-		showHelp:     false,
-		now:          time.Now(),
-		initialized:  dizzclient.IsDizzInitialized(),
+		currentTab:  0,
+		focusZone:   "sidebar",
+		width:       80,
+		height:      24,
+		showHelp:    false,
+		now:         time.Now(),
+		initialized: dizzclient.IsDizzInitialized(),
 	}
 
 	m.views = []tea.Model{
@@ -58,7 +75,7 @@ func (m *Model) Init() tea.Cmd {
 	if !m.initialized {
 		return nil
 	}
-	cmds := []tea.Cmd{m.tick(), m.refreshStatus()}
+	cmds := []tea.Cmd{m.tick(), m.refreshStatus(), m.refreshIntents()}
 	for _, v := range m.views {
 		cmds = append(cmds, v.Init())
 	}
@@ -89,10 +106,25 @@ func (m *Model) refreshStatus() tea.Cmd {
 	}
 }
 
+func (m *Model) refreshIntents() tea.Cmd {
+	return func() tea.Msg {
+		intents, err := dizzclient.ListIntents()
+		if err != nil {
+			return intentsMsg{err: err.Error()}
+		}
+		return intentsMsg{intents: intents}
+	}
+}
+
 type statusMsg struct {
 	summary *dizzclient.Summary
 	err     string
 	version string
+}
+
+type intentsMsg struct {
+	intents []dizzclient.Intent
+	err     string
 }
 
 func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
@@ -126,6 +158,11 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			}
 		}
 
+	case intentsMsg:
+		if msg.err == "" {
+			m.intents = msg.intents
+		}
+
 	case error:
 		m.err = msg.Error()
 	}
@@ -155,6 +192,10 @@ func (m *Model) handleKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		}
 	}
 
+	if m.showModal {
+		return m.handleModalKey(msg)
+	}
+
 	if m.initialized && m.currentTab < len(m.views) {
 		if ms, ok := m.views[m.currentTab].(ModalState); ok && ms.IsModalActive() {
 			var cmd tea.Cmd
@@ -169,38 +210,92 @@ func (m *Model) handleKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		return m, nil
 
 	case "tab":
-		m.focusSidebar = !m.focusSidebar
+		switch m.focusZone {
+		case "sidebar":
+			m.focusZone = "intents"
+		case "intents":
+			m.focusZone = "main"
+		case "main":
+			m.focusZone = "sidebar"
+		}
 		m.showHelp = false
 		return m, nil
 
 	case "shift+tab":
-		m.focusSidebar = !m.focusSidebar
+		switch m.focusZone {
+		case "sidebar":
+			m.focusZone = "main"
+		case "intents":
+			m.focusZone = "sidebar"
+		case "main":
+			m.focusZone = "intents"
+		}
 		m.showHelp = false
 		return m, nil
 
 	case "up":
-		if m.focusSidebar {
+		switch m.focusZone {
+		case "sidebar":
 			m.currentTab = (m.currentTab - 1 + len(m.views)) % len(m.views)
 			m.showHelp = false
+			return m, nil
+		case "intents":
+			m.intentsSel--
+			if m.intentsSel < 0 {
+				m.intentsSel = 0
+			}
+			m.ensureIntentsVisible()
 			return m, nil
 		}
 
 	case "down":
-		if m.focusSidebar {
+		switch m.focusZone {
+		case "sidebar":
 			m.currentTab = (m.currentTab + 1) % len(m.views)
 			m.showHelp = false
+			return m, nil
+		case "intents":
+			m.intentsSel++
+			active := m.activeIntents()
+			if m.intentsSel >= len(active) {
+				m.intentsSel = len(active) - 1
+			}
+			m.ensureIntentsVisible()
 			return m, nil
 		}
 
 	case "enter":
-		if m.focusSidebar {
-			m.focusSidebar = false
+		switch m.focusZone {
+		case "sidebar":
+			m.focusZone = "main"
 			m.showHelp = false
+			return m, nil
+		case "intents":
+			active := m.activeIntents()
+			if len(active) > 0 && m.intentsSel < len(active) {
+				m.resolveIdx = m.intentsSel
+				m.showModal = true
+				m.modalType = "resolve"
+				m.focusIdx = 0
+			}
+			return m, nil
+		}
+
+	case "i":
+		if m.focusZone == "intents" {
+			m.showModal = true
+			m.modalType = "add"
+			m.focusIdx = 0
+			m.addType = 0
+			m.addMsg = ""
+			m.addMsgCursor = 0
+			m.addSev = 1
+			m.validationErr = ""
 			return m, nil
 		}
 
 	case "1", "2", "3", "4", "5":
-		if m.focusSidebar {
+		if m.focusZone == "sidebar" {
 			tab := int(msg.String()[0] - '1')
 			if tab >= 0 && tab < len(m.views) {
 				m.currentTab = tab
@@ -215,7 +310,7 @@ func (m *Model) handleKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		return m, nil
 	}
 
-	if m.initialized && m.currentTab < len(m.views) {
+	if m.initialized && m.currentTab < len(m.views) && m.focusZone == "main" {
 		var cmd tea.Cmd
 		m.views[m.currentTab], cmd = m.views[m.currentTab].Update(msg)
 		return m, cmd
@@ -224,7 +319,30 @@ func (m *Model) handleKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	return m, nil
 }
 
+func (m *Model) ensureIntentsVisible() {
+	listH := 8
+	if m.intentsSel < m.intentsOff {
+		m.intentsOff = m.intentsSel
+	}
+	if m.intentsSel >= m.intentsOff+listH {
+		m.intentsOff = m.intentsSel - listH + 1
+	}
+}
+
+func (m *Model) activeIntents() []dizzclient.Intent {
+	var active []dizzclient.Intent
+	for _, in := range m.intents {
+		if in.Status == "" || in.Status == "active" {
+			active = append(active, in)
+		}
+	}
+	return active
+}
+
 func (m *Model) isInInputMode() bool {
+	if m.showModal {
+		return true
+	}
 	if !m.initialized || m.currentTab >= len(m.views) {
 		return false
 	}
@@ -235,6 +353,29 @@ func (m *Model) isInInputMode() bool {
 		return im.InputMode()
 	}
 	return false
+}
+
+func wrapText(text string, maxW int) []string {
+	if maxW < 1 {
+		maxW = 1
+	}
+	var lines []string
+	for len(text) > 0 {
+		if runewidth.StringWidth(text) <= maxW {
+			lines = append(lines, text)
+			break
+		}
+		idx := len(text)
+		for runewidth.StringWidth(text[:idx]) > maxW {
+			idx--
+		}
+		if idx == 0 {
+			idx = 1
+		}
+		lines = append(lines, text[:idx])
+		text = text[idx:]
+	}
+	return lines
 }
 
 func (m *Model) View() string {
@@ -250,45 +391,74 @@ func (m *Model) View() string {
 		c.SetCell(x, 1, render.StyleMuted, '─')
 	}
 
-	sidebarW := 16
+	leftPanelW := 30
 	mainTop := 2
 	mainBottom := m.height - 3
-	contentW := m.width - sidebarW - 1
+	contentW := m.width - leftPanelW - 1
 	contentH := mainBottom - mainTop + 1
 	if contentH < 1 {
 		contentH = 1
 	}
 
-	ui.RenderSidebar(c, m.currentTab, m.focusSidebar, 0, mainTop, sidebarW)
-	sepStyle := render.StyleMuted
-	if m.focusSidebar {
-		sepStyle = render.StyleHighlight
+	isSidebarFocused := m.focusZone == "sidebar"
+	isIntentsFocused := m.focusZone == "intents"
+	isMainFocused := m.focusZone == "main"
+
+	contentLeftX := 0
+
+	// ── Sidebar tabs (top of left panel) ──
+	ui.RenderSidebar(c, m.currentTab, isSidebarFocused, contentLeftX, mainTop, leftPanelW-contentLeftX)
+
+	// ── Separator between tabs and intents (hide when intents tab is active) ──
+	hideIntentsPanel := m.currentTab == 2
+	if !hideIntentsPanel {
+		sepY := mainTop + len(ui.Tabs)
+		if sepY < mainBottom {
+			for sx := contentLeftX; sx < leftPanelW; sx++ {
+				c.SetCell(sx, sepY, render.StyleMuted, '─')
+			}
+		}
+
+		// ── Intents mini view (bottom of left panel) ──
+		intentsTop := sepY + 1
+		intentsH := mainBottom - intentsTop + 1
+		if intentsH < 3 {
+			intentsH = 3
+		}
+		m.renderIntentsMini(c, contentLeftX, intentsTop, leftPanelW-contentLeftX, intentsH, isIntentsFocused)
+	}
+
+	// ── Right separator (between left panel and content) ──
+	rightSepStyle := render.StyleMuted
+	if isMainFocused {
+		rightSepStyle = render.StyleHighlight
 	}
 	if mainBottom >= mainTop {
 		for y := mainTop; y <= mainBottom; y++ {
-			c.SetCell(sidebarW, y, sepStyle, '│')
+			c.SetCell(leftPanelW, y, rightSepStyle, '│')
 		}
 	}
 
+	// ── Main content (right panel) ──
 	contentCanvas := render.NewCanvas(contentW, contentH)
 	view := m.views[m.currentTab]
 	if viewWithRender, ok := view.(interface{ Render(*render.Canvas) }); ok {
 		viewWithRender.Render(contentCanvas)
 	}
-	c.Blit(contentCanvas, sidebarW+1, mainTop)
+	c.Blit(contentCanvas, leftPanelW+1, mainTop)
 
 	if ms, ok := view.(ModalState); ok && ms.IsModalActive() {
 		ms.RenderModal(c)
 	}
 
-	statusY := m.height - 2
-	inputMode := false
-	if m.currentTab < len(m.views) {
-		if im, ok := m.views[m.currentTab].(interface{ InputMode() bool }); ok {
-			inputMode = im.InputMode()
-		}
+	if m.showModal {
+		m.renderIntentsModal(c)
 	}
-	ui.RenderStatusBar(c, m.statusData, m.focusSidebar, statusY, m.width, inputMode)
+
+	// ── Status bar ──
+	statusY := m.height - 2
+	inputMode := m.isInInputMode()
+	ui.RenderStatusBar(c, m.statusData, m.focusZone, statusY, m.width, inputMode)
 
 	if m.err != "" {
 		c.SetContent(0, m.height-3, render.StyleError, m.err)
@@ -313,6 +483,334 @@ func (m *Model) View() string {
 	}
 
 	return c.ANSIFrame()
+}
+
+func (m *Model) renderIntentsMini(c *render.Canvas, x, y, w, h int, focused bool) {
+	active := m.activeIntents()
+
+	header := fmt.Sprintf("Intents [%d]", len(active))
+	headerStyle := render.StyleHighlight.Bold(true)
+	if focused {
+		headerStyle = render.StyleHighlight.Bold(true).Foreground(tcell.NewRGBColor(100, 200, 255))
+	}
+	c.SetContent(x+1, y, headerStyle, header)
+
+	if h < 2 {
+		return
+	}
+	listY := y + 1
+	visible := h - 2
+	if visible < 1 {
+		visible = 1
+	}
+
+	for i := 0; i < visible && m.intentsOff+i < len(active); i++ {
+		in := active[m.intentsOff+i]
+		rowY := listY + i
+		if rowY > y+h-1 {
+			break
+		}
+
+		typStyle := render.IntentTypeStyle(string(in.Type))
+		label := " " + string(in.Type) + " "
+		c.SetContent(x+1, rowY, typStyle, label)
+
+		msgX := x + 1 + len(label)
+		availW := x + w - msgX - 1
+		if availW < 3 {
+			availW = 3
+		}
+		msg := in.Message
+		if runewidth.StringWidth(msg) > availW {
+			for runewidth.StringWidth(msg)+1 > availW {
+				msg = msg[:len(msg)-1]
+			}
+			msg += "…"
+		}
+		msgStyle := render.StyleDefault
+		if focused && m.intentsOff+i == m.intentsSel {
+			msgStyle = render.StyleHighlight
+		}
+		c.SetContent(msgX, rowY, msgStyle, msg)
+	}
+
+	if m.intentsOff > 0 {
+		c.SetCell(x, listY, render.StyleDim, '▲')
+	}
+	if m.intentsOff+visible < len(active) {
+		indY := listY + visible - 1
+		if indY >= listY && indY < y+h {
+			c.SetCell(x, indY, render.StyleDim, '▼')
+		}
+	}
+
+	hintY := y + h - 1
+	if focused && h >= 6 {
+		hint := "↑↓=nav enter=resolve i=add"
+		c.SetContent(x+1, hintY, render.StyleDim, hint)
+	}
+}
+
+func (m *Model) renderIntentsModal(c *render.Canvas) {
+	if m.modalType == "add" {
+		m.renderAddModal(c)
+	} else if m.modalType == "resolve" {
+		m.renderResolveModal(c)
+	}
+}
+
+func (m *Model) renderResolveModal(c *render.Canvas) {
+	msg := ""
+	id := ""
+	active := m.activeIntents()
+	if m.resolveIdx < len(active) {
+		in := active[m.resolveIdx]
+		id = in.ID
+		msg = in.Message
+	}
+
+	bodyW := 52
+	if len(msg)+10 > bodyW {
+		bodyW = len(msg) + 10
+		if bodyW > 70 {
+			bodyW = 70
+		}
+	}
+	bodyH := 8
+	cx, cy := ui.RenderModalBox(c, "Resolve Intent", bodyW, bodyH)
+
+	prompt := fmt.Sprintf("Resolve %s?", id)
+	c.SetContent(cx+(bodyW-len(prompt))/2, cy, render.StyleWarning, prompt)
+	cy++
+
+	maxMsgW := bodyW - 4
+	lines := wrapText(msg, maxMsgW)
+	for _, line := range lines {
+		if cy >= c.Height()-2 {
+			break
+		}
+		c.SetContent(cx+(bodyW-runewidth.StringWidth(line))/2, cy, render.StyleInfo, line)
+		cy++
+	}
+	cy++
+
+	if cy < c.Height()-2 {
+		btnW := 10
+		spacing := 2
+		totalBtnW := btnW*2 + spacing
+		btnStartX := cx + bodyW - totalBtnW - 2
+		ui.RenderButton(c, btnStartX, cy, btnW, "Cancel", m.focusIdx == 0, false)
+		ui.RenderButton(c, btnStartX+btnW+spacing, cy, btnW, "OK", m.focusIdx == 1, false)
+	}
+}
+
+func (m *Model) renderAddModal(c *render.Canvas) {
+	bodyW := 52
+	bodyH := 9
+	cx, cy := ui.RenderModalBox(c, "Add Intent", bodyW, bodyH)
+
+	help := "Tab/↑↓=switch  ←→=change  Enter=submit  Esc=cancel"
+	c.SetContent(cx, cy, ui.StyleHelp, help)
+	cy += 2
+
+	intentTypes := []string{"todo", "fixme", "refactor", "question", "hack", "temporary"}
+
+	typ := intentTypes[m.addType]
+	typeFocused := m.focusIdx == 0
+	typeStyle := ui.StyleBtn
+	if typeFocused {
+		typeStyle = ui.StyleBtnFocus
+	}
+	c.SetContent(cx, cy, render.StyleDefault, "Type:     ")
+	for i := range typ {
+		c.SetCell(cx+10+i, cy, typeStyle, rune(typ[i]))
+	}
+	c.SetContent(cx+11+len(typ), cy, ui.StyleHelp, " ←→ to cycle")
+	cy++
+
+	msgFocused := m.focusIdx == 1
+	msgStyle := ui.StyleBtn
+	emptyMsg := m.addMsg == ""
+	if msgFocused && emptyMsg {
+		msgStyle = ui.StyleBtnFocus
+	} else if emptyMsg {
+		msgStyle = ui.StyleBtn
+	}
+	c.SetContent(cx, cy, render.StyleDefault, "Message:  ")
+	display := m.addMsg
+	if display == "" {
+		display = "required"
+	}
+	if len(display) > bodyW-20 {
+		display = display[:bodyW-20]
+	}
+	c.SetContent(cx+10, cy, msgStyle, display)
+	if msgFocused {
+		cxPos := cx + 10 + m.addMsgCursor
+		if display == "required" {
+			msgStyle = render.StyleDim
+		}
+		if cxPos < c.Width()-1 {
+			c.SetCell(cxPos, cy, render.StyleHighlight, '_')
+		}
+	}
+	cy++
+
+	sevFocused := m.focusIdx == 2
+	c.SetContent(cx, cy, render.StyleDefault, "Severity: ")
+	for i := 0; i <= 3; i++ {
+		s := ui.StyleBtn
+		if sevFocused && i == m.addSev {
+			s = ui.StyleBtnFocus
+		}
+		mark := fmt.Sprintf(" %d ", i)
+		c.SetContent(cx+10+i*6, cy, s, mark)
+	}
+	sevLabels := []string{"none", "low", "medium", "high"}
+	sevColor := render.SeverityColor(m.addSev)
+	c.SetContent(cx+10+24, cy, sevColor, sevLabels[m.addSev])
+	c.SetContent(cx+10+24+len(sevLabels[m.addSev])+2, cy, ui.StyleHelp, "←→ to change")
+	if m.validationErr != "" {
+		c.SetContent(cx, cy+1, render.StyleError, "⚠ "+m.validationErr)
+	}
+	cy += 2
+
+	btnY := cy
+	btnW := 10
+	spacing := 2
+	totalBtnW := btnW*2 + spacing
+	btnStartX := cx + bodyW - totalBtnW - 2
+
+	ui.RenderButton(c, btnStartX, btnY, btnW, "Cancel", m.focusIdx == 3, false)
+	ui.RenderButton(c, btnStartX+btnW+spacing, btnY, btnW, "Add", m.focusIdx == 4, false)
+}
+
+func (m *Model) handleModalKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
+	intentTypes := []string{"todo", "fixme", "refactor", "question", "hack", "temporary"}
+	totalFields := 5
+	if m.modalType == "resolve" {
+		totalFields = 2
+	}
+
+	switch msg.String() {
+	case "esc":
+		m.showModal = false
+		m.validationErr = ""
+		return m, nil
+
+	case "tab", "down":
+		m.focusIdx = (m.focusIdx + 1) % totalFields
+		return m, nil
+
+	case "shift+tab", "up":
+		m.focusIdx = (m.focusIdx - 1 + totalFields) % totalFields
+		return m, nil
+
+	case "enter":
+		return m.handleModalEnter()
+
+	case "left":
+		if m.modalType == "add" {
+			switch m.focusIdx {
+			case 0:
+				m.addType = (m.addType - 1 + len(intentTypes)) % len(intentTypes)
+			case 1:
+				if m.addMsgCursor > 0 {
+					m.addMsgCursor--
+				}
+			case 2:
+				if m.addSev > 0 {
+					m.addSev--
+				}
+			}
+		}
+		return m, nil
+
+	case "right":
+		if m.modalType == "add" {
+			switch m.focusIdx {
+			case 0:
+				m.addType = (m.addType + 1) % len(intentTypes)
+			case 1:
+				if m.addMsgCursor < len(m.addMsg) {
+					m.addMsgCursor++
+				}
+			case 2:
+				if m.addSev < 3 {
+					m.addSev++
+				}
+			}
+		}
+		return m, nil
+
+	case "backspace":
+		if m.modalType == "add" && m.focusIdx == 1 && m.addMsgCursor > 0 {
+			m.addMsg = m.addMsg[:m.addMsgCursor-1] + m.addMsg[m.addMsgCursor:]
+			m.addMsgCursor--
+		}
+		return m, nil
+
+	case "home":
+		if m.modalType == "add" && m.focusIdx == 1 {
+			m.addMsgCursor = 0
+		}
+		return m, nil
+
+	case "end":
+		if m.modalType == "add" && m.focusIdx == 1 {
+			m.addMsgCursor = len(m.addMsg)
+		}
+		return m, nil
+
+	default:
+		if m.modalType == "add" && m.focusIdx == 1 && len(msg.String()) == 1 {
+			ch := msg.String()[0]
+			before := m.addMsg[:m.addMsgCursor]
+			after := m.addMsg[m.addMsgCursor:]
+			m.addMsg = before + string(ch) + after
+			m.addMsgCursor++
+		}
+		return m, nil
+	}
+}
+
+func (m *Model) handleModalEnter() (tea.Model, tea.Cmd) {
+	if m.modalType == "resolve" {
+		if m.focusIdx == 1 {
+			active := m.activeIntents()
+			if m.resolveIdx < len(active) {
+				id := active[m.resolveIdx].ID
+				go dizzclient.IntentResolve(id)
+			}
+			m.showModal = false
+			m.validationErr = ""
+			return m, m.refreshIntents()
+		}
+		m.showModal = false
+		m.validationErr = ""
+		return m, nil
+	}
+
+	if m.modalType == "add" {
+		if m.focusIdx == 4 {
+			if m.addMsg == "" {
+				m.validationErr = "Message is required"
+				return m, nil
+			}
+			intentTypes := []string{"todo", "fixme", "refactor", "question", "hack", "temporary"}
+			go dizzclient.IntentAdd(m.addMsg, intentTypes[m.addType], m.addSev, nil)
+			m.showModal = false
+			m.validationErr = ""
+			return m, m.refreshIntents()
+		}
+		if m.focusIdx == 3 {
+			m.showModal = false
+			m.validationErr = ""
+		}
+		return m, nil
+	}
+
+	return m, nil
 }
 
 func (m *Model) renderInitScreen(c *render.Canvas) {

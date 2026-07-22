@@ -20,6 +20,7 @@ func ParseStatusOutput(raw string) *Summary {
 	unstableRe := regexp.MustCompile(`Unstable\s+(\d+)`)
 	abandonedRe := regexp.MustCompile(`Abandoned\s+(\d+)`)
 	todoRe := regexp.MustCompile(`TODOs:\s*(\d+)`)
+	intentRe := regexp.MustCompile(`Intents:\s*(\d+)`)
 
 	for _, line := range strings.Split(raw, "\n") {
 		clean := stripANSI(line)
@@ -36,6 +37,8 @@ func ParseStatusOutput(raw string) *Summary {
 			summary.Abandoned = parseIntSafe(m[1])
 		} else if m := todoRe.FindStringSubmatch(clean); len(m) >= 2 {
 			summary.ActiveTodos = parseIntSafe(m[1])
+		} else if m := intentRe.FindStringSubmatch(clean); len(m) >= 2 {
+			summary.Intents = parseIntSafe(m[1])
 		} else if strings.Contains(clean, "Project:") {
 			parts := strings.SplitN(clean, ":", 2)
 			if len(parts) == 2 {

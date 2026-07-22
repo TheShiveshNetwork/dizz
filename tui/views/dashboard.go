@@ -2,33 +2,28 @@ package views
 
 import (
 	"fmt"
+	"math"
+	"strings"
 	"time"
 
 	"github.com/TheShiveshNetwork/dizz/tui/dizzclient"
 	"github.com/TheShiveshNetwork/dizz/tui/render"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/gdamore/tcell/v2"
+	"github.com/mattn/go-runewidth"
 )
 
 type DashboardModel struct {
-	summary *dizzclient.Summary
-	stars   []render.Star
-	meteors []render.Meteor
-	now     time.Time
-	seed    int64
-	loading bool
-	err     string
+	summary   *dizzclient.Summary
+	frameTick int64
+	loading   bool
+	err       string
 }
 
 func NewDashboardModel() *DashboardModel {
-	m := &DashboardModel{
-		seed:    time.Now().UnixNano(),
+	return &DashboardModel{
 		loading: true,
-		now:     time.Now(),
 	}
-	m.stars = render.GenerateStarField(80, 24, 0.035, m.seed)
-	m.meteors = render.GenerateMeteorShower(80, 24, 5, m.seed)
-	return m
 }
 
 func (m *DashboardModel) Init() tea.Cmd {
@@ -50,13 +45,139 @@ type dashboardMsg struct {
 	err     string
 }
 
-var catArt = []string{
-	`         /\_/\   `,
-	`        ( o.o )  `,
-	`         > ^ <   `,
-	`        +-----+  `,
-	`        |  @  |  `,
-	`        +-----+  `,
+var dizzArtBase = []string{
+	`                  ⣀⣿⣷⣤⣀                              ⣀⣤⣷⣿⣀`,
+	`                  ⣤█⣿⣷⣤⣷⣷⣷⣷⣀                    ⣤⣷⣿⣷⣷⣤⣿⣿▓⣀`,
+	`                  ⣤⣿⣀░▓⣿⣀ ⣀⣤⣿⣷⣀                ⣤⣿⣿⣷⣀ ⣀⣿█░⣀⣿⣀`,
+	`                  ⣤⣿  ⣤▓█░⣤  ⣀⣷⣿⣷▒▓░⣤░▓▒⣤░▓▒⣷⣿⣷⣀  ⣤▒█▓⣤  ⣿⣤`,
+	`                  ⣤⣿   ⣀▒██▒⣤    ▒█░ ▒█▒ ⣿█▓    ⣤▒██▒⣀    ⣿⣤`,
+	`                  ⣀░    ⣤▓⣿⣀     ▒█░ ▒█▒ ⣿█▒     ⣀░█⣤    ⣀░⣀`,
+	`                   ⣤░  ⣤⣤⣀        ▒█░ ▒█▒ ⣿█▒        ⣀⣤⣤  ⣿⣤`,
+	`                    ⣿⣷⣤⣀          ⣤░⣤ ░█▒ ⣤░⣤         ⣀⣤⣤⣿`,
+	`                    ⣀░                ⣀⣤⣀                ⣀▒⣀`,
+	`                    ⣿⣤                                   ⣷⣷`,
+	`                   ⣀░                                     ░⣀`,
+	`                   ⣷░⣤⣤⣤⣤⣤⣀  ⣤░░⣿⣤        ⣀⣤░░░⣤⣀ ⣀⣤⣤⣤⣤⣤░⣀`,
+	`                ⣀⣷⣷⣿█████░⣀⣀▒⣿⣀⣀⣤░⣿        ▒⣿⣤⣀⣤⣿░ ⣀░█████⣷⣷⣷⣀`,
+	`                ⣀⣷⣷▓▒░░⣤            ⣷⣷⣷⣿⣤            ⣤▒▒▓█⣷⣷⣀`,
+	`                ⣀⣀ ⣷█▓▒⣤            ⣤⣿⣿⣿⣀            ⣤⣿⣷░⣿ ⣀⣀`,
+	`                  ⣀⣷⣷▒▒░⣤      ⣀⣷⣀   ⣤▒⣀   ⣀⣷        ⣀░▓░⣷⣷⣀`,
+	`                  ⣀⣀ ⣀⣷⣿⣀       ⣤⣿⣷⣷⣷⣷⣀⣷⣷⣷⣷⣷⣀       ⣀⣿⣷  ⣀⣀`,
+	`                       ⣀⣷⣿⣤                        ⣤⣿⣷⣀`,
+	`                       ⣤▒██▓░⣷⣤⣀                ⣀⣤⣿░▓██▒⣷`,
+	`                     ⣀⣿██▓▒▒▓██▒⣷⣷⣿⣷⣷⣷⣷⣷⣷⣿⣷⣷░███▒░▒██░⣀`,
+	`                     ⣿⣿⣿⣿⣀   ⣀⣤                ⣷⣀   ⣀⣿⣿⣿░`,
+	`                  ⣀⣷⣿⣷⣷⣷⣿⣷⣀                    ⣀⣷⣿⣿⣷⣷⣿⣿⣤`,
+	`                ⣀⣿⣷⣀     ⣀▒⣤                    ⣤░⣀     ⣀⣷⣿⣀`,
+	`               ⣀░⣀        ⣀⣀⣷░⣀                  ⣀⣿⣷⣤⣀        ⣀⣿⣤`,
+	`          ⣀░░░░▒⣀        ⣀▒⣤░⣤                  ⣀░⣤▒⣀        ⣀░░░░░⣤`,
+	`        ⣀▒█▓▒█░ ░ ░  ⣀⣿ ⣀███▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓███⣤ ⣷⣤░  ▒ ⣿██▒██⣤`,
+	`        ⣤▓█▓░▒██▒▓⣷⣤▓⣤⣷▒⣤░███⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿▓██▒⣤░⣿⣤▓⣷⣤█▒██▓░░██⣷`,
+	`       ⣤██░░█░▒███████████▒▓█░░██░░█▒░▓█░░█▓░▒█░░████████████▒⣿░░░░██⣿`,
+	`      ⣷██▒⣿░▓▒░░█▓░▒█▒▒██▒▒▒█▒░▓█░░▓▓░▒█▒░▓█░░█▓░▒█████▒▓█░░█▓░░▓▒⣿░▓█▒⣀`,
+	`     ░██░⣿▒▒⣿░██▒░█▓░▒█▓⣿▒█▓░▒█▒⣿▒█░░▓█░░▓█░⣿▓█▒░▓█░⣿▓█▒░▒█▒░▓█▒⣿░▒▒⣿▓█▓⣀`,
+	`  ⣀▒█▓▒▒▓▒▒▒▓▒▒▓▓▒░▓▒▒▒▓▓▒▒▓▓▓░▓▒▒░░▒█▒░▒█▓░▒█▓░░██░░▓█░░▓█▒▒▓█░░██▒░▒█▓⣤`,
+	` ⣀▒█░░▒█▒⣿▓█▒░▓█▒░▓█░⣿▓█▒⣿▒▒⣿⣿⣿░⣿⣿⣿███▓⣿░█▓⣿⣿██░⣿▒█▓⣿░█▓⣿░█████▓⣿░██▒░▒█▓⣤`,
+	`⣀▓████████████████████████████████████████████████████████████████████████⣷`,
+	`⣿█████████████████████████████████████████████████████████████████████████▒`,
+	`⣿█████████████████████████████████████████████████████████████████████████▒`,
+}
+
+const (
+	handRowStart       = 21
+	handRowEnd         = 25
+	handFrameCount     = 10
+	handAnimIntervalMs = 130
+	handShiftAmplitude = 1.0
+)
+
+// Specific horizontal index ranges for left and right paws
+// so that shifting paws doesn't affect adjacent elements or the keyboard
+type pawBounds struct {
+	leftStart, leftEnd   int
+	rightStart, rightEnd int
+}
+
+var pawBoundsByRow = map[int]pawBounds{
+	21: {leftStart: 18, leftEnd: 35, rightStart: 55, rightEnd: 72},
+	22: {leftStart: 16, leftEnd: 31, rightStart: 51, rightEnd: 66},
+	23: {leftStart: 15, leftEnd: 30, rightStart: 50, rightEnd: 65},
+	24: {leftStart: 10, leftEnd: 28, rightStart: 48, rightEnd: 68},
+	25: {leftStart: 8, leftEnd: 25, rightStart: 45, rightEnd: 65},
+}
+
+var dizzArtFrames = generateTypingFrames(dizzArtBase)
+
+func padRuneRow(row string, width int) string {
+	rs := []rune(row)
+	if len(rs) >= width {
+		return string(rs[:width])
+	}
+	return row + strings.Repeat(" ", width-len(rs))
+}
+
+func normalizeArt(lines []string) ([]string, int) {
+	width := 0
+	for _, l := range lines {
+		if w := len([]rune(l)); w > width {
+			width = w
+		}
+	}
+	out := make([]string, len(lines))
+	for i, l := range lines {
+		out[i] = padRuneRow(l, width)
+	}
+	return out, width
+}
+
+func shiftSegment(rowRunes []rune, start, end, offset int) {
+	if start < 0 || end > len(rowRunes) || start >= end {
+		return
+	}
+	length := end - start
+	segment := make([]rune, length)
+	copy(segment, rowRunes[start:end])
+
+	shifted := make([]rune, length)
+	for i := range shifted {
+		shifted[i] = ' '
+	}
+	for i, r := range segment {
+		dst := i + offset
+		if dst >= 0 && dst < length {
+			shifted[dst] = r
+		}
+	}
+	copy(rowRunes[start:end], shifted)
+}
+
+func generateTypingFrames(base []string) [][]string {
+	normalized, _ := normalizeArt(base)
+
+	frames := make([][]string, handFrameCount)
+	for f := 0; f < handFrameCount; f++ {
+		phase := 2 * math.Pi * float64(f) / float64(handFrameCount)
+		offset := int(math.Round(handShiftAmplitude * math.Sin(phase)))
+
+		frame := make([]string, len(normalized))
+		copy(frame, normalized)
+
+		for r := handRowStart; r <= handRowEnd; r++ {
+			bounds, ok := pawBoundsByRow[r]
+			if !ok {
+				continue
+			}
+			rowRunes := []rune(normalized[r])
+
+			// Apply horizontal shift strictly within paw boundaries
+			shiftSegment(rowRunes, bounds.leftStart, bounds.leftEnd, offset)
+			shiftSegment(rowRunes, bounds.rightStart, bounds.rightEnd, -offset)
+
+			frame[r] = string(rowRunes)
+		}
+		frames[f] = frame
+	}
+	return frames
 }
 
 func (m *DashboardModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
@@ -66,10 +187,6 @@ func (m *DashboardModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.loading = true
 			return m, m.refresh()
 		}
-
-	case tea.WindowSizeMsg:
-		m.meteors = render.GenerateMeteorShower(msg.Width, msg.Height, 5, m.seed)
-		m.stars = render.GenerateStarField(msg.Width, msg.Height, 0.035, m.seed)
 
 	case dashboardMsg:
 		m.loading = false
@@ -81,7 +198,7 @@ func (m *DashboardModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 
 	case time.Time:
-		m.now = time.Time(msg)
+		m.frameTick++
 	}
 
 	return m, nil
@@ -89,7 +206,6 @@ func (m *DashboardModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 func (m *DashboardModel) Render(c *render.Canvas) {
 	w, h := c.Width(), c.Height()
-	now := m.now.UnixMilli()
 
 	if m.loading {
 		msg := "Loading..."
@@ -97,38 +213,12 @@ func (m *DashboardModel) Render(c *render.Canvas) {
 		return
 	}
 
-	for _, star := range m.stars {
-		if star.X < w && star.Y < h {
-			ch, visible := render.GetStarChar(star, now)
-			if visible {
-				style := render.StyleDim
-				if ch == '★' {
-					style = render.StyleBold
-				}
-				c.SetCell(star.X, star.Y, style, ch)
-			}
-		}
-	}
-
-	for _, meteor := range m.meteors {
-		trail := render.GetMeteorTrail(meteor, now, w, h)
-		for _, tp := range trail {
-			style := render.StyleDim
-			if tp.State == "bright" {
-				style = render.StyleBold
-			}
-			if tp.X >= 0 && tp.X < w && tp.Y >= 0 && tp.Y < h {
-				c.SetCell(tp.X, tp.Y, style, tp.Char)
-			}
-		}
-	}
-
 	if m.err != "" {
 		c.SetContent(2, 2, render.StyleError, m.err)
 		return
 	}
 
-	title := "dizz"
+	title := "Hey, Dizzie"
 	c.SetContent((w-len(title))/2, 0, render.StyleHighlight.Bold(true), title)
 
 	s := m.summary
@@ -174,6 +264,10 @@ func (m *DashboardModel) Render(c *render.Canvas) {
 		maxCount = 1
 	}
 
+	shortCodes := map[string]string{
+		"Active": "ACT", "Planned": "PLN", "Unstable": "UNS",
+		"Unused": "UNU", "Abandoned": "ABD",
+	}
 	barX := w - barW - 4
 	barY := 3
 	for i, it := range items {
@@ -181,23 +275,37 @@ func (m *DashboardModel) Render(c *render.Canvas) {
 		if rowY >= h-6 {
 			break
 		}
-		label := fmt.Sprintf("  %s %d", it.label, it.count)
-		c.SetContent(4, rowY, it.style, label)
 		bar := render.RenderBar(it.count, maxCount, barW)
 		c.SetContent(barX, rowY, it.style, bar)
+		if code, ok := shortCodes[it.label]; ok {
+			c.SetContent(barX+barW+1, rowY, render.StyleDim, code)
+		}
 	}
 
-	catY := barY
-	catX := 4
-	if catX+14 < w {
-		for i, line := range catArt {
-			if catY+i >= h-4 {
-				break
-			}
-			for x, ch := range line {
-				c.SetCell(catX+x, catY+i, render.StyleHighlight, ch)
-			}
+	frame := m.frameTick % int64(len(dizzArtFrames))
+	artLines := dizzArtFrames[frame]
+	artH := len(artLines)
+	maxW := 0
+	for _, line := range artLines {
+		lw := runewidth.StringWidth(line)
+		if lw > maxW {
+			maxW = lw
 		}
+	}
+	startX := (w - maxW) / 2
+	if startX < 2 {
+		startX = 2
+	}
+	startY := (h - artH) / 2
+	if startY < 4 {
+		startY = 4
+	}
+	for i, line := range artLines {
+		destY := startY + i
+		if destY >= h-4 {
+			break
+		}
+		c.SetContent(startX, destY, render.StyleDefault, line)
 	}
 
 	if s.ActiveTodos > 0 {
@@ -205,7 +313,7 @@ func (m *DashboardModel) Render(c *render.Canvas) {
 		c.SetContent(4, h-3, render.StyleWarning, todoMsg)
 	}
 
-	intentMsg := fmt.Sprintf("Intents: %d", s.Planned)
+	intentMsg := fmt.Sprintf("Intents: %d", s.Intents)
 	c.SetContent(4, h-2, render.StyleInfo, intentMsg)
 
 	help := "Press ? for help  r=refresh  q=quit"
