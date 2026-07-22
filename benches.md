@@ -16,27 +16,27 @@ Hardware: Intel i5-10300H @ 2.50GHz, 16GB RAM, Linux, SSD
 
 | Benchmark | Before | After | Improvement |
 |-----------|--------|-------|-------------|
-| CodeFiles (basic) | 231µs | **114µs** | `filepath.WalkDir` + extension map fast path |
-| CodeFiles (20 excludes) | 482µs | **255µs** | Same |
+| CodeFiles (basic) | 231µs | **117µs** | `filepath.WalkDir` + extension map fast path |
+| CodeFiles (20 excludes) | 482µs | **253µs** | Same |
 | CodeFiles (large, ~1000 files) | 4.3ms | **2.0ms** | Same |
-| DetectByExtension | 2.6µs | **2.5µs** | Unchanged |
-| GetLanguageByID | 106ns | **105ns** | Already O(1) map |
-| ScorerInterpretation (cold, 175 syms) | 445ms | **447ms** | Within noise (cold path unchanged) |
+| DetectByExtension | 2.6µs | **2.4µs** | Unchanged |
+| GetLanguageByID | 106ns | **98ns** | Already O(1) map |
+| ScorerInterpretation (cold, 175 syms) | 445ms | **460ms** | Within noise (cold path unchanged) |
 | Individual git 10 syms | 21ms | **23ms** | Unchanged |
-| Batch git 175 syms | 51ms | **26ms** | Per-file batching + parallel workers (2x) |
-| Batch git 100 syms | n/a | **26ms** | Good scaling (same cost as 175) |
+| Batch git 175 syms | 51ms | **27ms** | Per-file batching + parallel workers (2x) |
+| Batch git 100 syms | n/a | **27ms** | Good scaling (same cost as 175) |
 | Extraction only (251 syms) | n/a | **25ms** | Combined line passes + O(1) analyzer lookup |
-| Full analysis (cached) | n/a | **17ms** | Per-file signal cache hit path |
-| GetSymbolsByState (500 syms) | n/a | **28µs** | Preallocated result slice |
+| Full analysis (cached) | n/a | **31ms** | Per-file signal cache hit path |
+| GetSymbolsByState (500 syms) | n/a | **22µs** | Preallocated result slice |
 
 ### Batch git scaling
 
 | Symbols | Individual | Batch | Speedup |
 |---------|-----------|-------|---------|
 | 10 | 23ms | **19ms** | 1.2x |
-| 50 | 114ms | **26ms** | 4.4x |
-| 100 | 227ms | **26ms** | 8.7x |
-| 175 | 394ms | **26ms** | **15x** |
+| 50 | 114ms | **27ms** | 4.2x |
+| 100 | 227ms | **27ms** | 8.4x |
+| 175 | 401ms | **27ms** | **15x** |
 
 ## Optimizations Applied
 
