@@ -3,7 +3,8 @@ package config
 import "path/filepath"
 
 const (
-	AppName = "dizz"
+	AppName       = "dizz"
+	ConfigVersion = "1.0.0"
 
 	TrackDirName   = ".dizz"
 	ObjectsDirName = "objects"
@@ -24,24 +25,23 @@ const (
 
 // Config represents the dizz configuration structure.
 type Config struct {
-	Version         int    `json:"version"`
-	ProjectName     string `json:"project_name"`
-	Description     string `json:"description"`
-	Include         []string `json:"include"`
-	Exclude         []string `json:"exclude"`
-	Commands        map[string]string `json:"commands,omitempty"`
-	EntryPoints     map[string]string `json:"entry_points,omitempty"`
-	Conventions     []Convention `json:"conventions,omitempty"`
-	Guardrails      []Guardrail `json:"guardrails,omitempty"`
-	SeverityScale   map[string]string `json:"severity_scale,omitempty"`
-	AgentDefaults   AgentDefaults `json:"agent_defaults,omitempty"`
-	Links           Links         `json:"links,omitempty"`
+	Version       string            `json:"version"`
+	ProjectName   string            `json:"project_name"`
+	Description   string            `json:"description"`
+	Include       []string          `json:"include"`
+	Exclude       []string          `json:"exclude"`
+	Commands      map[string]string `json:"commands,omitempty"`
+	Instructions  []Instruction     `json:"instructions,omitempty"`
+	Guardrails    []Guardrail       `json:"guardrails,omitempty"`
+	SeverityScale map[string]string `json:"severity_scale,omitempty"`
+	AgentDefaults AgentDefaults     `json:"agent_defaults,omitempty"`
+	Links         Links             `json:"links,omitempty"`
 }
 
-// Convention represents a coding convention.
-type Convention struct {
-	Rule   string `json:"rule"`
-	Scope  string `json:"scope"`
+// Instruction represents a coding instruction.
+type Instruction struct {
+	Rule  string `json:"rule"`
+	Scope string `json:"scope"`
 }
 
 // Guardrail represents a guardrail rule.

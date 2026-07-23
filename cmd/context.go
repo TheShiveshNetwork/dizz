@@ -6,9 +6,9 @@ import (
 	"os"
 	"path/filepath"
 
-	commonPkg "github.com/TheShiveshNetwork/dizz/internal/common"
 	"github.com/TheShiveshNetwork/dizz/config"
 	"github.com/TheShiveshNetwork/dizz/integrations"
+	commonPkg "github.com/TheShiveshNetwork/dizz/internal/common"
 	"github.com/TheShiveshNetwork/dizz/internal/render"
 	"github.com/TheShiveshNetwork/dizz/internal/state"
 	"github.com/TheShiveshNetwork/dizz/internal/store"
@@ -19,7 +19,7 @@ import (
 var (
 	contextIntentOnly bool
 	contextSymbolOnly bool
-	contextTodosOnly 	bool
+	contextTodosOnly  bool
 )
 
 var contextCmd = &cobra.Command{
@@ -58,10 +58,10 @@ func runContext() {
 	if cfg, err := configStore.LoadConfig(); err == nil {
 		info.ProjectName = cfg.ProjectName
 		info.Description = cfg.Description
-		info.Conventions = cfg.Conventions
+		info.Instructions = cfg.Instructions
 		info.Guardrails = cfg.Guardrails
-		info.ConfigIncludeCount = len(cfg.Include)
-		info.ConfigExcludeCount = len(cfg.Exclude)
+		info.Commands = cfg.Commands
+		info.AgentDefaults = cfg.AgentDefaults
 	}
 
 	if info.HasGit {

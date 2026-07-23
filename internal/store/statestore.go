@@ -140,9 +140,9 @@ func NewConfigStore(basePath string) *ConfigStore {
 
 // oldConfig is the old configuration structure used for migration.
 type oldConfig struct {
-	ProjectName string        `json:"project_name"`
-	Include     []string      `json:"include"`
-	Exclude     []string      `json:"exclude"`
+	ProjectName string   `json:"project_name"`
+	Include     []string `json:"include"`
+	Exclude     []string `json:"exclude"`
 	Agentic     struct {
 		Description  string   `json:"description"`
 		Rules        []string `json:"rules"`
@@ -154,11 +154,11 @@ type oldConfig struct {
 // defaultConfig returns a minimal configuration with only required fields set.
 func defaultConfig(projectName string) *config.Config {
 	return &config.Config{
-		Version:       1,
-		ProjectName:   projectName,
-		Description:   "",
-		Include:       []string{"**/*"},
-		Exclude:       []string{"**/*_test.go", "vendor/**", "node_modules/**", ".git/**", ".dizz/**"},
+		Version:     config.ConfigVersion,
+		ProjectName: projectName,
+		Description: "",
+		Include:     []string{"**/*"},
+		Exclude:     []string{"**/*_test.go", "vendor/**", "node_modules/**", ".git/**", ".dizz/**"},
 	}
 }
 
@@ -181,7 +181,7 @@ func (s *ConfigStore) LoadConfig() (*config.Config, error) {
 		return defaultConfig(projectRoot), nil
 	}
 
-	if v, ok := temp["version"]; ok && v == float64(1) {
+	if _, ok := temp["version"]; ok {
 		// Try to unmarshal into the new config struct.
 		var cfg config.Config
 		if err := json.Unmarshal(data, &cfg); err != nil {
@@ -202,11 +202,11 @@ func (s *ConfigStore) LoadConfig() (*config.Config, error) {
 
 	// Convert the old config to the new config.
 	newCfg := defaultConfig(oldCfg.ProjectName)
-	newCfg.Version = 1
+	newCfg.Version = config.ConfigVersion
 	newCfg.Description = oldCfg.Agentic.Description
 	newCfg.Include = oldCfg.Include
 	newCfg.Exclude = oldCfg.Exclude
-	// Note: The old config did not have Commands, EntryPoints, Conventions, Guardrails, etc.
+	// Note: The old config did not have Commands, Instructions, Guardrails, etc.
 	// We leave them as empty/zero values (the struct's zero value).
 
 	return newCfg, nil

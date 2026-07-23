@@ -98,7 +98,7 @@ Git tells you *what* changed and *when*. The source code tells you *what* exists
 | `dizz status` | Quick health snapshot with visual indicators |
 | `dizz snapshot` | Create immutable, content-addressed state records |
 | `dizz context` | Token-optimized project dump for AI agents (TON format, ~2 KB) |
-| `dizz config` | Manage `.dizz/config.json` including agentic description/rules/standards/instructions |
+| `dizz config` | Manage and inspect `.dizz/config.json` (supports filtering flags) |
 | `dizz intent` | Manage long-lived project intents (add, list, resolve) |
 | `dizz install-skill` | Install dizz skill into AI agent directories for auto-discovery |
 | `dizz list` | Show snapshot history |
@@ -109,7 +109,7 @@ Git tells you *what* changed and *when*. The source code tells you *what* exists
 `dizz` is designed as a **state-aware assistant for both humans and AI agents** — the layer an agent reads from instead of a static context file. Every command outputs machine-readable formats by default:
 
 - **`dizz context`** — Single command optimized for agents first runs to follow up analysis. Pipe-delimited TON format, no parser needed.
-- **`dizz config`** — Single source of truth for persistent agentic project guidance (`agentic.description`, `agentic.rules`, `agentic.standards`, `agentic.instructions`).
+- **`dizz config`** — Single source of truth for persistent agentic project guidance. Supports filtering flags (`--only-description`, `--only-instructions`, `--only-guardrails`, `--only-commands`, `--json`).
 - **`dizz install-skill`** — Installs a global skill for all agent harnesses. Auto-discovers installed AI agents (Claude Code, Cursor, Gemini CLI, OpenCode, Codex CLI) and installs a discoverable skill for each.
 - **`dizz intent`** — Agents can query, add, and resolve project intents directly, without parsing ad-hoc comments or relying on a doc someone forgot to update.
 - **`dizz snapshot --diff`** — Delta-based snapshots for efficient long-term storage, so an agent picking the project back up gets the *change* since it last looked, not the whole state again.

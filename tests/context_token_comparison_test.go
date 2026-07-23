@@ -8,9 +8,9 @@ import (
 	"testing"
 	"unicode"
 
-	commonPkg "github.com/TheShiveshNetwork/dizz/internal/common"
 	"github.com/TheShiveshNetwork/dizz/config"
 	"github.com/TheShiveshNetwork/dizz/integrations"
+	commonPkg "github.com/TheShiveshNetwork/dizz/internal/common"
 	"github.com/TheShiveshNetwork/dizz/internal/render"
 	"github.com/TheShiveshNetwork/dizz/internal/state"
 	"github.com/TheShiveshNetwork/dizz/internal/store"
@@ -47,13 +47,15 @@ func TestContextTokenReductionAgainstVerboseSymbols(t *testing.T) {
 	contextInfo := render.ContextInfo{
 		ProjectName: filepath.Base(projectRoot),
 		HasGit:      integrations.IsRepo(),
-		ConfigRoot:  ".",
 	}
 	configStore := store.NewConfigStore(config.TrackDirPath(projectRoot))
 	if cfg, err := configStore.LoadConfig(); err == nil {
 		contextInfo.ProjectName = cfg.ProjectName
-		contextInfo.ConfigIncludeCount = len(cfg.Include)
-		contextInfo.ConfigExcludeCount = len(cfg.Exclude)
+		contextInfo.Description = cfg.Description
+		contextInfo.Instructions = cfg.Instructions
+		contextInfo.Guardrails = cfg.Guardrails
+		contextInfo.Commands = cfg.Commands
+		contextInfo.AgentDefaults = cfg.AgentDefaults
 	}
 
 	compactOutput, err := render.NewContextRenderer().Render(projectState, state.NewIntentState(), contextInfo, nil)

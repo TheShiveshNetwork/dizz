@@ -8,7 +8,6 @@ import (
 	"github.com/TheShiveshNetwork/dizz/config"
 	"github.com/TheShiveshNetwork/dizz/integrations"
 	"github.com/TheShiveshNetwork/dizz/internal/state"
-	"github.com/TheShiveshNetwork/dizz/internal/store/ton"
 )
 
 func TestContextRenderer_EmptyProject(t *testing.T) {
@@ -37,8 +36,8 @@ func TestContextRenderer_EmptyProject(t *testing.T) {
 	if !strings.Contains(output, "abc1234") {
 		t.Fatalf("expected commit, got:\n%s", output)
 	}
-	if !strings.Contains(output, "# config") {
-		t.Fatalf("expected config section, got:\n%s", output)
+	if !strings.Contains(output, "# project") {
+		t.Fatalf("expected project section, got:\n%s", output)
 	}
 }
 
@@ -202,9 +201,6 @@ func TestContextRenderer_OutputIsValidTON(t *testing.T) {
 	if len(lines) < 2 {
 		t.Fatalf("expected at least 2 lines, got %d", len(lines))
 	}
-
-	_, err = ton.NewReader([]byte(output))
-	_ = err
 }
 
 func TestContextRenderer_GitInfo(t *testing.T) {
@@ -297,8 +293,7 @@ func TestContextRenderer_MultipleSections(t *testing.T) {
 	}
 
 	sections := []string{
-		"Project:",
-		"# config",
+		"# project",
 		"# intents",
 		"# symbols",
 		"# todos",
@@ -310,7 +305,7 @@ func TestContextRenderer_MultipleSections(t *testing.T) {
 	}
 }
 
-func TestContextRenderer_AgenticSection(t *testing.T) {
+func TestContextRenderer_ProjectConfig(t *testing.T) {
 	ps := state.NewProjectState()
 	is := state.NewIntentState()
 
@@ -318,24 +313,36 @@ func TestContextRenderer_AgenticSection(t *testing.T) {
 	output, err := renderer.Render(ps, is, ContextInfo{
 		ProjectName: "p",
 		Description: "Core project rules",
-		Conventions: []config.Convention{
+		Instructions: []config.Instruction{
 			{Rule: "Do not commit secrets", Scope: "internal/**"},
 		},
 		Guardrails: []config.Guardrail{
 			{Path: "internal/security/**", Action: "warn", Reason: "security-critical"},
+		},
+		Commands: map[string]string{
+			"build": "go build",
+			"test":  "go test ./...",
+		},
+		AgentDefaults: config.AgentDefaults{
+			DefaultLens: "priority",
+			MinSeverity: 1,
 		},
 	}, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	if !strings.Contains(output, "# agentic") {
-		t.Fatalf("missing agentic section: %s", output)
+	if !strings.Contains(output, "# project") {
+		t.Fatalf("missing project section: %s", output)
 	}
 	for _, expected := range []string{
-		"description|Core project rules",
-		"convention|Do not commit secrets@internal/**",
-		"guardrail|internal/security/**\\|warn\\|security-critical",
+		"description|Core project rules|",
+		"instruction|Do not commit secrets@internal/**|",
+		"guardrail|internal/security/**",
+		"command|build=go build|",
+		"command|test=go test ./...|",
+		"agent_lens|priority|",
+		"agent_min_severity|1|",
 	} {
 		if !strings.Contains(output, expected) {
 			t.Fatalf("missing %q in output:\n%s", expected, output)

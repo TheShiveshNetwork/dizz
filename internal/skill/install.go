@@ -117,9 +117,14 @@ func InstallToAll(content []byte) []InstallResult {
 	return results
 }
 
-// FetchSkillURL returns the GitHub raw URL for the canonical SKILL.md.
+// FetchSkillURL returns the GitHub raw URL for the canonical project SKILL.md.
 func FetchSkillURL() string {
 	return "https://raw.githubusercontent.com/TheShiveshNetwork/dizz/main/agent-skills/dizz/SKILL.md"
+}
+
+// FetchGlobalSkillURL returns the GitHub raw URL for the global SKILL.md.
+func FetchGlobalSkillURL() string {
+	return "https://raw.githubusercontent.com/TheShiveshNetwork/dizz/main/agent-skills/dizz-global/SKILL.md"
 }
 
 // IsOnline checks if the system likely has internet access.

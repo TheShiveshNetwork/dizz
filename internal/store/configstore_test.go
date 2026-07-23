@@ -11,21 +11,17 @@ func TestConfigStore_SaveLoad(t *testing.T) {
 	s := NewConfigStore(dir)
 
 	cfg := &config.Config{
-		Version:         1,
-		ProjectName:     "demo",
-		Description:     "Project guidance",
-		Include:         []string{"**/*.go"},
-		Exclude:         []string{"vendor/**"},
+		Version:     config.ConfigVersion,
+		ProjectName: "demo",
+		Description: "Project guidance",
+		Include:     []string{"**/*.go"},
+		Exclude:     []string{"vendor/**"},
 		Commands: map[string]string{
 			"build": "make build",
 			"test":  "go test ./...",
 			"lint":  "golangci-lint run",
 		},
-		EntryPoints: map[string]string{
-			"cli": "main.go",
-			"tui": "cmd/dizzie",
-		},
-		Conventions: []config.Convention{
+		Instructions: []config.Instruction{
 			{Rule: "Errors are wrapped with context, never silently swallowed", Scope: "internal/**"},
 		},
 		Guardrails: []config.Guardrail{
@@ -57,7 +53,7 @@ func TestConfigStore_SaveLoad(t *testing.T) {
 	}
 
 	if loaded.Version != cfg.Version {
-		t.Fatalf("version mismatch: got %d want %d", loaded.Version, cfg.Version)
+		t.Fatalf("version mismatch: got %q want %q", loaded.Version, cfg.Version)
 	}
 	if loaded.ProjectName != cfg.ProjectName {
 		t.Fatalf("project name mismatch: got %q want %q", loaded.ProjectName, cfg.ProjectName)
@@ -80,22 +76,13 @@ func TestConfigStore_SaveLoad(t *testing.T) {
 			t.Fatalf("command mismatch for key %s: got %q want %q", k, loaded.Commands[k], v)
 		}
 	}
-	// Check entry points
-	if len(loaded.EntryPoints) != len(cfg.EntryPoints) {
-		t.Fatalf("entry points length mismatch: got %d want %d", len(loaded.EntryPoints), len(cfg.EntryPoints))
+	// Check instructions
+	if len(loaded.Instructions) != len(cfg.Instructions) {
+		t.Fatalf("instructions length mismatch: got %d want %d", len(loaded.Instructions), len(cfg.Instructions))
 	}
-	for k, v := range cfg.EntryPoints {
-		if loaded.EntryPoints[k] != v {
-			t.Fatalf("entry point mismatch for key %s: got %q want %q", k, loaded.EntryPoints[k], v)
-		}
-	}
-	// Check conventions
-	if len(loaded.Conventions) != len(cfg.Conventions) {
-		t.Fatalf("conventions length mismatch: got %d want %d", len(loaded.Conventions), len(cfg.Conventions))
-	}
-	for i, v := range cfg.Conventions {
-		if loaded.Conventions[i].Rule != v.Rule || loaded.Conventions[i].Scope != v.Scope {
-			t.Fatalf("convention mismatch at index %d: got %#v want %#v", i, loaded.Conventions[i], v)
+	for i, v := range cfg.Instructions {
+		if loaded.Instructions[i].Rule != v.Rule || loaded.Instructions[i].Scope != v.Scope {
+			t.Fatalf("instruction mismatch at index %d: got %#v want %#v", i, loaded.Instructions[i], v)
 		}
 	}
 	// Check guardrails

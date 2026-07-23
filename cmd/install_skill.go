@@ -5,11 +5,10 @@ import (
 	"io"
 	"net/http"
 	"os"
-	"strings"
 
 	"github.com/spf13/cobra"
 
-	"github.com/TheShiveshNetwork/dizz/config"
+	"github.com/TheShiveshNetwork/dizz/internal/defaults"
 	"github.com/TheShiveshNetwork/dizz/internal/skill"
 )
 
@@ -42,8 +41,8 @@ func runInstallSkill(cmd *cobra.Command, args []string) error {
 		fmt.Println("  - Gemini CLI: https://google-gemini.github.io/gemini-cli/")
 		fmt.Println()
 		fmt.Println("You can also manually install the skill:")
-		fmt.Printf("  mkdir -p ~/.agents/skills/dizz\n")
-		fmt.Printf("  %s context > ~/.agents/skills/dizz/SKILL.md\n", config.AppName)
+		fmt.Println("  mkdir -p ~/.agents/skills/dizz-global")
+		fmt.Println("  See agent-skills/dizz-global/SKILL.md for content")
 		return nil
 	}
 
@@ -53,11 +52,11 @@ func runInstallSkill(cmd *cobra.Command, args []string) error {
 	fmt.Println()
 
 	fmt.Println("Fetching canonical SKILL.md...")
-	content, err := fetchSkillContent()
+	content, err := fetchGlobalSkillContent()
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "  Warning: could not fetch SKILL.md: %v\n", err)
 		fmt.Println("  Using bundled template instead.")
-		content = []byte(bundledSkillContent())
+		content = []byte(defaults.GlobalSkillInstructions())
 	} else {
 		fmt.Println("  Downloaded from GitHub.")
 	}
@@ -90,8 +89,8 @@ func runInstallSkill(cmd *cobra.Command, args []string) error {
 	return nil
 }
 
-func fetchSkillContent() ([]byte, error) {
-	url := skill.FetchSkillURL()
+func fetchGlobalSkillContent() ([]byte, error) {
+	url := skill.FetchGlobalSkillURL()
 	resp, err := http.Get(url)
 	if err != nil {
 		return nil, fmt.Errorf("fetch failed: %w", err)
@@ -112,51 +111,4 @@ func fetchSkillContent() ([]byte, error) {
 	}
 
 	return data, nil
-}
-
-func bundledSkillContent() string {
-	projectName := "project"
-
-	cwd, err := os.Getwd()
-	if err == nil {
-		trackDir := config.TrackDirPath(cwd)
-		cfgPath := config.ConfigFilePath(trackDir)
-		if data, err := os.ReadFile(cfgPath); err == nil {
-			s := string(data)
-			prefix := `"project_name":"`
-			if start := strings.Index(s, prefix); start >= 0 {
-				start += len(prefix)
-				if end := strings.Index(s[start:], `"`); end >= 0 {
-					projectName = s[start : start+end]
-				}
-			}
-		}
-	}
-
-	var b strings.Builder
-	b.WriteString("---\n")
-	b.WriteString("name: dizz\n")
-	b.WriteString("description: State-aware project assistant. Tracks intents, code health, and symbol states. Use to understand project state, find work items, or detect dead code.\n")
-	b.WriteString("license: MIT\n")
-	b.WriteString("metadata:\n")
-	b.WriteString("  version: \"1.0.0\"\n")
-	b.WriteString("---\n")
-	b.WriteString("\n")
-	b.WriteString("# dizz Skill for " + projectName + "\n")
-	b.WriteString("\n")
-	b.WriteString("dizz analyzes your project to show what is used, unused, and planned.\n")
-	b.WriteString("\n")
-	b.WriteString("## Commands\n")
-	b.WriteString("\n")
-	b.WriteString("- dizz context - Token-optimized project context\n")
-	b.WriteString("- dizz intent list - View active intents\n")
-	b.WriteString("- dizz status - Project health overview\n")
-	b.WriteString("- dizz log - Symbol health and todos\n")
-	b.WriteString("- dizz snapshot --auto - Record current state\n")
-	b.WriteString("- dizz intent add \"msg\" --type todo - Add intent\n")
-	b.WriteString("\n")
-	b.WriteString("## First use\n")
-	b.WriteString("\n")
-	b.WriteString("Run dizz context to get started.\n")
-	return b.String()
 }

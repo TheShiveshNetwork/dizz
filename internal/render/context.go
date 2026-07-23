@@ -12,16 +12,15 @@ import (
 )
 
 type ContextInfo struct {
-	ProjectName        string
-	Branch             string
-	Commit             string
-	HasGit             bool
-	Description        string
-	Conventions        []config.Convention
-	Guardrails         []config.Guardrail
-	ConfigRoot         string
-	ConfigIncludeCount int
-	ConfigExcludeCount int
+	ProjectName   string
+	Branch        string
+	Commit        string
+	HasGit        bool
+	Description   string
+	Instructions  []config.Instruction
+	Guardrails    []config.Guardrail
+	Commands      map[string]string
+	AgentDefaults config.AgentDefaults
 }
 
 type ContextRenderer struct{}
@@ -38,14 +37,12 @@ func (r *ContextRenderer) Render(
 ) (string, error) {
 	var buf bytes.Buffer
 
-	r.writeProjectInfo(&buf, info)
+	r.writeProjectConfig(&buf, info)
 
 	if ps.GitCommit != nil {
 		r.writeCommitInfo(&buf, ps.GitCommit)
 	}
 
-	r.writeAgentic(&buf, info)
-	r.writeConfigSummary(&buf, info)
 	r.writeIntents(&buf, is)
 	r.writeSymbolSummary(&buf, ps)
 	r.writeTodos(&buf, ps)
@@ -54,49 +51,49 @@ func (r *ContextRenderer) Render(
 	return buf.String(), nil
 }
 
-func (r *ContextRenderer) writeProjectInfo(buf *bytes.Buffer, info ContextInfo) {
+func (r *ContextRenderer) writeProjectConfig(buf *bytes.Buffer, info ContextInfo) {
 	gitStatus := "no git"
 	if info.HasGit {
 		gitStatus = info.Branch + ":" + truncate(info.Commit, 7)
 	}
-	fmt.Fprintf(buf, "Project: %s | git: %s\n\n", info.ProjectName, gitStatus)
+
+	fmt.Fprintln(buf, "# project")
+	w := ton.NewWriter(buf)
+	w.WriteHeader("field", "value", "description")
+
+	w.WriteRecord("name", info.ProjectName, "Project identifier from .dizz/config.json")
+	w.WriteRecord("description", info.Description, "Human-readable project summary from config")
+	w.WriteRecord("git", gitStatus, "Current branch and latest commit hash")
+
+	if len(info.Instructions) > 0 {
+		for _, inst := range info.Instructions {
+			w.WriteRecord("instruction", inst.Rule+"@"+inst.Scope, "Agent instruction from config (rule@scope)")
+		}
+	}
+	if len(info.Guardrails) > 0 {
+		for _, g := range info.Guardrails {
+			w.WriteRecord("guardrail", g.Path+"|"+g.Action+"|"+g.Reason, "Agent guardrail from config (path|action|reason)")
+		}
+	}
+	if len(info.Commands) > 0 {
+		for name, cmd := range info.Commands {
+			w.WriteRecord("command", name+"="+cmd, "Project command from config (name=command)")
+		}
+	}
+	if info.AgentDefaults != (config.AgentDefaults{}) {
+		if info.AgentDefaults.DefaultLens != "" {
+			w.WriteRecord("agent_lens", info.AgentDefaults.DefaultLens, "Default analysis lens from config")
+		}
+		if info.AgentDefaults.MinSeverity > 0 {
+			w.WriteRecord("agent_min_severity", fmt.Sprintf("%d", info.AgentDefaults.MinSeverity), "Minimum severity for agent alerts from config")
+		}
+	}
+
+	fmt.Fprintln(buf)
 }
 
 func (r *ContextRenderer) writeCommitInfo(buf *bytes.Buffer, c *integrations.Commit) {
 	fmt.Fprintf(buf, "# last commit\nhash|msg\n%s|%s\n\n", truncate(c.Hash, 7), escapeMsg(c.Message))
-}
-
-func (r *ContextRenderer) writeConfigSummary(buf *bytes.Buffer, info ContextInfo) {
-	root := info.ConfigRoot
-	if root == "" {
-		root = "."
-	}
-
-	fmt.Fprintln(buf, "# config")
-	w := ton.NewWriter(buf)
-	w.WriteHeader("project", "root", "include_count", "exclude_count")
-	w.WriteRecord(info.ProjectName, root, fmt.Sprintf("%d", info.ConfigIncludeCount), fmt.Sprintf("%d", info.ConfigExcludeCount))
-	fmt.Fprintln(buf)
-}
-
-func (r *ContextRenderer) writeAgentic(buf *bytes.Buffer, info ContextInfo) {
-	if info.Description == "" && len(info.Conventions) == 0 && len(info.Guardrails) == 0 {
-		return
-	}
-
-	fmt.Fprintln(buf, "# agentic")
-	w := ton.NewWriter(buf)
-	w.WriteHeader("kind", "value")
-	if info.Description != "" {
-		w.WriteRecord("description", info.Description)
-	}
-	for _, convention := range info.Conventions {
-		w.WriteRecord("convention", convention.Rule+"@"+convention.Scope)
-	}
-	for _, guardrail := range info.Guardrails {
-		w.WriteRecord("guardrail", guardrail.Path+"|"+guardrail.Action+"|"+guardrail.Reason)
-	}
-	fmt.Fprintln(buf)
 }
 
 func (r *ContextRenderer) writeIntents(buf *bytes.Buffer, is *state.IntentState) {
