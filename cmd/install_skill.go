@@ -11,6 +11,7 @@ import (
 
 	"github.com/TheShiveshNetwork/dizz/internal/defaults"
 	"github.com/TheShiveshNetwork/dizz/internal/skill"
+	"github.com/TheShiveshNetwork/dizz/internal/ui/render"
 )
 
 var installSkillCmd = &cobra.Command{
@@ -43,14 +44,14 @@ func init() {
 func runInstallSkill(cmd *cobra.Command, args []string) error {
 	provider, _ := cmd.Flags().GetString("provider")
 
-	fmt.Println("Fetching canonical SKILL.md...")
+	render.InstallSkillFetching()
 	content, err := fetchGlobalSkillContent()
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "  Warning: could not fetch SKILL.md: %v\n", err)
-		fmt.Println("  Using bundled template instead.")
+		render.InstallSkillFetchFallback()
 		content = []byte(defaults.GlobalSkillInstructions())
 	} else {
-		fmt.Println("  Downloaded from GitHub.")
+		render.InstallSkillDownloaded()
 	}
 
 	if provider != "" {
@@ -62,79 +63,32 @@ func runInstallSkill(cmd *cobra.Command, args []string) error {
 
 func installToSingleProvider(content []byte, provider string) error {
 	provider = strings.ToLower(provider)
-	fmt.Printf("Installing to provider: %s\n", provider)
+	render.InstallSkillToProvider(provider)
 
 	results, err := skill.InstallToProvider(content, provider)
 	if err != nil {
 		return err
 	}
 
-	successCount := 0
-	for _, r := range results {
-		if r.Err == nil && !r.Skipped {
-			successCount++
-		}
-	}
-
-	fmt.Print(skill.FormatInstallResults(results))
-
-	if successCount == 0 {
-		fmt.Println()
-		fmt.Println("Skill was not installed. See errors above.")
-		return nil
-	}
-
-	fmt.Println()
-	fmt.Printf("Installed dizz skill to %s.\n", provider)
-	fmt.Println("Agents can now discover dizz automatically.")
-	fmt.Println("Try: dizz context")
+	render.InstallSkillSingleResults(results, provider)
 	return nil
 }
 
 func installToAllProviders(content []byte) error {
-	fmt.Println("Detecting AI agent skill directories...")
+	render.InstallSkillDetecting()
 
 	dirs := skill.DetectAgentDirs()
 	if len(dirs) == 0 {
-		fmt.Println("  No supported AI agent directories found on this system.")
-		fmt.Println()
-		fmt.Println("Install an AI agent first, then run this command again.")
-		fmt.Println("Or use --provider to install to a specific agent:")
-		fmt.Println("  dizz install-skill --provider opencode")
-		fmt.Println("  dizz install-skill --provider cursor")
-		fmt.Println()
-		fmt.Println("Run 'dizz install-skill --help' to see all available providers.")
+		render.InstallSkillNoDirs()
 		return nil
 	}
 
-	for _, d := range dirs {
-		fmt.Printf("  Found: %s (%s)\n", d.Name, d.Path)
-	}
-	fmt.Println()
+	render.InstallSkillDetectedDirs(dirs)
 
-	fmt.Println("Installing to agent directories...")
+	render.InstallSkillInstalling()
 	results := skill.InstallToAll(content)
 
-	successCount := 0
-	for _, r := range results {
-		if r.Err == nil && !r.Skipped {
-			successCount++
-		}
-	}
-
-	fmt.Print(skill.FormatInstallResults(results))
-
-	if successCount == 0 {
-		fmt.Println()
-		fmt.Println("No skills were installed. See errors above.")
-		return nil
-	}
-
-	fmt.Println()
-	fmt.Printf("Installed dizz skill to %d agent director(ies).\n", successCount)
-	fmt.Println()
-	fmt.Println("Agents can now discover dizz automatically.")
-	fmt.Println("Try: dizz context")
+	render.InstallSkillResults(results)
 	return nil
 }
 

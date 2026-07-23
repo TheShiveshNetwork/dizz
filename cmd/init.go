@@ -9,8 +9,9 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/TheShiveshNetwork/dizz/config"
-	"github.com/TheShiveshNetwork/dizz/internal/defaults"
 	"github.com/TheShiveshNetwork/dizz/integrations"
+	"github.com/TheShiveshNetwork/dizz/internal/defaults"
+	"github.com/TheShiveshNetwork/dizz/internal/ui/render"
 )
 
 var initCmd = &cobra.Command{
@@ -31,18 +32,19 @@ func runInit() {
 	trackDir := config.TrackDirPath(cwd)
 	dizzConfigPath := config.ConfigFilePath(trackDir)
 
+	data := &render.InitData{
+		ProjectName: projectName,
+		TrackDir:    trackDir,
+	}
+
 	if _, err := os.Stat(dizzConfigPath); err == nil {
-		fmt.Println("dizz already initialized")
-		fmt.Printf("  Project: %s\n", projectName)
-		fmt.Printf("  Path: %s\n", trackDir)
+		render.InitAlreadyInitialized(data)
 		return
 	}
 
-	isGitRepo := integrations.IsRepo()
-	if !isGitRepo {
-		fmt.Println("Not a git repository")
-		fmt.Println("   Run 'git init' first, or continue without git integration")
-		fmt.Print("\nContinue anyway? [y/N]: ")
+	data.IsGitRepo = integrations.IsRepo()
+	if !data.IsGitRepo {
+		render.InitNotAGitRepo()
 		var response string
 		fmt.Scanln(&response)
 		if response != "y" && response != "Y" {
@@ -62,70 +64,57 @@ func runInit() {
 	}
 	for _, dir := range dirs {
 		if err := os.MkdirAll(dir, 0755); err != nil {
-			fmt.Fprintf(os.Stderr, "Error creating directory %s: %v\n", dir, err)
+			render.InitErrorCreatingDir(dir, err)
 			os.Exit(1)
 		}
 	}
 
 	dizzConfig := defaults.DefaultConfig(projectName)
-	data, _ := json.MarshalIndent(dizzConfig, "", "  ")
-	if err := os.WriteFile(dizzConfigPath, data, 0644); err != nil {
-		fmt.Fprintf(os.Stderr, "Error writing config file: %v\n", err)
+	cfgData, _ := json.MarshalIndent(dizzConfig, "", "  ")
+	if err := os.WriteFile(dizzConfigPath, cfgData, 0644); err != nil {
+		render.InitErrorWritingConfig(err)
 		os.Exit(1)
 	}
 
 	gitignorePath := filepath.Join(trackDir, ".gitignore")
 	gitignoreContent := defaults.GitignoreContent()
 	if err := os.WriteFile(gitignorePath, []byte(gitignoreContent), 0644); err != nil {
-		fmt.Fprintf(os.Stderr, "Error writing gitignore file: %v\n", err)
+		render.InitErrorWritingGitignore(err)
 		os.Exit(1)
 	}
 
 	createProjectSkill(cwd, projectName)
+	render.InitSummary(data)
 
-	fmt.Printf("Initialized %s\n", projectName)
-
-	if isGitRepo {
+	if data.IsGitRepo {
 		hooksDir := config.HooksDirPath(cwd)
 		hookPath := filepath.Join(hooksDir, "post-commit")
 		hookContent := defaults.LocalPostCommitHookContent(config.AppName)
 
 		if err := integrations.InstallLocalPostCommitHook(hookPath, hookContent); err != nil {
-			fmt.Printf("Could not install post-commit hook: %v\n", err)
-			fmt.Println("   You can still use dizz manually with 'dizz snapshot'")
+			render.InitGitHookError(err)
 		} else {
-			fmt.Println("Installed post-commit hook to .dizz/hooks/")
+			render.InitGitHookOK()
 		}
 
 		if err := integrations.SetLocalHooksPath(); err != nil {
-			fmt.Printf("Could not set hooks path: %v\n", err)
+			render.InitGitHooksPathError(err)
 		} else {
-			fmt.Println("Configured git to use hooks from .dizz/hooks/")
+			render.InitGitHooksPathOK()
 		}
 	}
-	fmt.Printf("  Created %s/\n", trackDir)
-	if isGitRepo {
-		fmt.Println("  Git integration: enabled")
-	} else {
-		fmt.Println("  Git integration: disabled")
-	}
-	fmt.Printf("  Project: %s\n", projectName)
-	fmt.Printf("  Agent skill: .agents/skills/dizz/\n")
-	fmt.Printf("\nNext: Run '%s log' to see your project state\n", config.AppName)
-	fmt.Printf("      Run '%s context' for agent-optimized project context\n", config.AppName)
 }
 
 func createProjectSkill(cwd, projectName string) {
 	skillDir := filepath.Join(cwd, ".agents", "skills", "dizz")
 	if err := os.MkdirAll(skillDir, 0755); err != nil {
-		fmt.Printf("Warning: could not create skill directory: %v\n", err)
+		render.InitSkillDirWarning(err)
 		return
 	}
-
 
 	skillContent := defaults.SkillInstructions(projectName)
 	skillPath := filepath.Join(skillDir, "SKILL.md")
 	if err := os.WriteFile(skillPath, []byte(skillContent), 0644); err != nil {
-		fmt.Printf("Warning: could not write SKILL.md: %v\n", err)
+		render.InitSkillWarning("could not write SKILL.md")
 	}
 }

@@ -11,11 +11,12 @@ import (
 	"strings"
 	"time"
 
-	commonPkg "github.com/TheShiveshNetwork/dizz/internal/common"
 	"github.com/TheShiveshNetwork/dizz/config"
 	"github.com/TheShiveshNetwork/dizz/integrations"
+	commonPkg "github.com/TheShiveshNetwork/dizz/internal/common"
 	"github.com/TheShiveshNetwork/dizz/internal/state"
 	"github.com/TheShiveshNetwork/dizz/internal/ui"
+	"github.com/TheShiveshNetwork/dizz/internal/ui/render"
 	"github.com/spf13/cobra"
 )
 
@@ -141,30 +142,25 @@ func runSnapshot() {
 
 	setLatestRef(trackDir, hashStr)
 
-	if integrations.IsRepo() {
-		if commit, err := integrations.GetCurrentCommit(); err == nil {
-			refsDir := config.RefsDirPath(trackDir)
-			gitRefDir := filepath.Join(refsDir, "git")
-			os.MkdirAll(gitRefDir, 0755)
-			refPath := filepath.Join(gitRefDir, commit)
-			os.WriteFile(refPath, []byte(hashStr), 0644)
-
-			if !autoSnapshot {
-				fmt.Printf(ui.Success("✓")+" Snapshot saved: %s\n", ui.Highlight(shortHash))
-				fmt.Printf("  %s %s\n", ui.Muted("Git commit:"), ui.Muted(commit[:7]))
-				fmt.Printf("  %s %s\n", ui.Muted("Object:"), ui.Muted(objectPath))
+	if !autoSnapshot {
+		commit := ""
+		hasGit := integrations.IsRepo()
+		if hasGit {
+			if c, err := integrations.GetCurrentCommit(); err == nil {
+				commit = c
+				refsDir := config.RefsDirPath(trackDir)
+				gitRefDir := filepath.Join(refsDir, "git")
+				os.MkdirAll(gitRefDir, 0755)
+				refPath := filepath.Join(gitRefDir, commit)
+				os.WriteFile(refPath, []byte(hashStr), 0644)
 			}
 		}
-	} else {
-		if !autoSnapshot {
-			fmt.Printf(ui.Success("✓")+" Snapshot saved: %s\n", ui.Highlight(shortHash))
-			fmt.Printf("  %s %s\n", ui.Muted("Object:"), ui.Muted(objectPath))
-		}
-	}
-
-	if !autoSnapshot {
-		fmt.Println()
-		fmt.Println(ui.Muted("💡 Snapshots are immutable. Use them to track progress over time."))
+		render.SnapshotSaved(&render.SnapshotSaveData{
+			ShortHash:  shortHash,
+			GitCommit:  commit,
+			ObjectPath: objectPath,
+			HasGit:     hasGit,
+		})
 	}
 }
 
@@ -218,7 +214,7 @@ func runSnapshotDiff() {
 
 			if delta.IsEmpty() {
 				if !autoSnapshot {
-					fmt.Println(ui.Muted("No changes since last snapshot. Skipping delta."))
+					render.SnapshotNoChanges()
 				}
 				return
 			}
@@ -274,13 +270,12 @@ func runSnapshotDiff() {
 	}
 
 	if !autoSnapshot {
-		if isCheckpoint {
-			fmt.Printf(ui.Success("✓")+" Checkpoint: %s\n", ui.Highlight(shortHash))
-		} else {
-			fmt.Printf(ui.Success("✓")+" Delta: %s\n", ui.Highlight(shortHash))
-			fmt.Printf("  %s %s\n", ui.Muted("Changes:"), ui.Muted(deltaSummary(delta)))
-		}
-		fmt.Printf("  %s %s\n", ui.Muted("Sequence:"), ui.Muted(fmt.Sprintf("%d", seq)))
+		render.SnapshotDiffResult(&render.SnapshotDiffData{
+			ShortHash:    shortHash,
+			IsCheckpoint: isCheckpoint,
+			Sequence:     seq,
+			Delta:        delta,
+		})
 	}
 }
 
@@ -293,7 +288,7 @@ func runSnapshotList() {
 
 	entries := listSnapshotEntries(trackDir)
 	if len(entries) == 0 {
-		fmt.Println(ui.Muted("No snapshots found."))
+		render.SnapshotListEmpty()
 		return
 	}
 
@@ -301,8 +296,7 @@ func runSnapshotList() {
 		return entries[i].modTime.Before(entries[j].modTime)
 	})
 
-	fmt.Println(ui.Header("Snapshots:"))
-	fmt.Println()
+	items := make([]render.SnapshotListItem, 0, len(entries))
 	for _, e := range entries {
 		kind := "snapshot"
 		if strings.HasSuffix(e.path, ".delta") {
@@ -313,13 +307,14 @@ func runSnapshotList() {
 		if len(shortHash) > 8 {
 			shortHash = shortHash[:8]
 		}
-		fmt.Printf("  %s  %-8s %-7s %s\n",
-			ui.Muted(e.modTime.Format("Jan 02 15:04")),
-			shortHash,
-			kind,
-			ui.Muted(size))
+		items = append(items, render.SnapshotListItem{
+			Hash:    shortHash,
+			ModTime: e.modTime.Format("Jan 02 15:04"),
+			Kind:    kind,
+			Size:    size,
+		})
 	}
-	fmt.Println()
+	render.SnapshotList(items)
 }
 
 func runSnapshotCheckout(hash string) {
@@ -348,17 +343,17 @@ func runSnapshotCheckout(hash string) {
 	}
 
 	summary := ps.GetSummary()
-	fmt.Printf("  %s %s\n", ui.Muted("Hash:"), ui.Highlight(fullHash[:8]))
-	fmt.Printf("  %s %d\n", ui.Muted("Symbols:"), summary.TotalSymbols)
-	fmt.Printf("  %s %d\n", ui.Muted("Todos:"), summary.ActiveTodos)
+	gitCommit := ""
 	if ps.GitCommit != nil {
-		short := ps.GitCommit.Hash
-		if len(short) > 7 {
-			short = short[:7]
-		}
-		fmt.Printf("  %s %s\n", ui.Muted("Git:"), ui.Muted(short))
+		gitCommit = ps.GitCommit.Hash
 	}
-	fmt.Println()
+
+	render.SnapshotCheckout(&render.SnapshotCheckoutData{
+		Hash:         fullHash[:8],
+		TotalSymbols: summary.TotalSymbols,
+		ActiveTodos:  summary.ActiveTodos,
+		GitCommit:    gitCommit,
+	})
 }
 
 func runSnapshotPrune() {
@@ -382,7 +377,7 @@ func runSnapshotPrune() {
 	})
 
 	if len(checkpoints) <= pruneKeep {
-		fmt.Println(ui.Muted(fmt.Sprintf("Only %d checkpoints, nothing to prune.", len(checkpoints))))
+		render.SnapshotPruneResult(0, len(checkpoints), pruneKeep)
 		return
 	}
 
@@ -414,7 +409,7 @@ func runSnapshotPrune() {
 		}
 	}
 
-	fmt.Printf(ui.Success("✓")+" Pruned %d old snapshots\n", removedCount)
+	render.SnapshotPruneResult(removedCount, len(checkpoints), pruneKeep)
 }
 
 type snapshotEntry struct {
@@ -524,7 +519,8 @@ func reconstructState(trackDir, hash string) ([]byte, error) {
 	}
 	objectsDir := config.ObjectsDirPath(trackDir)
 	basePath := filepath.Join(objectsDir, checkpointHash[:2], checkpointHash[2:]+".json")
-	baseData, err := os.ReadFile(basePath)
+	var err error
+	baseData, err = os.ReadFile(basePath)
 	if err != nil {
 		return nil, fmt.Errorf("base checkpoint %s not found: %w", checkpointHash, err)
 	}
@@ -587,24 +583,4 @@ func hasDeltaParent(path, parentHash string) bool {
 		return false
 	}
 	return d.PrevHash == parentHash || strings.HasPrefix(d.PrevHash, parentHash)
-}
-
-func deltaSummary(d *state.SnapshotDelta) string {
-	parts := []string{}
-	if len(d.SymbolsAdded) > 0 {
-		parts = append(parts, fmt.Sprintf("%d added", len(d.SymbolsAdded)))
-	}
-	if len(d.SymbolsRemoved) > 0 {
-		parts = append(parts, fmt.Sprintf("%d removed", len(d.SymbolsRemoved)))
-	}
-	if len(d.SymbolsChanged) > 0 {
-		parts = append(parts, fmt.Sprintf("%d changed", len(d.SymbolsChanged)))
-	}
-	if len(d.TodosAdded) > 0 {
-		parts = append(parts, fmt.Sprintf("%d todos added", len(d.TodosAdded)))
-	}
-	if len(d.TodosRemoved) > 0 {
-		parts = append(parts, fmt.Sprintf("%d todos removed", len(d.TodosRemoved)))
-	}
-	return strings.Join(parts, ", ")
 }

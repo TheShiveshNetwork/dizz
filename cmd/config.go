@@ -1,13 +1,13 @@
 package cmd
 
 import (
-	"encoding/json"
 	"fmt"
 	"strings"
 
 	"github.com/TheShiveshNetwork/dizz/config"
 	commonPkg "github.com/TheShiveshNetwork/dizz/internal/common"
 	"github.com/TheShiveshNetwork/dizz/internal/store"
+	"github.com/TheShiveshNetwork/dizz/internal/ui/render"
 	"github.com/spf13/cobra"
 )
 
@@ -122,16 +122,15 @@ func runConfigShow(cmd *cobra.Command, args []string) error {
 
 	if configShowDescriptionOnly && !hasOtherFilters() {
 		if configShowJSON {
-			data, _ := json.Marshal(map[string]string{"description": cfg.Description})
-			fmt.Println(string(data))
+			fmt.Printf(`{"description":"%s"}`, cfg.Description)
 		} else {
 			fmt.Println(cfg.Description)
 		}
 		return nil
 	}
 
-	activeFilters := getActiveFilters()
-	fmt.Println(orderedJSON(cfg, activeFilters, configShowJSON))
+	filters := getActiveFilters()
+	fmt.Print(render.ConfigShow(cfg, filters, configShowJSON))
 	return nil
 }
 
@@ -177,77 +176,6 @@ func getActiveFilters() []string {
 		filters = append(filters, "exclude")
 	}
 	return filters
-}
-
-func configFieldOrder() []string {
-	return []string{
-		"project_name", "description", "instructions", "guardrails", "commands",
-		"severity_scale", "agent_defaults", "links", "version", "include", "exclude",
-	}
-}
-
-func orderedJSON(cfg *config.Config, activeFilters []string, compact bool) string {
-	entries := map[string]interface{}{
-		"project_name":   cfg.ProjectName,
-		"description":    cfg.Description,
-		"instructions":   cfg.Instructions,
-		"guardrails":     cfg.Guardrails,
-		"commands":       cfg.Commands,
-		"severity_scale": cfg.SeverityScale,
-		"agent_defaults": cfg.AgentDefaults,
-		"links":          cfg.Links,
-		"version":        cfg.Version,
-		"include":        cfg.Include,
-		"exclude":        cfg.Exclude,
-	}
-
-	if len(activeFilters) > 0 {
-		result := map[string]interface{}{}
-		for _, f := range activeFilters {
-			result[f] = entries[f]
-		}
-		if compact {
-			data, _ := json.Marshal(result)
-			return string(data)
-		}
-		return prettyOrderedJSON(result, activeFilters)
-	}
-
-	if compact {
-		result := map[string]interface{}{}
-		for _, key := range configFieldOrder() {
-			result[key] = entries[key]
-		}
-		data, _ := json.Marshal(result)
-		return string(data)
-	}
-
-	return prettyOrderedJSON(entries, configFieldOrder())
-}
-
-func prettyOrderedJSON(entries map[string]interface{}, keys []string) string {
-	var b strings.Builder
-	b.WriteString("{\n")
-	first := true
-	for _, key := range keys {
-		val, ok := entries[key]
-		if !ok {
-			continue
-		}
-		if !first {
-			b.WriteString(",\n")
-		}
-		first = false
-		keyJSON, _ := json.Marshal(key)
-		valJSON, _ := json.MarshalIndent(val, "", "  ")
-		valIndented := strings.ReplaceAll(string(valJSON), "\n", "\n  ")
-		b.WriteString("  ")
-		b.Write(keyJSON)
-		b.WriteString(": ")
-		b.WriteString(valIndented)
-	}
-	b.WriteString("\n}")
-	return b.String()
 }
 
 func runConfigAddInstruction(cmd *cobra.Command, args []string) error {

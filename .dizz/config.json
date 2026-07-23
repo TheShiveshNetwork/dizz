@@ -34,12 +34,15 @@
     "**/Thumbs.db",
     "**/*_test.go"
   ],
+  "instructions": [],
+  "guardrails": [],
   "agent_defaults": {
-    "default_lens": "",
+    "default_lens": "asdfasdf",
     "min_severity": 0
   },
   "links": {
     "contributing": "",
     "docs": ""
-  }
+  },
+  "commands": {}
 }
