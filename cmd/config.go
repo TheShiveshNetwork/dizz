@@ -14,7 +14,9 @@ import (
 var (
 	configAddInstructionRule  string
 	configAddInstructionScope string
-	configAddGuardrailPath    string
+	configAddGuardrailID      string
+	configAddGuardrailPaths   []string
+	configAddGuardrailRequire bool
 	configAddGuardrailAction  string
 	configAddGuardrailReason  string
 
@@ -44,15 +46,35 @@ var configShowCmd = &cobra.Command{
 }
 
 var configAddInstructionCmd = &cobra.Command{
-	Use:   "add-instruction --rule \"<rule>\" --scope \"<scope>\"",
+	Use:   "add-instruction --rule \"<rule>\" [--scope \"<scope>\"]",
 	Short: "Add an instruction to the config",
-	RunE:  runConfigAddInstruction,
+	Long: `Add a coding instruction to the project config.
+
+Instructions can be bare strings (applies globally) or scoped to a glob:
+  dizz config add-instruction --rule "Run tests before merge"
+  dizz config add-instruction --rule "No class components" --scope "*.tsx"`,
+	RunE: runConfigAddInstruction,
 }
 
 var configAddGuardrailCmd = &cobra.Command{
-	Use:   "add-guardrail --path \"<path>\" --action \"<action>\" --reason \"<reason>\"",
+	Use:   "add-guardrail",
 	Short: "Add a guardrail to the config",
-	RunE:  runConfigAddGuardrail,
+	Long: `Add an enforceable guardrail rule to the project config.
+
+Required flags:
+  --action    read_only | require_review | warn | skip | forbid
+  --reason    Human-readable reason
+
+Optional flags:
+  --id        Stable identifier (e.g. "gr-generated-code")
+  --paths     Glob patterns (repeatable; omit for global guardrails)
+  --require-all  Fire only when ALL paths are touched together (default: any)
+
+Examples:
+  dizz config add-guardrail --action forbid --reason "no force-push"
+  dizz config add-guardrail --id gr-gen --paths "generated/**" --action read_only --reason "auto-generated"
+  dizz config add-guardrail --id gr-api --paths "**/*.proto" --paths "gen/client/**" --require-all --action require_review --reason "schema and client must move together"`,
+	RunE: runConfigAddGuardrail,
 }
 
 var configSetDescriptionCmd = &cobra.Command{
@@ -84,8 +106,11 @@ func init() {
 
 	configAddInstructionCmd.Flags().StringVar(&configAddInstructionRule, "rule", "", "Rule to add")
 	configAddInstructionCmd.Flags().StringVar(&configAddInstructionScope, "scope", "", "Scope for the rule (e.g., internal/**)")
-	configAddGuardrailCmd.Flags().StringVar(&configAddGuardrailPath, "path", "", "Path to apply guardrail (e.g., internal/generated/**)")
-	configAddGuardrailCmd.Flags().StringVar(&configAddGuardrailAction, "action", "", "Action to take (read_only, warn, etc.)")
+
+	configAddGuardrailCmd.Flags().StringVar(&configAddGuardrailID, "id", "", "Stable identifier (e.g. gr-generated-code)")
+	configAddGuardrailCmd.Flags().StringArrayVar(&configAddGuardrailPaths, "paths", nil, "Glob pattern (repeatable; omit for global)")
+	configAddGuardrailCmd.Flags().BoolVar(&configAddGuardrailRequire, "require-all", false, "Fire only when ALL paths are touched together")
+	configAddGuardrailCmd.Flags().StringVar(&configAddGuardrailAction, "action", "", "Action: read_only | require_review | warn | skip | forbid")
 	configAddGuardrailCmd.Flags().StringVar(&configAddGuardrailReason, "reason", "", "Reason for the guardrail")
 }
 
@@ -226,8 +251,8 @@ func prettyOrderedJSON(entries map[string]interface{}, keys []string) string {
 }
 
 func runConfigAddInstruction(cmd *cobra.Command, args []string) error {
-	if configAddInstructionRule == "" || configAddInstructionScope == "" {
-		return fmt.Errorf("both --rule and --scope must be provided")
+	if configAddInstructionRule == "" {
+		return fmt.Errorf("--rule must be provided")
 	}
 
 	configStore, cfg, err := loadProjectConfig()
@@ -246,8 +271,16 @@ func runConfigAddInstruction(cmd *cobra.Command, args []string) error {
 }
 
 func runConfigAddGuardrail(cmd *cobra.Command, args []string) error {
-	if configAddGuardrailPath == "" || configAddGuardrailAction == "" || configAddGuardrailReason == "" {
-		return fmt.Errorf("--path, --action, and --reason must be provided")
+	if configAddGuardrailAction == "" {
+		return fmt.Errorf("--action is required (read_only | require_review | warn | skip | forbid)")
+	}
+	if configAddGuardrailReason == "" {
+		return fmt.Errorf("--reason is required")
+	}
+
+	action := config.Action(configAddGuardrailAction)
+	if !action.Valid() {
+		return fmt.Errorf("--action must be one of: read_only, require_review, warn, skip, forbid")
 	}
 
 	configStore, cfg, err := loadProjectConfig()
@@ -256,9 +289,11 @@ func runConfigAddGuardrail(cmd *cobra.Command, args []string) error {
 	}
 
 	guardrail := config.Guardrail{
-		Path:   configAddGuardrailPath,
-		Action: configAddGuardrailAction,
-		Reason: configAddGuardrailReason,
+		ID:         configAddGuardrailID,
+		Paths:      configAddGuardrailPaths,
+		RequireAll: configAddGuardrailRequire,
+		Action:     action,
+		Reason:     configAddGuardrailReason,
 	}
 	cfg.Guardrails = appendUniqueGuardrail(cfg.Guardrails, guardrail)
 	fmt.Println("✓ Added guardrail")
@@ -307,7 +342,10 @@ func appendUniqueInstruction(instructions []config.Instruction, c config.Instruc
 
 func appendUniqueGuardrail(guardrails []config.Guardrail, g config.Guardrail) []config.Guardrail {
 	for _, existing := range guardrails {
-		if existing.Path == g.Path && existing.Action == g.Action && existing.Reason == g.Reason {
+		if existing.ID == g.ID && existing.ID != "" {
+			return guardrails
+		}
+		if existing.Action == g.Action && existing.Reason == g.Reason && strings.Join(existing.Paths, ",") == strings.Join(g.Paths, ",") {
 			return guardrails
 		}
 	}

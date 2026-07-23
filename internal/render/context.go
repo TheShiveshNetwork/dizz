@@ -72,7 +72,11 @@ func (r *ContextRenderer) writeProjectConfig(buf *bytes.Buffer, info ContextInfo
 	}
 	if len(info.Guardrails) > 0 {
 		for _, g := range info.Guardrails {
-			w.WriteRecord("guardrail", g.Path+"|"+g.Action+"|"+g.Reason, "Agent guardrail from config (path|action|reason)")
+			if g.Reason != "" {
+				w.WriteRecord("guardrail", string(g.Action), g.Reason)
+			} else {
+				w.WriteRecord("guardrail", string(g.Action))
+			}
 		}
 	}
 	if len(info.Commands) > 0 {

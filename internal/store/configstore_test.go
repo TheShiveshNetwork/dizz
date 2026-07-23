@@ -25,7 +25,7 @@ func TestConfigStore_SaveLoad(t *testing.T) {
 			{Rule: "Errors are wrapped with context, never silently swallowed", Scope: "internal/**"},
 		},
 		Guardrails: []config.Guardrail{
-			{Path: "internal/generated/**", Action: "read_only", Reason: "auto-generated"},
+			{ID: "gr-generated", Paths: []string{"internal/generated/**"}, Action: "read_only", Reason: "auto-generated"},
 		},
 		SeverityScale: map[string]string{
 			"0": "exploratory",
@@ -90,7 +90,7 @@ func TestConfigStore_SaveLoad(t *testing.T) {
 		t.Fatalf("guardrails length mismatch: got %d want %d", len(loaded.Guardrails), len(cfg.Guardrails))
 	}
 	for i, v := range cfg.Guardrails {
-		if loaded.Guardrails[i].Path != v.Path || loaded.Guardrails[i].Action != v.Action || loaded.Guardrails[i].Reason != v.Reason {
+		if loaded.Guardrails[i].ID != v.ID || loaded.Guardrails[i].Action != v.Action || loaded.Guardrails[i].Reason != v.Reason {
 			t.Fatalf("guardrail mismatch at index %d: got %#v want %#v", i, loaded.Guardrails[i], v)
 		}
 	}

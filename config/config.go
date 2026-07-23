@@ -1,6 +1,9 @@
 package config
 
-import "path/filepath"
+import (
+	"encoding/json"
+	"path/filepath"
+)
 
 const (
 	AppName       = "dizz"
@@ -38,17 +41,63 @@ type Config struct {
 	Links         Links             `json:"links,omitempty"`
 }
 
-// Instruction represents a coding instruction.
+// Instruction is a coding rule the agent should follow.
+// In config JSON, an entry is either a plain string (applies globally)
+// or an object with a glob scope, e.g. "*.ts" or "internal/**/*.go".
 type Instruction struct {
 	Rule  string `json:"rule"`
-	Scope string `json:"scope"`
+	Scope string `json:"scope,omitempty"` // omitted = global
 }
 
-// Guardrail represents a guardrail rule.
+func (i *Instruction) UnmarshalJSON(data []byte) error {
+	var s string
+	if err := json.Unmarshal(data, &s); err == nil {
+		i.Rule, i.Scope = s, ""
+		return nil
+	}
+	type alias Instruction
+	var a alias
+	if err := json.Unmarshal(data, &a); err != nil {
+		return err
+	}
+	*i = Instruction(a)
+	return nil
+}
+
+func (i Instruction) MarshalJSON() ([]byte, error) {
+	if i.Scope == "" {
+		return json.Marshal(i.Rule)
+	}
+	type alias Instruction
+	return json.Marshal(alias(i))
+}
+
+// Action is what the agent must do when a guardrail matches.
+type Action string
+
+const (
+	ActionReadOnly      Action = "read_only"      // never modify
+	ActionRequireReview Action = "require_review" // needs explicit user approval
+	ActionWarn          Action = "warn"           // proceed, but flag it
+	ActionSkip          Action = "skip"           // ignore this path in analysis entirely
+	ActionForbid        Action = "forbid"         // hard block, e.g. deletions
+)
+
+var validActions = map[Action]bool{
+	ActionReadOnly: true, ActionRequireReview: true, ActionWarn: true,
+	ActionSkip: true, ActionForbid: true,
+}
+
+// Valid returns true if the action is a recognized guardrail action.
+func (a Action) Valid() bool { return validActions[a] }
+
+// Guardrail is a rule the agent must respect before touching files.
 type Guardrail struct {
-	Path   string `json:"path"`
-	Action string `json:"action"`
-	Reason string `json:"reason"`
+	ID         string   `json:"id,omitempty"`
+	Paths      []string `json:"paths,omitempty"`       // glob(s); omitted or empty = applies globally
+	RequireAll bool     `json:"require_all,omitempty"` // true = fires only when ALL paths are touched together
+	Action     Action   `json:"action"`
+	Reason     string   `json:"reason"`
 }
 
 // AgentDefaults represents default settings for agents.

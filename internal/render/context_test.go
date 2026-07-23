@@ -317,7 +317,7 @@ func TestContextRenderer_ProjectConfig(t *testing.T) {
 			{Rule: "Do not commit secrets", Scope: "internal/**"},
 		},
 		Guardrails: []config.Guardrail{
-			{Path: "internal/security/**", Action: "warn", Reason: "security-critical"},
+			{ID: "gr-security", Paths: []string{"internal/security/**"}, Action: "warn", Reason: "security-critical"},
 		},
 		Commands: map[string]string{
 			"build": "go build",
@@ -338,7 +338,7 @@ func TestContextRenderer_ProjectConfig(t *testing.T) {
 	for _, expected := range []string{
 		"description|Core project rules|",
 		"instruction|Do not commit secrets@internal/**|",
-		"guardrail|internal/security/**",
+		"guardrail|warn|",
 		"command|build=go build|",
 		"command|test=go test ./...|",
 		"agent_lens|priority|",

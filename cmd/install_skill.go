@@ -5,6 +5,7 @@ import (
 	"io"
 	"net/http"
 	"os"
+	"strings"
 
 	"github.com/spf13/cobra"
 
@@ -15,41 +16,32 @@ import (
 var installSkillCmd = &cobra.Command{
 	Use:   "install-skill",
 	Short: "Install dizz skill for AI agents on this system",
-	Long: `Detects installed AI agents (Claude Code, Cursor, Gemini CLI,
-OpenCode, Codex CLI / Copilot) and installs the dizz SKILL.md
+	Long: `Detects installed AI agents and installs the dizz SKILL.md
 into each agent's skill directory.
 
-Agents use the skill to discover and invoke dizz for project
-state, context, and intent tracking.`,
+Available providers:
+  agents          ~/.agents/skills/ (tool-agnostic standard)
+  claude-code     ~/.claude/skills/
+  claude-desktop  ~/.claude/skills/
+  copilot         ~/.copilot/skills/ (VS Code)
+  cursor          ~/.cursor/skills/
+  gemini-cli      ~/.gemini/skills/
+  gemini-config   ~/.gemini/config/skills/
+  antigravity     ~/.gemini/config/skills/ (Google Antigravity)
+  opencode        ~/.config/opencode/skills/
+
+Use --provider to install to a specific agent only.
+Without --provider, installs to all detected agents.`,
 	RunE: runInstallSkill,
 }
 
 func init() {
 	rootCmd.AddCommand(installSkillCmd)
+	installSkillCmd.Flags().StringP("provider", "p", "", "install to a specific provider only (e.g. opencode, cursor)")
 }
 
 func runInstallSkill(cmd *cobra.Command, args []string) error {
-	fmt.Println("Detecting AI agent skill directories...")
-
-	dirs := skill.DetectAgentDirs()
-	if len(dirs) == 0 {
-		fmt.Println("  No supported AI agent directories found on this system.")
-		fmt.Println()
-		fmt.Println("Install an AI agent first, then run this command again.")
-		fmt.Println("  - Claude Code: https://docs.anthropic.com/en/docs/claude-code/overview")
-		fmt.Println("  - Cursor: https://cursor.com")
-		fmt.Println("  - Gemini CLI: https://google-gemini.github.io/gemini-cli/")
-		fmt.Println()
-		fmt.Println("You can also manually install the skill:")
-		fmt.Println("  mkdir -p ~/.agents/skills/dizz-global")
-		fmt.Println("  See agent-skills/dizz-global/SKILL.md for content")
-		return nil
-	}
-
-	for _, d := range dirs {
-		fmt.Printf("  Found: %s (%s)\n", d.Name, d.Path)
-	}
-	fmt.Println()
+	provider, _ := cmd.Flags().GetString("provider")
 
 	fmt.Println("Fetching canonical SKILL.md...")
 	content, err := fetchGlobalSkillContent()
@@ -60,6 +52,65 @@ func runInstallSkill(cmd *cobra.Command, args []string) error {
 	} else {
 		fmt.Println("  Downloaded from GitHub.")
 	}
+
+	if provider != "" {
+		return installToSingleProvider(content, provider)
+	}
+
+	return installToAllProviders(content)
+}
+
+func installToSingleProvider(content []byte, provider string) error {
+	provider = strings.ToLower(provider)
+	fmt.Printf("Installing to provider: %s\n", provider)
+
+	results, err := skill.InstallToProvider(content, provider)
+	if err != nil {
+		return err
+	}
+
+	successCount := 0
+	for _, r := range results {
+		if r.Err == nil && !r.Skipped {
+			successCount++
+		}
+	}
+
+	fmt.Print(skill.FormatInstallResults(results))
+
+	if successCount == 0 {
+		fmt.Println()
+		fmt.Println("Skill was not installed. See errors above.")
+		return nil
+	}
+
+	fmt.Println()
+	fmt.Printf("Installed dizz skill to %s.\n", provider)
+	fmt.Println("Agents can now discover dizz automatically.")
+	fmt.Println("Try: dizz context")
+	return nil
+}
+
+func installToAllProviders(content []byte) error {
+	fmt.Println("Detecting AI agent skill directories...")
+
+	dirs := skill.DetectAgentDirs()
+	if len(dirs) == 0 {
+		fmt.Println("  No supported AI agent directories found on this system.")
+		fmt.Println()
+		fmt.Println("Install an AI agent first, then run this command again.")
+		fmt.Println("Or use --provider to install to a specific agent:")
+		fmt.Println("  dizz install-skill --provider opencode")
+		fmt.Println("  dizz install-skill --provider cursor")
+		fmt.Println()
+		fmt.Println("Run 'dizz install-skill --help' to see all available providers.")
+		return nil
+	}
+
+	for _, d := range dirs {
+		fmt.Printf("  Found: %s (%s)\n", d.Name, d.Path)
+	}
+	fmt.Println()
 
 	fmt.Println("Installing to agent directories...")
 	results := skill.InstallToAll(content)
@@ -84,8 +135,6 @@ func runInstallSkill(cmd *cobra.Command, args []string) error {
 	fmt.Println()
 	fmt.Println("Agents can now discover dizz automatically.")
 	fmt.Println("Try: dizz context")
-	fmt.Println()
-
 	return nil
 }
 

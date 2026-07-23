@@ -42,7 +42,8 @@ func TestRunConfigAddGuardrail(t *testing.T) {
 	restore := chdir(t, projectRoot)
 	defer restore()
 
-	configAddGuardrailPath = "internal/generated/**"
+	configAddGuardrailID = "gr-generated-code"
+	configAddGuardrailPaths = []string{"internal/generated/**"}
 	configAddGuardrailAction = "read_only"
 	configAddGuardrailReason = "auto-generated"
 	defer resetConfigAddGuardrailFlags()
@@ -52,7 +53,7 @@ func TestRunConfigAddGuardrail(t *testing.T) {
 	}
 
 	cfg := mustLoadConfig(t, projectRoot)
-	if len(cfg.Guardrails) != 1 || cfg.Guardrails[0].Path != "internal/generated/**" || cfg.Guardrails[0].Action != "read_only" || cfg.Guardrails[0].Reason != "auto-generated" {
+	if len(cfg.Guardrails) != 1 || cfg.Guardrails[0].ID != "gr-generated-code" || string(cfg.Guardrails[0].Action) != "read_only" || cfg.Guardrails[0].Reason != "auto-generated" {
 		t.Fatalf("guardrail not persisted: %#v", cfg.Guardrails)
 	}
 
@@ -132,7 +133,9 @@ func resetConfigAddInstructionFlags() {
 }
 
 func resetConfigAddGuardrailFlags() {
-	configAddGuardrailPath = ""
+	configAddGuardrailID = ""
+	configAddGuardrailPaths = nil
+	configAddGuardrailRequire = false
 	configAddGuardrailAction = ""
 	configAddGuardrailReason = ""
 }
@@ -327,7 +330,7 @@ func setupDizzProjectWithInstructions(t *testing.T) string {
 			{Rule: "Run tests before merge", Scope: "internal/**"},
 		},
 		Guardrails: []config.Guardrail{
-			{Path: "generated/**", Action: "read_only", Reason: "auto-generated"},
+			{ID: "gr-generated", Paths: []string{"generated/**"}, Action: "read_only", Reason: "auto-generated"},
 		},
 	}
 	configStore := store.NewConfigStore(trackDir)
@@ -359,7 +362,7 @@ func setupDizzProjectWithFullConfig(t *testing.T) string {
 			{Rule: "Run tests before merge", Scope: "internal/**"},
 		},
 		Guardrails: []config.Guardrail{
-			{Path: "generated/**", Action: "read_only", Reason: "auto-generated"},
+			{ID: "gr-generated", Paths: []string{"generated/**"}, Action: "read_only", Reason: "auto-generated"},
 		},
 		SeverityScale: map[string]string{
 			"0": "exploratory",
