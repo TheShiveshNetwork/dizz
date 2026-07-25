@@ -4,8 +4,8 @@ import (
 	"fmt"
 	"time"
 
-	commonPkg "github.com/TheShiveshNetwork/dizz/internal/common"
 	"github.com/TheShiveshNetwork/dizz/config"
+	commonPkg "github.com/TheShiveshNetwork/dizz/internal/common"
 	"github.com/TheShiveshNetwork/dizz/internal/state"
 	"github.com/TheShiveshNetwork/dizz/internal/store"
 	"github.com/TheShiveshNetwork/dizz/internal/ui/render"
@@ -16,6 +16,7 @@ var (
 	intentType     string
 	intentSeverity int
 	intentTags     []string
+	intentNote     string
 )
 
 var intentCmd = &cobra.Command{
@@ -45,17 +46,27 @@ var intentResolveCmd = &cobra.Command{
 	RunE:  runIntentResolve,
 }
 
+var intentCloseCmd = &cobra.Command{
+	Use:   "close <id>",
+	Short: "Close an intent (wontfix, duplicate, no longer relevant)",
+	Args:  cobra.ExactArgs(1),
+	RunE:  runIntentClose,
+}
+
 // @ignore-unused
 func init() {
 	rootCmd.AddCommand(intentCmd)
 	intentCmd.AddCommand(intentAddCmd)
 	intentCmd.AddCommand(intentListCmd)
 	intentCmd.AddCommand(intentResolveCmd)
+	intentCmd.AddCommand(intentCloseCmd)
 
 	// Add flags
 	intentAddCmd.Flags().StringVar(&intentType, "type", "todo", "Intent type (todo, fixme, refactor, question, hack, temporary)")
 	intentAddCmd.Flags().IntVar(&intentSeverity, "severity", 1, "Severity level (0-3)")
 	intentAddCmd.Flags().StringSliceVar(&intentTags, "tags", []string{}, "Tags for the intent")
+	intentResolveCmd.Flags().StringVar(&intentNote, "note", "", "Optional note for the resolution")
+	intentCloseCmd.Flags().StringVar(&intentNote, "note", "", "Optional note for closing")
 }
 
 // @ignore-unused
@@ -138,9 +149,14 @@ func runIntentResolve(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("failed to load intent state: %w", err)
 	}
 
+	description := "Resolved via CLI"
+	if intentNote != "" {
+		description = intentNote
+	}
+
 	resolution := state.Resolution{
 		Method:      "fixed",
-		Description: "Resolved via CLI",
+		Description: description,
 		ResolvedAt:  time.Now(),
 		ResolvedBy:  getCurrentUser(),
 	}
@@ -154,6 +170,39 @@ func runIntentResolve(cmd *cobra.Command, args []string) error {
 	}
 
 	fmt.Printf("✓ Resolved intent %s\n", intentID)
+	return nil
+}
+
+// @ignore-unused
+func runIntentClose(cmd *cobra.Command, args []string) error {
+	intentID := args[0]
+
+	intentState, err := loadIntentState()
+	if err != nil {
+		return fmt.Errorf("failed to load intent state: %w", err)
+	}
+
+	description := "Closed via CLI"
+	if intentNote != "" {
+		description = intentNote
+	}
+
+	resolution := state.Resolution{
+		Method:      "closed",
+		Description: description,
+		ResolvedAt:  time.Now(),
+		ResolvedBy:  getCurrentUser(),
+	}
+
+	if err := intentState.CloseIntent(intentID, resolution); err != nil {
+		return fmt.Errorf("failed to close intent: %w", err)
+	}
+
+	if err := saveIntentState(intentState); err != nil {
+		return fmt.Errorf("failed to save intent state: %w", err)
+	}
+
+	fmt.Printf("✓ Closed intent %s\n", intentID)
 	return nil
 }
 

@@ -47,6 +47,8 @@ type Model struct {
 	addType       int
 	addSev        int
 	validationErr string
+	addNote       string
+	noteCursor    int
 }
 
 func NewModel() *Model {
@@ -277,6 +279,8 @@ func (m *Model) handleKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 				m.showModal = true
 				m.modalType = "resolve"
 				m.focusIdx = 0
+				m.addNote = ""
+				m.noteCursor = 0
 			}
 			return m, nil
 		}
@@ -576,8 +580,12 @@ func (m *Model) renderResolveModal(c *render.Canvas) {
 			bodyW = 70
 		}
 	}
-	bodyH := 8
+	bodyH := 11
 	cx, cy := ui.RenderModalBox(c, "Resolve Intent", bodyW, bodyH)
+
+	help := "Tab/↑↓=switch  Enter=confirm  Esc=cancel"
+	c.SetContent(cx, cy, ui.StyleHelp, help)
+	cy += 2
 
 	prompt := fmt.Sprintf("Resolve %s?", id)
 	c.SetContent(cx+(bodyW-len(prompt))/2, cy, render.StyleWarning, prompt)
@@ -586,7 +594,7 @@ func (m *Model) renderResolveModal(c *render.Canvas) {
 	maxMsgW := bodyW - 4
 	lines := wrapText(msg, maxMsgW)
 	for _, line := range lines {
-		if cy >= c.Height()-2 {
+		if cy >= c.Height()-4 {
 			break
 		}
 		c.SetContent(cx+(bodyW-runewidth.StringWidth(line))/2, cy, render.StyleInfo, line)
@@ -594,13 +602,43 @@ func (m *Model) renderResolveModal(c *render.Canvas) {
 	}
 	cy++
 
+	noteFocused := m.focusIdx == 0
+	noteStyle := ui.StyleBtn
+	if noteFocused {
+		noteStyle = ui.StyleBtnFocus
+	}
+	c.SetContent(cx, cy, render.StyleDefault, "Note:     ")
+	display := m.addNote
+	if display == "" {
+		display = "(optional)"
+	}
+	maxNoteW := bodyW - 14
+	if maxNoteW < 10 {
+		maxNoteW = 10
+	}
+	if len(display) > maxNoteW {
+		display = display[:maxNoteW]
+	}
+	c.SetContent(cx+10, cy, noteStyle, display)
+	if noteFocused {
+		cxPos := cx + 10 + m.noteCursor
+		if display == "(optional)" {
+			noteStyle = render.StyleDim
+		}
+		if cxPos < c.Width()-1 {
+			c.SetCell(cxPos, cy, render.StyleHighlight, '_')
+		}
+	}
+	cy += 2
+
 	if cy < c.Height()-2 {
 		btnW := 10
 		spacing := 2
-		totalBtnW := btnW*2 + spacing
+		totalBtnW := btnW*3 + spacing*2
 		btnStartX := cx + bodyW - totalBtnW - 2
-		ui.RenderButton(c, btnStartX, cy, btnW, "Cancel", m.focusIdx == 0, false)
-		ui.RenderButton(c, btnStartX+btnW+spacing, cy, btnW, "OK", m.focusIdx == 1, false)
+		ui.RenderButton(c, btnStartX, cy, btnW, "Cancel", m.focusIdx == 1, false)
+		ui.RenderButton(c, btnStartX+btnW+spacing, cy, btnW, "Resolve", m.focusIdx == 2, false)
+		ui.RenderButton(c, btnStartX+btnW*2+spacing*2, cy, btnW, "Close", m.focusIdx == 3, true)
 	}
 }
 
@@ -689,13 +727,15 @@ func (m *Model) handleModalKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	intentTypes := []string{"todo", "fixme", "refactor", "question", "hack", "temporary"}
 	totalFields := 5
 	if m.modalType == "resolve" {
-		totalFields = 2
+		totalFields = 4
 	}
 
 	switch msg.String() {
 	case "esc":
 		m.showModal = false
 		m.validationErr = ""
+		m.addNote = ""
+		m.noteCursor = 0
 		return m, nil
 
 	case "tab", "down":
@@ -748,17 +788,27 @@ func (m *Model) handleModalKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 			m.addMsg = m.addMsg[:m.addMsgCursor-1] + m.addMsg[m.addMsgCursor:]
 			m.addMsgCursor--
 		}
+		if m.modalType == "resolve" && m.focusIdx == 0 && m.noteCursor > 0 {
+			m.addNote = m.addNote[:m.noteCursor-1] + m.addNote[m.noteCursor:]
+			m.noteCursor--
+		}
 		return m, nil
 
 	case "home":
 		if m.modalType == "add" && m.focusIdx == 1 {
 			m.addMsgCursor = 0
 		}
+		if m.modalType == "resolve" && m.focusIdx == 0 {
+			m.noteCursor = 0
+		}
 		return m, nil
 
 	case "end":
 		if m.modalType == "add" && m.focusIdx == 1 {
 			m.addMsgCursor = len(m.addMsg)
+		}
+		if m.modalType == "resolve" && m.focusIdx == 0 {
+			m.noteCursor = len(m.addNote)
 		}
 		return m, nil
 
@@ -770,24 +820,47 @@ func (m *Model) handleModalKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 			m.addMsg = before + string(ch) + after
 			m.addMsgCursor++
 		}
+		if m.modalType == "resolve" && m.focusIdx == 0 && len(msg.String()) == 1 {
+			ch := msg.String()[0]
+			before := m.addNote[:m.noteCursor]
+			after := m.addNote[m.noteCursor:]
+			m.addNote = before + string(ch) + after
+			m.noteCursor++
+		}
 		return m, nil
 	}
 }
 
 func (m *Model) handleModalEnter() (tea.Model, tea.Cmd) {
 	if m.modalType == "resolve" {
-		if m.focusIdx == 1 {
+		if m.focusIdx == 2 {
 			active := m.activeIntents()
 			if m.resolveIdx < len(active) {
 				id := active[m.resolveIdx].ID
-				go dizzclient.IntentResolve(id)
+				go dizzclient.IntentResolve(id, m.addNote)
 			}
 			m.showModal = false
 			m.validationErr = ""
+			m.addNote = ""
+			m.noteCursor = 0
+			return m, m.refreshIntents()
+		}
+		if m.focusIdx == 3 {
+			active := m.activeIntents()
+			if m.resolveIdx < len(active) {
+				id := active[m.resolveIdx].ID
+				go dizzclient.IntentClose(id, m.addNote)
+			}
+			m.showModal = false
+			m.validationErr = ""
+			m.addNote = ""
+			m.noteCursor = 0
 			return m, m.refreshIntents()
 		}
 		m.showModal = false
 		m.validationErr = ""
+		m.addNote = ""
+		m.noteCursor = 0
 		return m, nil
 	}
 

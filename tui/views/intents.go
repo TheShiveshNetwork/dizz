@@ -43,6 +43,9 @@ type IntentsModel struct {
 	msgCursor  int
 	inputSev   int
 
+	inputNote  string
+	noteCursor int
+
 	resolveIdx int
 	sortMode   int // 0=severity, 1=type priority
 }
@@ -61,6 +64,7 @@ func NewIntentsModel() *IntentsModel {
 		stateFilter: ui.NewStateFilter(map[string]string{
 			"a": "active",
 			"s": "resolved",
+			"c": "closed",
 		}),
 		sevFilter: ui.NewStateFilter(map[string]string{
 			"0": "0",
@@ -173,6 +177,8 @@ func (m *IntentsModel) handleKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 			m.showModal = true
 			m.modalType = "resolve"
 			m.focusIdx = 0
+			m.inputNote = ""
+			m.noteCursor = 0
 		}
 	case "i":
 		m.showModal = true
@@ -200,7 +206,7 @@ func (m *IntentsModel) handleKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 func (m *IntentsModel) handleModalKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	totalFields := 5
 	if m.modalType == "resolve" {
-		totalFields = 2
+		totalFields = 4
 	}
 
 	switch msg.String() {
@@ -259,17 +265,27 @@ func (m *IntentsModel) handleModalKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 			m.inputMsg = m.inputMsg[:m.msgCursor-1] + m.inputMsg[m.msgCursor:]
 			m.msgCursor--
 		}
+		if m.modalType == "resolve" && m.focusIdx == 0 && m.noteCursor > 0 {
+			m.inputNote = m.inputNote[:m.noteCursor-1] + m.inputNote[m.noteCursor:]
+			m.noteCursor--
+		}
 		return m, nil
 
 	case "home":
 		if m.modalType == "add" && m.focusIdx == 1 {
 			m.msgCursor = 0
 		}
+		if m.modalType == "resolve" && m.focusIdx == 0 {
+			m.noteCursor = 0
+		}
 		return m, nil
 
 	case "end":
 		if m.modalType == "add" && m.focusIdx == 1 {
 			m.msgCursor = len(m.inputMsg)
+		}
+		if m.modalType == "resolve" && m.focusIdx == 0 {
+			m.noteCursor = len(m.inputNote)
 		}
 		return m, nil
 
@@ -281,24 +297,47 @@ func (m *IntentsModel) handleModalKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 			m.inputMsg = before + string(ch) + after
 			m.msgCursor++
 		}
+		if m.modalType == "resolve" && m.focusIdx == 0 && len(msg.String()) == 1 {
+			ch := msg.String()[0]
+			before := m.inputNote[:m.noteCursor]
+			after := m.inputNote[m.noteCursor:]
+			m.inputNote = before + string(ch) + after
+			m.noteCursor++
+		}
 		return m, nil
 	}
 }
 
 func (m *IntentsModel) handleModalEnter() (tea.Model, tea.Cmd) {
 	if m.modalType == "resolve" {
-		if m.focusIdx == 1 {
+		if m.focusIdx == 2 {
 			idx := m.resolveIdx
 			if idx < len(m.intents) {
 				id := m.intents[idx].ID
-				go dizzclient.IntentResolve(id)
+				go dizzclient.IntentResolve(id, m.inputNote)
 			}
 			m.showModal = false
 			m.validationErr = ""
+			m.inputNote = ""
+			m.noteCursor = 0
+			return m, m.refresh()
+		}
+		if m.focusIdx == 3 {
+			idx := m.resolveIdx
+			if idx < len(m.intents) {
+				id := m.intents[idx].ID
+				go dizzclient.IntentClose(id, m.inputNote)
+			}
+			m.showModal = false
+			m.validationErr = ""
+			m.inputNote = ""
+			m.noteCursor = 0
 			return m, m.refresh()
 		}
 		m.showModal = false
 		m.validationErr = ""
+		m.inputNote = ""
+		m.noteCursor = 0
 		return m, nil
 	}
 
@@ -330,6 +369,8 @@ func (m *IntentsModel) buildHeader() string {
 		parts += " [Active]"
 	} else if sf == "resolved" {
 		parts += " [Resolved]"
+	} else if sf == "closed" {
+		parts += " [Closed]"
 	} else if sf == "" && m.sevFilter.Value() == "" && m.typeFilter.Value() == "" {
 		parts += " [All]"
 	}
@@ -404,6 +445,14 @@ func (m *IntentsModel) buildTable() {
 			}
 		}
 		filtered = f
+	} else if sf == "closed" {
+		var f []dizzclient.Intent
+		for _, in := range filtered {
+			if in.Status == "closed" {
+				f = append(f, in)
+			}
+		}
+		filtered = f
 	}
 
 	if sv := m.sevFilter.Value(); sv != "" {
@@ -445,8 +494,16 @@ func (m *IntentsModel) buildTable() {
 		sevStyle := render.SeverityColor(sev)
 
 		msg := " " + in.Message
-		if len(msg) > 78 {
-			msg = msg[:78]
+		maxMsg := m.table.Cols[2].Width - 2
+		if maxMsg < 10 {
+			maxMsg = 10
+		}
+		if len(msg) > maxMsg {
+			if maxMsg > 3 {
+				msg = msg[:maxMsg-3] + "..."
+			} else {
+				msg = msg[:maxMsg]
+			}
 		}
 
 		typeStyle := render.IntentTypeStyle(typ)
@@ -481,7 +538,7 @@ func (m *IntentsModel) Render(c *render.Canvas) {
 	c.SetContent(w-2-len(countStr), 0, render.StyleMuted, countStr)
 
 	if !m.showModal {
-		filterHint := "g=sev p=type  a=act s=res  0-3=sev  t/f/r/q/h/m=type  x=clear  /=search  i=add"
+		filterHint := "g=sev p=type  a=act s=res c=clo  0-3=sev  t/f/r/q/h/m=type  x=clear  /=search  i=add"
 		c.SetContent(2, 1, render.StyleDim, filterHint)
 	}
 
@@ -627,8 +684,12 @@ func (m *IntentsModel) renderResolveModal(c *render.Canvas) {
 			bodyW = 60
 		}
 	}
-	bodyH := 7
+	bodyH := 10
 	cx, cy := ui.RenderModalBox(c, "Resolve Intent", bodyW, bodyH)
+
+	help := "Tab/↑↓=switch  Enter=confirm  Esc=cancel"
+	c.SetContent(cx, cy, ui.StyleHelp, help)
+	cy += 2
 
 	prompt := fmt.Sprintf("Resolve %s?", id)
 	c.SetContent(cx+(bodyW-len(prompt))/2, cy, render.StyleWarning, prompt)
@@ -640,13 +701,43 @@ func (m *IntentsModel) renderResolveModal(c *render.Canvas) {
 	c.SetContent(cx+(bodyW-len(msg))/2, cy, render.StyleInfo, msg)
 	cy += 2
 
+	noteFocused := m.focusIdx == 0
+	noteStyle := ui.StyleBtn
+	if noteFocused {
+		noteStyle = ui.StyleBtnFocus
+	}
+	c.SetContent(cx, cy, render.StyleDefault, "Note:     ")
+	display := m.inputNote
+	if display == "" {
+		display = "(optional)"
+	}
+	maxNoteW := bodyW - 14
+	if maxNoteW < 10 {
+		maxNoteW = 10
+	}
+	if len(display) > maxNoteW {
+		display = display[:maxNoteW]
+	}
+	c.SetContent(cx+10, cy, noteStyle, display)
+	if noteFocused {
+		cxPos := cx + 10 + m.noteCursor
+		if display == "(optional)" {
+			noteStyle = render.StyleDim
+		}
+		if cxPos < c.Width()-1 {
+			c.SetCell(cxPos, cy, render.StyleHighlight, '_')
+		}
+	}
+	cy += 2
+
 	btnW := 10
 	spacing := 2
-	totalBtnW := btnW*2 + spacing
+	totalBtnW := btnW*3 + spacing*2
 	btnStartX := cx + bodyW - totalBtnW - 2
 
-	ui.RenderButton(c, btnStartX, cy, btnW, "Cancel", m.focusIdx == 0, false)
-	ui.RenderButton(c, btnStartX+btnW+spacing, cy, btnW, "OK", m.focusIdx == 1, false)
+	ui.RenderButton(c, btnStartX, cy, btnW, "Cancel", m.focusIdx == 1, false)
+	ui.RenderButton(c, btnStartX+btnW+spacing, cy, btnW, "Resolve", m.focusIdx == 2, false)
+	ui.RenderButton(c, btnStartX+btnW*2+spacing*2, cy, btnW, "Close", m.focusIdx == 3, true)
 }
 
 // @dizz-ignore-unused

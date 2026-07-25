@@ -62,8 +62,21 @@ func IntentAdd(msg, typ string, severity int, tags []string) error {
 	return err
 }
 
-func IntentResolve(id string) error {
-	_, err := execDizz("intent", "resolve", id)
+func IntentResolve(id, note string) error {
+	args := []string{"intent", "resolve", id}
+	if note != "" {
+		args = append(args, "--note", note)
+	}
+	_, err := execDizz(args...)
+	return err
+}
+
+func IntentClose(id, note string) error {
+	args := []string{"intent", "close", id}
+	if note != "" {
+		args = append(args, "--note", note)
+	}
+	_, err := execDizz(args...)
 	return err
 }
 
