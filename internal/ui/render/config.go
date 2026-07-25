@@ -26,7 +26,6 @@ func configShowCompact(cfg *config.Config, filters []string) string {
 		"severity_scale": cfg.SeverityScale,
 		"agent_defaults": cfg.AgentDefaults,
 		"links":          cfg.Links,
-		"version":        cfg.Version,
 		"include":        cfg.Include,
 		"exclude":        cfg.Exclude,
 	}
@@ -73,8 +72,6 @@ func configShowPretty(cfg *config.Config, filters []string) string {
 			writeAgentDefaultsSection(&b, cfg.AgentDefaults)
 		case "links":
 			writeLinksSection(&b, cfg.Links)
-		case "version":
-			fmt.Fprintf(&b, "version: %s\n", cfg.Version)
 		case "include":
 			writeSliceSection(&b, "include", cfg.Include)
 		case "exclude":
@@ -87,7 +84,7 @@ func configShowPretty(cfg *config.Config, filters []string) string {
 func configFieldOrder() []string {
 	return []string{
 		"project_name", "description", "instructions", "guardrails", "commands",
-		"severity_scale", "agent_defaults", "links", "version", "include", "exclude",
+		"severity_scale", "agent_defaults", "links",
 	}
 }
 

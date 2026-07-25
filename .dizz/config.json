@@ -1,7 +1,7 @@
 {
   "version": "1.0.0",
   "project_name": "dizz",
-  "description": "",
+  "description": "State-aware assistant for humans and AI agents. Tracks intents, code health, and symbol states across sessions.",
   "include": [
     "**/*"
   ],
@@ -34,15 +34,36 @@
     "**/Thumbs.db",
     "**/*_test.go"
   ],
-  "instructions": [],
-  "guardrails": [],
+  "instructions": [
+    "No comments in production code. Intent is captured via dizz intent or AGENTS.md, not inline.",
+    "Return errors to the caller; log only at the CLI layer (cmd/). Internal packages never call log.Fatal or os.Exit.",
+    "No external dependencies beyond stdlib + cobra."
+  ],
+  "guardrails": [
+    {
+      "id": "gr-generated",
+      "paths": ["**/*.pb.go", "**/*.generated.go"],
+      "action": "read_only",
+      "reason": "auto-generated code"
+    }
+  ],
+  "severity_scale": {
+    "1": "Low - informational, no immediate action needed",
+    "2": "Medium - should be addressed soon",
+    "3": "High - critical, fix immediately"
+  },
   "agent_defaults": {
-    "default_lens": "asdfasdf",
-    "min_severity": 0
+    "default_lens": "priority",
+    "min_severity": 1
   },
   "links": {
-    "contributing": "",
-    "docs": ""
+    "contributing": "CONTRIBUTING.md",
+    "docs": "https://dizz.shitworks.co/docs"
   },
-  "commands": {}
+  "commands": {
+    "build": "go build ./...",
+    "test": "go test ./...",
+    "lint": "golangci-lint run",
+    "bench": "go test -bench=. ./tests/..."
+  }
 }
