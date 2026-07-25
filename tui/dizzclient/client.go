@@ -21,6 +21,11 @@ func execDizz(args ...string) (string, error) {
 	return strings.TrimSpace(ansiRe.ReplaceAllString(stdout.String(), "")), nil
 }
 
+func Initialize() error {
+	_, err := execDizz("init")
+	return err
+}
+
 func Status() (*Summary, error) {
 	raw, err := execDizz("status")
 	if err != nil {

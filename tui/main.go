@@ -13,7 +13,7 @@ var version = "dev"
 // @dizz-ignore-unused
 func main() {
 	p := tea.NewProgram(
-		app.NewModel(),
+		app.NewModel(version),
 		tea.WithAltScreen(),
 		tea.WithMouseCellMotion(),
 	)
