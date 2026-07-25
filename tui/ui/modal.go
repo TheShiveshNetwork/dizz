@@ -6,13 +6,16 @@ import (
 )
 
 var (
-	StyleOverlay   = tcell.StyleDefault.Background(tcell.NewRGBColor(20, 20, 20)).Dim(true)
-	StyleModalBg   = tcell.StyleDefault.Background(tcell.NewRGBColor(35, 35, 35))
-	StyleModalBdr  = tcell.StyleDefault.Foreground(tcell.NewRGBColor(120, 120, 180))
-	StyleBtn       = tcell.StyleDefault.Foreground(tcell.NewRGBColor(200, 200, 200)).Background(tcell.NewRGBColor(50, 50, 50))
-	StyleBtnFocus  = tcell.StyleDefault.Foreground(tcell.NewRGBColor(0, 0, 0)).Background(tcell.NewRGBColor(100, 200, 255)).Bold(true)
-	StyleBtnDanger = tcell.StyleDefault.Foreground(tcell.NewRGBColor(255, 200, 200)).Background(tcell.NewRGBColor(80, 40, 40))
-	StyleHelp      = tcell.StyleDefault.Foreground(tcell.NewRGBColor(140, 140, 160))
+	StyleOverlay         = tcell.StyleDefault.Background(tcell.NewRGBColor(20, 20, 20)).Dim(true)
+	StyleModalBg         = tcell.StyleDefault.Background(tcell.NewRGBColor(35, 35, 35))
+	StyleModalBdr        = tcell.StyleDefault.Foreground(tcell.NewRGBColor(120, 120, 180))
+	StyleBtn             = tcell.StyleDefault.Foreground(tcell.NewRGBColor(200, 200, 200))
+	StyleBtnFocus        = tcell.StyleDefault.Foreground(tcell.NewRGBColor(100, 200, 255)).Bold(true)
+	StyleBtnDanger       = tcell.StyleDefault.Foreground(tcell.NewRGBColor(255, 200, 200))
+	StyleBtnSuccess      = tcell.StyleDefault.Foreground(tcell.NewRGBColor(200, 255, 200))
+	StyleBtnFocusDanger  = tcell.StyleDefault.Foreground(tcell.NewRGBColor(255, 100, 100)).Bold(true)
+	StyleBtnFocusSuccess = tcell.StyleDefault.Foreground(tcell.NewRGBColor(80, 220, 80)).Bold(true)
+	StyleHelp            = tcell.StyleDefault.Foreground(tcell.NewRGBColor(140, 140, 160))
 )
 
 func RenderModalBox(c *render.Canvas, title string, bodyW, bodyH int) (cx, cy int) {
@@ -60,17 +63,20 @@ func RenderModalBox(c *render.Canvas, title string, bodyW, bodyH int) (cx, cy in
 	return boxX + 2, boxY + 2
 }
 
-func RenderButton(c *render.Canvas, x, y, w int, label string, focused bool, danger bool) {
+func RenderButton(c *render.Canvas, x, y, w int, label string, focused bool, danger bool, success bool) {
 	style := StyleBtn
 	if focused {
-		style = StyleBtnFocus
+		if danger {
+			style = StyleBtnFocusDanger
+		} else if success {
+			style = StyleBtnFocusSuccess
+		} else {
+			style = StyleBtnFocus
+		}
 	} else if danger {
 		style = StyleBtnDanger
-	}
-
-	bg := tcell.NewRGBColor(35, 35, 35)
-	if focused {
-		bg = tcell.NewRGBColor(100, 200, 255)
+	} else if success {
+		style = StyleBtnSuccess
 	}
 
 	padding := w - len(label) - 2
@@ -79,10 +85,7 @@ func RenderButton(c *render.Canvas, x, y, w int, label string, focused bool, dan
 	}
 	leftPad := padding / 2
 
-	for i := 0; i < w; i++ {
-		c.SetCell(x+i, y, style.Background(bg), ' ')
-	}
-	c.SetCell(x, y, style.Background(bg), '[')
-	c.SetCell(x+w-1, y, style.Background(bg), ']')
-	c.SetContent(x+1+leftPad, y, style.Background(bg).Bold(focused), label)
+	c.SetCell(x, y, style, '[')
+	c.SetCell(x+w-1, y, style, ']')
+	c.SetContent(x+1+leftPad, y, style.Bold(focused), label)
 }
