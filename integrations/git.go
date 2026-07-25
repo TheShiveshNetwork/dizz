@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 	"os/exec"
+	"os/user"
 	"path/filepath"
 	"regexp"
 	"strconv"
@@ -16,6 +17,29 @@ func IsRepo() bool {
 	cmd := exec.Command("git", "rev-parse", "--git-dir")
 	err := cmd.Run()
 	return err == nil
+}
+
+// DetectUser returns the current user name by checking git config, OS user, and environment variables.
+func DetectUser() string {
+	if IsRepo() {
+		cmd := exec.Command("git", "config", "user.name")
+		if output, err := cmd.Output(); err == nil {
+			name := strings.TrimSpace(string(output))
+			if name != "" {
+				return name
+			}
+		}
+	}
+	if u, err := user.Current(); err == nil && u.Username != "" {
+		return u.Username
+	}
+	if name := os.Getenv("USER"); name != "" {
+		return name
+	}
+	if name := os.Getenv("USERNAME"); name != "" {
+		return name
+	}
+	return "unknown"
 }
 
 // Commit represents a git commit with metadata

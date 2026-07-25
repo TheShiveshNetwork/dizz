@@ -5,6 +5,7 @@ import (
 	"time"
 
 	"github.com/TheShiveshNetwork/dizz/config"
+	"github.com/TheShiveshNetwork/dizz/integrations"
 	commonPkg "github.com/TheShiveshNetwork/dizz/internal/common"
 	"github.com/TheShiveshNetwork/dizz/internal/state"
 	"github.com/TheShiveshNetwork/dizz/internal/store"
@@ -236,6 +237,5 @@ func determineScope() string {
 }
 
 func getCurrentUser() string {
-	// TODO: Implement user detection
-	return "user"
+	return integrations.DetectUser()
 }
