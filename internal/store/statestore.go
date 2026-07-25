@@ -170,7 +170,7 @@ func (s *ConfigStore) LoadConfig() (*config.Config, error) {
 	if err != nil {
 		// If config file does not exist, return the default config.
 		projectRoot, _ := os.Getwd()
-		return defaultConfig(projectRoot), nil
+		return defaultConfig(filepath.Base(projectRoot)), nil
 	}
 
 	// First, check if it's the new config format by looking for version.
@@ -178,7 +178,7 @@ func (s *ConfigStore) LoadConfig() (*config.Config, error) {
 	if err := json.Unmarshal(data, &temp); err != nil {
 		// If the config file is not valid JSON, return the default config.
 		projectRoot, _ := os.Getwd()
-		return defaultConfig(projectRoot), nil
+		return defaultConfig(filepath.Base(projectRoot)), nil
 	}
 
 	if _, ok := temp["version"]; ok {
@@ -187,7 +187,7 @@ func (s *ConfigStore) LoadConfig() (*config.Config, error) {
 		if err := json.Unmarshal(data, &cfg); err != nil {
 			// If the new config struct fails, return the default config.
 			projectRoot, _ := os.Getwd()
-			return defaultConfig(projectRoot), nil
+			return defaultConfig(filepath.Base(projectRoot)), nil
 		}
 		return &cfg, nil
 	}
