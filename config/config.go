@@ -31,14 +31,14 @@ type Config struct {
 	Version       string            `json:"version"`
 	ProjectName   string            `json:"project_name"`
 	Description   string            `json:"description"`
-	Include       []string          `json:"include"`
-	Exclude       []string          `json:"exclude"`
 	Commands      map[string]string `json:"commands,omitempty"`
 	Instructions  []Instruction     `json:"instructions,omitempty"`
 	Guardrails    []Guardrail       `json:"guardrails,omitempty"`
 	SeverityScale map[string]string `json:"severity_scale,omitempty"`
 	AgentDefaults AgentDefaults     `json:"agent_defaults,omitempty"`
 	Links         Links             `json:"links,omitempty"`
+	Include       []string          `json:"include"`
+	Exclude       []string          `json:"exclude"`
 }
 
 // Instruction is a coding rule the agent should follow.
