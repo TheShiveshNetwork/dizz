@@ -113,19 +113,6 @@ func (r *ContextRenderer) writeCommitInfo(buf *bytes.Buffer, c *integrations.Com
 	fmt.Fprintf(buf, "# last commit\nhash|msg\n%s|%s\n\n", truncate(c.Hash, 7), escapeMsg(c.Message))
 }
 
-func (r *ContextRenderer) writeConfigSummary(buf *bytes.Buffer, info ContextInfo) {
-	root := info.ConfigRoot
-	if root == "" {
-		root = "."
-	}
-
-	fmt.Fprintln(buf, "# config")
-	w := ton.NewWriter(buf)
-	w.WriteHeader("project", "root", "include_count", "exclude_count")
-	w.WriteRecord(info.ProjectName, root, fmt.Sprintf("%d", info.ConfigIncludeCount), fmt.Sprintf("%d", info.ConfigExcludeCount))
-	fmt.Fprintln(buf)
-}
-
 func (r *ContextRenderer) writeIntents(buf *bytes.Buffer, is *state.IntentState) {
 	active := is.GetActiveIntents()
 	if len(active) == 0 {
