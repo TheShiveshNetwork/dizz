@@ -214,6 +214,9 @@ func TestContextRenderer_GitInfo(t *testing.T) {
 	}{
 		{"with git", ContextInfo{ProjectName: "p", Branch: "main", Commit: "abc1234", HasGit: true}, "abc1234"},
 		{"no git", ContextInfo{ProjectName: "p", HasGit: false}, "no git"},
+		{"with commit message", ContextInfo{ProjectName: "p", Branch: "main", Commit: "abc1234", HasGit: true, CommitMessage: "feat: add feature"}, "last_commit_msg"},
+		{"clean tree", ContextInfo{ProjectName: "p", Branch: "main", Commit: "abc1234", HasGit: true, Dirty: false}, "dirty|clean"},
+		{"dirty tree", ContextInfo{ProjectName: "p", Branch: "main", Commit: "abc1234", HasGit: true, Dirty: true}, "dirty|dirty"},
 	}
 
 	for _, tc := range tests {

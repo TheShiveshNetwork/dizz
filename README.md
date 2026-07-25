@@ -11,7 +11,7 @@
 
 > **Give your codebase a brain.**
 
-`dizz` reads your Git history, looks at your code, and remembers what a static file can't: TODOs, half-finished work, things changing too often, and what's already been resolved. It takes immutable snapshots so nothing gets forgotten — not by you, and not by whatever agent picks up the project next. Point an AI coding agent at it and it gets a live, current model of your project instead of a markdown file someone wrote three months ago.
+`dizz` analyzes your source code, scores it using Git history, and remembers what a static file can't: TODOs, half-finished work, things changing too often, and what's already been resolved. It takes immutable snapshots so nothing gets forgotten — not by you, and not by whatever agent picks up the project next. Point an AI coding agent at it and it gets a live, current model of your project instead of a markdown file someone wrote three months ago.
 
 One-command setup. Git compatible. No internet. Won't touch your code.
 
@@ -75,7 +75,7 @@ Git tells you *what* changed and *when*. The source code tells you *what* exists
 - **Which parts of the code are still settling down?** — High-churn areas that signal unfinished design.
 - **What was planned but never finished?** — TODOs and half-implemented features scattered across files.
 
-`dizz` fills that gap. It reads your Git history, parses your source, and connects the dots — producing a living model of your project's intent, stability, and progress that stays current every time you run it, instead of decaying the way a hand-written context file does. No configuration. No network calls. No code modifications.
+`dizz` fills that gap. It analyzes your source code, scores it using Git history, and connects the dots — producing a living model of your project's intent, stability, and progress that stays current every time you run it, instead of decaying the way a hand-written context file does. No configuration. No network calls. No code modifications.
 
 ## Features
 

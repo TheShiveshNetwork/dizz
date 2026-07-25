@@ -16,6 +16,8 @@ type ContextInfo struct {
 	Branch        string
 	Commit        string
 	HasGit        bool
+	CommitMessage string
+	Dirty         bool
 	Description   string
 	Instructions  []config.Instruction
 	Guardrails    []config.Guardrail
@@ -64,6 +66,17 @@ func (r *ContextRenderer) writeProjectConfig(buf *bytes.Buffer, info ContextInfo
 	w.WriteRecord("name", info.ProjectName, "Project identifier from .dizz/config.json")
 	w.WriteRecord("description", info.Description, "Human-readable project summary from config")
 	w.WriteRecord("git", gitStatus, "Current branch and latest commit hash")
+
+	if info.CommitMessage != "" {
+		w.WriteRecord("last_commit_msg", escapeMsg(info.CommitMessage), "Message of the latest commit")
+	}
+	if info.HasGit {
+		dirtyStatus := "clean"
+		if info.Dirty {
+			dirtyStatus = "dirty"
+		}
+		w.WriteRecord("dirty", dirtyStatus, "Whether working tree has uncommitted changes")
+	}
 
 	if len(info.Instructions) > 0 {
 		for _, inst := range info.Instructions {

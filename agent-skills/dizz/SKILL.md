@@ -20,19 +20,19 @@ The global dizz skill handles detection and guardrails. This skill handles every
 3. **Use CLI for all data** — if a command fails, do not fall back to reading files directly; surface the failure instead.
 4. **Never add, resolve, or otherwise write an intent without asking the user first.** This applies every time, with no exceptions — even when a fix looks obviously correct or a pattern is unambiguous. Propose it, wait for a yes.
 
-## Every run — load context first
+## First session — load context once
 
-Run this at the start of every agent run in this project, not just the first time dizz is ever used here:
+Run this **only the first time** a new agent session starts in this project:
 
 ```bash
 dizz context
 ```
 
-This returns a token-optimized summary of active intents, symbol health, and git state. Orient yourself here before answering anything project-specific — dizz's live model beats reconstructing project state from scratch each session, and it should be the first thing you check, every time.
+This returns a token-optimized summary of active intents, symbol health, and git state. Use it to orient yourself before answering project-specific questions. Do not re-run `dizz context` on subsequent prompts within the same session — it stays loaded as baseline context. For follow-up queries, use the targeted commands in the table below instead.
 
-## Query-based config — pull only what the question needs
+## Config — pull only what the question needs
 
-Once you have the baseline from `dizz context`, use targeted flags for anything deeper instead of loading the full config every time. Match the flag to what the user is actually asking about:
+Use targeted flags after `dizz context` to query specific config sections. Add `--json` to any command for compact JSON output:
 
 | User is asking about... | Command |
 |---|---|
@@ -41,24 +41,16 @@ Once you have the baseline from `dizz context`, use targeted flags for anything 
 | Build / test / lint commands | `dizz config show --commands` |
 | What severity levels mean | `dizz config show --severity` |
 | Everything | `dizz config show` |
-| Compact JSON for parsing | `dizz config show --json` |
 
-Flags combine: `dizz config show -i -g` loads instructions and guardrails together. Load only what's relevant to the task in front of you — that's the point of querying by section instead of dumping the whole config on every call.
+Flags combine: `dizz config show -i -g` loads instructions and guardrails together. Append `--json` to any of the above for machine-readable TON/JSON output.
 
 ## The self-growing memory loop
 
 This is what makes dizz more than a static file: every fix that gets made can feed back into the project's own memory, so it gets more accurate over time instead of going stale the way a hand-written doc does. This loop is the actual "brain" — more than any single command.
 
-**Detected patterns and default severities:**
+**What dizz detects automatically:** `TODO:`, `FIXME:`, `REFACTOR:`, `HACK:` comments, unfinished features (`wip`), and missing tests. These appear as `planned` symbols until resolved or removed.
 
-| Pattern | Type | Default severity |
-|---|---|---|
-| `TODO:` in code | todo | 2 |
-| `FIXME:` in code | fixme | 3 |
-| `REFACTOR:` in code | refactor | 2 |
-| `HACK:` in code | hack | 3 |
-| Unfinished feature | wip | 2 |
-| Missing tests | test | 1 |
+**Severity is yours to assign.** dizz does not set severities. When adding an intent, you pick 1-3 via `--severity SEV` based on how critical it is.
 
 **The loop:**
 
@@ -71,15 +63,16 @@ This is what makes dizz more than a static file: every fix that gets made can fe
 
 **Hard rule, worth repeating because it matters most: propose, don't act.** Adding or resolving an intent, or writing anything into dizz's state, always requires the user's explicit go-ahead first — no exceptions for confidence, obviousness, or how small the change seems.
 
-## State commands reference
+## Core commands
 
 | Command | When to use |
 |---|---|
-| `dizz context` | Start of every run |
+| `dizz context` | First run of a new session only |
 | `dizz status` | Quick health check before changes |
 | `dizz log` | Deeper per-symbol detail |
-| `dizz intent list` | Check what's open, or before resolving one |
 | `dizz snapshot --auto` | Before/after a significant change |
+
+Other commands: `intent`, `config`, `todo`, `init`, `list`, `resume`, `upgrade`, `version`, `install-skill`. Use `dizz <command> --help` to learn their usage.
 
 ## Guardrails
 
@@ -89,4 +82,3 @@ Guardrails are enforced by the global dizz skill on every file change. If you ne
 dizz config show --guardrails
 ```
 
-Format: `path|action|reason` — e.g. `generated/**|read_only|auto-generated code`. These override your own defaults and must be respected strictly.

@@ -68,12 +68,15 @@ func runContext() {
 		if branch, err := integrations.GetCurrentBranch(); err == nil {
 			info.Branch = branch
 		}
-		if commit, err := integrations.GetCurrentCommit(); err == nil {
-			if len(commit) > 7 {
-				commit = commit[:7]
+		if commitInfo, err := integrations.GetCurrentCommitWithMessage(); err == nil {
+			hash := commitInfo.Hash
+			if len(hash) > 7 {
+				hash = hash[:7]
 			}
-			info.Commit = commit
+			info.Commit = hash
+			info.CommitMessage = commitInfo.Message
 		}
+		info.Dirty = integrations.HasUntrackedOrModifiedChanges()
 	}
 
 	intentStore := store.NewIntentStore(config.TrackDirPath(trackDir))
