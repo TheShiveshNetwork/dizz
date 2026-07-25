@@ -130,6 +130,10 @@ type intentsMsg struct {
 	err     string
 }
 
+type intentActionDoneMsg struct {
+	err error
+}
+
 func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg := msg.(type) {
 	case tea.KeyMsg:
@@ -165,6 +169,12 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		if msg.err == "" {
 			m.intents = msg.intents
 		}
+
+	case intentActionDoneMsg:
+		if msg.err != nil {
+			m.err = msg.err.Error()
+		}
+		return m, m.refreshIntents()
 
 	case error:
 		m.err = msg.Error()
@@ -1046,26 +1056,32 @@ func (m *Model) handleModalEnter() (tea.Model, tea.Cmd) {
 	if m.modalType == "resolve" {
 		if m.focusIdx == 2 {
 			active := m.activeIntents()
-			if m.resolveIdx < len(active) {
-				id := active[m.resolveIdx].ID
-				go dizzclient.IntentResolve(id, m.addNote)
-			}
+			note := m.addNote
 			m.showModal = false
 			m.validationErr = ""
 			m.addNote = ""
 			m.noteCursor = 0
+			if m.resolveIdx < len(active) {
+				id := active[m.resolveIdx].ID
+				return m, func() tea.Msg {
+					return intentActionDoneMsg{err: dizzclient.IntentResolve(id, note)}
+				}
+			}
 			return m, m.refreshIntents()
 		}
 		if m.focusIdx == 3 {
 			active := m.activeIntents()
-			if m.resolveIdx < len(active) {
-				id := active[m.resolveIdx].ID
-				go dizzclient.IntentClose(id, m.addNote)
-			}
+			note := m.addNote
 			m.showModal = false
 			m.validationErr = ""
 			m.addNote = ""
 			m.noteCursor = 0
+			if m.resolveIdx < len(active) {
+				id := active[m.resolveIdx].ID
+				return m, func() tea.Msg {
+					return intentActionDoneMsg{err: dizzclient.IntentClose(id, note)}
+				}
+			}
 			return m, m.refreshIntents()
 		}
 		m.showModal = false
@@ -1082,10 +1098,14 @@ func (m *Model) handleModalEnter() (tea.Model, tea.Cmd) {
 				return m, nil
 			}
 			intentTypes := []string{"todo", "fixme", "refactor", "question", "hack", "temporary"}
-			go dizzclient.IntentAdd(m.addMsg, intentTypes[m.addType], m.addSev, nil)
+			msg := m.addMsg
+			typ := intentTypes[m.addType]
+			sev := m.addSev
 			m.showModal = false
 			m.validationErr = ""
-			return m, m.refreshIntents()
+			return m, func() tea.Msg {
+				return intentActionDoneMsg{err: dizzclient.IntentAdd(msg, typ, sev, nil)}
+			}
 		}
 		if m.focusIdx == 3 {
 			m.showModal = false

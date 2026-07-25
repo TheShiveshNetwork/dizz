@@ -11,7 +11,7 @@ import (
 var ansiRe = regexp.MustCompile(`\x1b\[[0-9;]*[a-zA-Z]`)
 
 func execDizz(args ...string) (string, error) {
-	cmd := exec.Command("dizz", args...)
+	cmd := exec.Command(FindDizzBinary(), args...)
 	var stdout, stderr bytes.Buffer
 	cmd.Stdout = &stdout
 	cmd.Stderr = &stderr

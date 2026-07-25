@@ -3,6 +3,7 @@ package dizzclient
 import (
 	"fmt"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"sync"
 )
@@ -10,6 +11,8 @@ import (
 var (
 	dizzRootCache string
 	dizzRootOnce  sync.Once
+	dizzBinCache  string
+	dizzBinOnce   sync.Once
 )
 
 func FindDizzRoot() (string, error) {
@@ -39,6 +42,24 @@ func getDizzRoot() string {
 		}
 	})
 	return dizzRootCache
+}
+
+func FindDizzBinary() string {
+	dizzBinOnce.Do(func() {
+		if root := getDizzRoot(); root != "" {
+			localBin := filepath.Join(root, "bin", "dizz")
+			if _, err := os.Stat(localBin); err == nil {
+				dizzBinCache = localBin
+				return
+			}
+		}
+		if path, err := exec.LookPath("dizz"); err == nil {
+			dizzBinCache = path
+			return
+		}
+		dizzBinCache = "dizz"
+	})
+	return dizzBinCache
 }
 
 func RelPath(absPath string) string {

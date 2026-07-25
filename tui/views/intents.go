@@ -108,6 +108,10 @@ type intentsMsg struct {
 	err     string
 }
 
+type intentActionDoneMsg struct {
+	err error
+}
+
 func (m *IntentsModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg := msg.(type) {
 	case tea.KeyMsg:
@@ -122,6 +126,12 @@ func (m *IntentsModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.err = ""
 			m.buildTable()
 		}
+
+	case intentActionDoneMsg:
+		if msg.err != nil {
+			m.err = msg.err.Error()
+		}
+		return m, m.refresh()
 	}
 
 	return m, nil
@@ -485,26 +495,32 @@ func (m *IntentsModel) handleModalEnter() (tea.Model, tea.Cmd) {
 	if m.modalType == "resolve" {
 		if m.focusIdx == 2 {
 			idx := m.resolveIdx
-			if idx < len(m.intents) {
-				id := m.intents[idx].ID
-				go dizzclient.IntentResolve(id, m.inputNote)
-			}
+			note := m.inputNote
 			m.showModal = false
 			m.validationErr = ""
 			m.inputNote = ""
 			m.noteCursor = 0
+			if idx < len(m.intents) {
+				id := m.intents[idx].ID
+				return m, func() tea.Msg {
+					return intentActionDoneMsg{err: dizzclient.IntentResolve(id, note)}
+				}
+			}
 			return m, m.refresh()
 		}
 		if m.focusIdx == 3 {
 			idx := m.resolveIdx
-			if idx < len(m.intents) {
-				id := m.intents[idx].ID
-				go dizzclient.IntentClose(id, m.inputNote)
-			}
+			note := m.inputNote
 			m.showModal = false
 			m.validationErr = ""
 			m.inputNote = ""
 			m.noteCursor = 0
+			if idx < len(m.intents) {
+				id := m.intents[idx].ID
+				return m, func() tea.Msg {
+					return intentActionDoneMsg{err: dizzclient.IntentClose(id, note)}
+				}
+			}
 			return m, m.refresh()
 		}
 		m.showModal = false
@@ -520,10 +536,14 @@ func (m *IntentsModel) handleModalEnter() (tea.Model, tea.Cmd) {
 				m.validationErr = "Message is required"
 				return m, nil
 			}
-			go dizzclient.IntentAdd(m.inputMsg, intentTypes[m.intentType], m.inputSev, nil)
+			msg := m.inputMsg
+			typ := intentTypes[m.intentType]
+			sev := m.inputSev
 			m.showModal = false
 			m.validationErr = ""
-			return m, m.refresh()
+			return m, func() tea.Msg {
+				return intentActionDoneMsg{err: dizzclient.IntentAdd(msg, typ, sev, nil)}
+			}
 		}
 		if m.focusIdx == 3 {
 			m.showModal = false
