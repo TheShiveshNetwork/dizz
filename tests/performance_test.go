@@ -5,7 +5,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/TheShiveshNetwork/dizz/internal/integrations"
+	"github.com/TheShiveshNetwork/dizz/integrations"
 )
 
 // TestGitPerformanceComparison is a test that measures actual performance differences

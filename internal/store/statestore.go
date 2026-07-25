@@ -8,7 +8,7 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/TheShiveshNetwork/dizz/internal/config"
+	"github.com/TheShiveshNetwork/dizz/config"
 	"github.com/TheShiveshNetwork/dizz/internal/state"
 )
 
@@ -138,23 +138,95 @@ func NewConfigStore(basePath string) *ConfigStore {
 	}
 }
 
+// oldConfig is the old configuration structure used for migration.
+type oldConfig struct {
+	ProjectName string   `json:"project_name"`
+	Include     []string `json:"include"`
+	Exclude     []string `json:"exclude"`
+	Agentic     struct {
+		Description  string   `json:"description"`
+		Rules        []string `json:"rules"`
+		Standards    []string `json:"standards"`
+		Instructions []string `json:"instructions"`
+	} `json:"agentic"`
+}
+
+// defaultConfig returns a minimal configuration with only required fields set.
+func defaultConfig(projectName string) *config.Config {
+	return &config.Config{
+		Version:     config.ConfigVersion,
+		ProjectName: projectName,
+		Description: "",
+		Include:     []string{"**/*"},
+		Exclude:     []string{"**/*_test.go", "vendor/**", "node_modules/**", ".git/**", ".dizz/**"},
+	}
+}
+
 // LoadConfig loads the configuration from disk
 func (s *ConfigStore) LoadConfig() (*config.Config, error) {
-	configPath := filepath.Join(s.basePath, "config.json")
-
-	if _, err := os.Stat(configPath); os.IsNotExist(err) {
-		return nil, fmt.Errorf("config file does not exist")
-	}
+	configPath := filepath.Join(s.basePath, config.ConfigFile)
 
 	data, err := os.ReadFile(configPath)
 	if err != nil {
-		return nil, fmt.Errorf("failed to read config file: %w", err)
+		// If config file does not exist, return the default config.
+		projectRoot, _ := os.Getwd()
+		return defaultConfig(projectRoot), nil
 	}
 
-	var cfg config.Config
-	if err := json.Unmarshal(data, &cfg); err != nil {
-		return nil, fmt.Errorf("failed to unmarshal config: %w", err)
+	// First, check if it's the new config format by looking for version.
+	var temp map[string]interface{}
+	if err := json.Unmarshal(data, &temp); err != nil {
+		// If the config file is not valid JSON, return the default config.
+		projectRoot, _ := os.Getwd()
+		return defaultConfig(projectRoot), nil
 	}
 
-	return &cfg, nil
+	if _, ok := temp["version"]; ok {
+		// Try to unmarshal into the new config struct.
+		var cfg config.Config
+		if err := json.Unmarshal(data, &cfg); err != nil {
+			// If the new config struct fails, return the default config.
+			projectRoot, _ := os.Getwd()
+			return defaultConfig(projectRoot), nil
+		}
+		return &cfg, nil
+	}
+
+	// Otherwise, try to unmarshal into the old config struct.
+	var oldCfg oldConfig
+	if err := json.Unmarshal(data, &oldCfg); err != nil {
+		// If the old config struct fails, return the default config.
+		projectRoot, _ := os.Getwd()
+		return defaultConfig(projectRoot), nil
+	}
+
+	// Convert the old config to the new config.
+	newCfg := defaultConfig(oldCfg.ProjectName)
+	newCfg.Version = config.ConfigVersion
+	newCfg.Description = oldCfg.Agentic.Description
+	newCfg.Include = oldCfg.Include
+	newCfg.Exclude = oldCfg.Exclude
+	// Note: The old config did not have Commands, Instructions, Guardrails, etc.
+	// We leave them as empty/zero values (the struct's zero value).
+
+	return newCfg, nil
+}
+
+// SaveConfig saves the configuration to disk
+func (s *ConfigStore) SaveConfig(cfg *config.Config) error {
+	if err := os.MkdirAll(s.basePath, 0755); err != nil {
+		return fmt.Errorf("failed to create config directory: %w", err)
+	}
+
+	configPath := filepath.Join(s.basePath, config.ConfigFile)
+	data, err := json.MarshalIndent(cfg, "", "  ")
+	if err != nil {
+		return fmt.Errorf("failed to marshal config: %w", err)
+	}
+
+	tmpPath := configPath + ".tmp"
+	if err := os.WriteFile(tmpPath, data, 0644); err != nil {
+		return fmt.Errorf("failed to write config file: %w", err)
+	}
+	return os.Rename(tmpPath, configPath)
 }

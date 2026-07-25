@@ -11,7 +11,7 @@
 
 > **Give your codebase a brain.**
 
-`dizz` reads your Git history, looks at your code, and remembers what a static file can't: TODOs, half-finished work, things changing too often, and what's already been resolved. It takes immutable snapshots so nothing gets forgotten — not by you, and not by whatever agent picks up the project next. Point an AI coding agent at it and it gets a live, current model of your project instead of a markdown file someone wrote three months ago.
+`dizz` analyzes your source code, scores it using Git history, and remembers what a static file can't: TODOs, half-finished work, things changing too often, and what's already been resolved. It takes immutable snapshots so nothing gets forgotten — not by you, and not by whatever agent picks up the project next. Point an AI coding agent at it and it gets a live, current model of your project instead of a markdown file someone wrote three months ago.
 
 One-command setup. Git compatible. No internet. Won't touch your code.
 
@@ -75,7 +75,7 @@ Git tells you *what* changed and *when*. The source code tells you *what* exists
 - **Which parts of the code are still settling down?** — High-churn areas that signal unfinished design.
 - **What was planned but never finished?** — TODOs and half-implemented features scattered across files.
 
-`dizz` fills that gap. It reads your Git history, parses your source, and connects the dots — producing a living model of your project's intent, stability, and progress that stays current every time you run it, instead of decaying the way a hand-written context file does. No configuration. No network calls. No code modifications.
+`dizz` fills that gap. It analyzes your source code, scores it using Git history, and connects the dots — producing a living model of your project's intent, stability, and progress that stays current every time you run it, instead of decaying the way a hand-written context file does. No configuration. No network calls. No code modifications.
 
 ## Features
 
@@ -98,6 +98,7 @@ Git tells you *what* changed and *when*. The source code tells you *what* exists
 | `dizz status` | Quick health snapshot with visual indicators |
 | `dizz snapshot` | Create immutable, content-addressed state records |
 | `dizz context` | Token-optimized project dump for AI agents (TON format, ~2 KB) |
+| `dizz config` | Manage and inspect `.dizz/config.json` (supports filtering flags) |
 | `dizz intent` | Manage long-lived project intents (add, list, resolve) |
 | `dizz install-skill` | Install dizz skill into AI agent directories for auto-discovery |
 | `dizz list` | Show snapshot history |
@@ -107,10 +108,11 @@ Git tells you *what* changed and *when*. The source code tells you *what* exists
 
 `dizz` is designed as a **state-aware assistant for both humans and AI agents** — the layer an agent reads from instead of a static context file. Every command outputs machine-readable formats by default:
 
-- **`dizz context`** — A single ~2 KB command that replaces reading 100+ KB of state files or a sprawling hand-maintained context doc. Pipe-delimited TON format, no parser needed.
+- **`dizz context`** — Single command optimized for agents first runs to follow up analysis. Pipe-delimited TON format, no parser needed.
+- **`dizz config`** — Single source of truth for persistent agentic project guidance. Supports filtering flags (`--only-description`, `--only-instructions`, `--only-guardrails`, `--only-commands`, `--json`).
 - **`dizz install-skill`** — Installs a global skill for all agent harnesses. Auto-discovers installed AI agents (Claude Code, Cursor, Gemini CLI, OpenCode, Codex CLI) and installs a discoverable skill for each.
 - **`dizz intent`** — Agents can query, add, and resolve project intents directly, without parsing ad-hoc comments or relying on a doc someone forgot to update.
-- **`dizz snapshot --diff`** — Delta-based snapshots for efficient long-term storage (~1–2 KB per change), so an agent picking the project back up gets the *change* since it last looked, not the whole state again.
+- **`dizz snapshot --diff`** — Delta-based snapshots for efficient long-term storage, so an agent picking the project back up gets the *change* since it last looked, not the whole state again.
 
 ## Symbol States
 

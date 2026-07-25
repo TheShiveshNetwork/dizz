@@ -15,9 +15,9 @@ import (
 	"github.com/TheShiveshNetwork/dizz/internal/analyzer"
 	"github.com/TheShiveshNetwork/dizz/internal/analyzer/ast"
 	"github.com/TheShiveshNetwork/dizz/internal/analyzer/regex"
-	"github.com/TheShiveshNetwork/dizz/internal/config"
+	"github.com/TheShiveshNetwork/dizz/config"
 	"github.com/TheShiveshNetwork/dizz/internal/discover"
-	"github.com/TheShiveshNetwork/dizz/internal/integrations"
+	"github.com/TheShiveshNetwork/dizz/integrations"
 	"github.com/TheShiveshNetwork/dizz/internal/signals"
 	"github.com/TheShiveshNetwork/dizz/internal/state"
 	"github.com/TheShiveshNetwork/dizz/internal/store"
@@ -120,12 +120,8 @@ func runCurrentAnalysisAtRoot(projectRoot string, options *AnalysisOptions) (*st
 		return nil, err
 	}
 
-	// Resolve analysis root
-	analysisRoot := cfg.RootPath
-	if !filepath.IsAbs(analysisRoot) {
-		analysisRoot = filepath.Join(projectRoot, analysisRoot)
-	}
-	analysisRoot = filepath.Clean(analysisRoot)
+	// Resolve analysis root (use project root as default)
+	analysisRoot := projectRoot
 
 	// Merge .gitignore patterns into exclude list (copy first to avoid mutating cfg.Exclude)
 	excludePatterns := make([]string, len(cfg.Exclude))

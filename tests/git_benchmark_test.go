@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"testing"
 
-	"github.com/TheShiveshNetwork/dizz/internal/integrations"
+	"github.com/TheShiveshNetwork/dizz/integrations"
 	"github.com/TheShiveshNetwork/dizz/internal/state"
 )
 

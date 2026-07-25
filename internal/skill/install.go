@@ -35,17 +35,103 @@ func DetectAgentDirs() []AgentDir {
 
 func agentDirCandidates(home string) []AgentDir {
 	return []AgentDir{
+		// Tool-agnostic standard location
+		{Name: "Agents (standard)", Path: filepath.Join(home, ".agents", "skills")},
+
+		// Claude
 		{Name: "Claude Code", Path: filepath.Join(home, ".claude", "skills")},
 		{Name: "Claude Desktop", Path: filepath.Join(home, ".claude", "skills")},
-		{Name: "OpenClaw", Path: filepath.Join(home, ".agents", "skills")},
-		{Name: "OpenClaw (Shared)", Path: filepath.Join(home, ".openclaw", "skills")},
-		{Name: "Codex CLI / Copilot", Path: filepath.Join(home, ".agents", "skills")},
+
+		// GitHub Copilot (VS Code)
+		{Name: "Copilot (VS Code)", Path: filepath.Join(home, ".copilot", "skills")},
+
+		// Cursor
 		{Name: "Cursor", Path: filepath.Join(home, ".cursor", "skills")},
-		{Name: "Gemini CLI", Path: filepath.Join(home, ".gemini", "config", "skills")},
-		{Name: "Gemini CLI (alt)", Path: filepath.Join(home, ".gemini", "skills")},
-		{Name: "OpenCode / Pi Agent", Path: filepath.Join(home, ".agents", "skills")},
-		{Name: "OpenCode (config)", Path: filepath.Join(home, ".config", "opencode", "skills")},
+
+		// Gemini
+		{Name: "Gemini CLI", Path: filepath.Join(home, ".gemini", "skills")},
+		{Name: "Gemini CLI (config)", Path: filepath.Join(home, ".gemini", "config", "skills")},
+		{Name: "Google Antigravity", Path: filepath.Join(home, ".gemini", "config", "skills")},
+
+		// OpenCode
+		{Name: "OpenCode", Path: filepath.Join(home, ".config", "opencode", "skills")},
+		{Name: "OpenCode (agents)", Path: filepath.Join(home, ".agents", "skills")},
 	}
+}
+
+// ProviderID returns a lowercase, hyphen-free identifier for a provider name.
+func ProviderID(name string) string {
+	return strings.ToLower(strings.ReplaceAll(name, " ", "-"))
+}
+
+// ProviderNames returns all valid provider identifiers for use with --provider flag.
+func ProviderNames() []string {
+	home, err := os.UserHomeDir()
+	if err != nil {
+		return nil
+	}
+
+	seen := make(map[string]bool)
+	var names []string
+
+	for _, c := range agentDirCandidates(home) {
+		id := ProviderID(c.Name)
+		if !seen[id] {
+			seen[id] = true
+			names = append(names, id)
+		}
+	}
+
+	return names
+}
+
+// InstallToProvider installs the skill to a specific provider by name.
+// Returns an error if the provider is not found or the directory doesn't exist.
+func InstallToProvider(content []byte, provider string) ([]InstallResult, error) {
+	home, err := os.UserHomeDir()
+	if err != nil {
+		return nil, fmt.Errorf("no home directory found")
+	}
+
+	targetID := strings.ToLower(strings.ReplaceAll(provider, " ", "-"))
+	var matched []AgentDir
+
+	for _, c := range agentDirCandidates(home) {
+		if ProviderID(c.Name) == targetID {
+			matched = append(matched, c)
+		}
+	}
+
+	if len(matched) == 0 {
+		return nil, fmt.Errorf("unknown provider %q - run with --help to see available providers", provider)
+	}
+
+	var results []InstallResult
+	for _, d := range matched {
+		if info, err := os.Stat(d.Path); err != nil || !info.IsDir() {
+			results = append(results, InstallResult{
+				Agent:   d.Name,
+				Path:    filepath.Join(d.Path, "dizz", "SKILL.md"),
+				Skipped: true,
+			})
+			continue
+		}
+
+		if err := InstallToDir(content, d.Name, d.Path); err != nil {
+			results = append(results, InstallResult{
+				Agent: d.Name,
+				Path:  filepath.Join(d.Path, "dizz", "SKILL.md"),
+				Err:   err,
+			})
+		} else {
+			results = append(results, InstallResult{
+				Agent: d.Name,
+				Path:  filepath.Join(d.Path, "dizz", "SKILL.md"),
+			})
+		}
+	}
+
+	return results, nil
 }
 
 // InstallResult reports the outcome of installing to a single agent directory.
@@ -117,9 +203,14 @@ func InstallToAll(content []byte) []InstallResult {
 	return results
 }
 
-// FetchSkillURL returns the GitHub raw URL for the canonical SKILL.md.
+// FetchSkillURL returns the GitHub raw URL for the canonical project SKILL.md.
 func FetchSkillURL() string {
 	return "https://raw.githubusercontent.com/TheShiveshNetwork/dizz/main/agent-skills/dizz/SKILL.md"
+}
+
+// FetchGlobalSkillURL returns the GitHub raw URL for the global SKILL.md.
+func FetchGlobalSkillURL() string {
+	return "https://raw.githubusercontent.com/TheShiveshNetwork/dizz/main/agent-skills/dizz-global/SKILL.md"
 }
 
 // IsOnline checks if the system likely has internet access.

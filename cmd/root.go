@@ -6,8 +6,8 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"github.com/TheShiveshNetwork/dizz/internal/config"
-	"github.com/TheShiveshNetwork/dizz/internal/integrations"
+	"github.com/TheShiveshNetwork/dizz/config"
+	"github.com/TheShiveshNetwork/dizz/integrations"
 )
 
 var rootCmd = &cobra.Command{

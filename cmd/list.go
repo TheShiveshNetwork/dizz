@@ -11,11 +11,11 @@ import (
 
 	"github.com/spf13/cobra"
 
+	"github.com/TheShiveshNetwork/dizz/config"
 	commonPkg "github.com/TheShiveshNetwork/dizz/internal/common"
-	"github.com/TheShiveshNetwork/dizz/internal/config"
 	"github.com/TheShiveshNetwork/dizz/internal/state"
 	"github.com/TheShiveshNetwork/dizz/internal/ui"
-	"github.com/TheShiveshNetwork/dizz/internal/utils"
+	"github.com/TheShiveshNetwork/dizz/internal/ui/render"
 )
 
 var listCmd = &cobra.Command{
@@ -50,15 +50,12 @@ func runList() {
 	objectsDir := config.ObjectsDirPath(trackDir)
 
 	if _, err := os.Stat(objectsDir); os.IsNotExist(err) {
-		fmt.Println(ui.Warning("⚠ No snapshots found"))
-		fmt.Println(ui.Muted("  Run 'dizz snapshot' to create your first snapshot"))
+		render.ListEmpty()
 		return
 	}
 
-	// Scan for snapshots
 	snapshots := []SnapshotInfo{}
 
-	// Walk objects directory
 	filepath.WalkDir(objectsDir, func(path string, info fs.DirEntry, err error) error {
 		if err != nil || info.IsDir() {
 			return nil
@@ -75,10 +72,9 @@ func runList() {
 				return nil
 			}
 
-			// Get hash from path
 			dir := filepath.Base(filepath.Dir(path))
 			file := filepath.Base(path)
-			hash := dir + file[:len(file)-5] // Remove .json
+			hash := dir + file[:len(file)-5]
 
 			snapshots = append(snapshots, SnapshotInfo{
 				Hash:      hash,
@@ -97,75 +93,23 @@ func runList() {
 	})
 
 	if len(snapshots) == 0 {
-		fmt.Println(ui.Warning("⚠ No snapshots found"))
+		render.ListEmpty()
 		return
 	}
 
-	// Sort by timestamp (newest first)
 	sort.Slice(snapshots, func(i, j int) bool {
 		return snapshots[i].Timestamp.After(snapshots[j].Timestamp)
 	})
 
-	fmt.Println()
-	fmt.Println()
-	fmt.Println(ui.Header("SNAPSHOT HISTORY"))
-	fmt.Println()
-
-	for i, snap := range snapshots {
-		if i >= 10 {
-			fmt.Printf(ui.Muted("  ... and %d more snapshots\n"), len(snapshots)-10)
-			break
-		}
-
-		timeSince := time.Since(snap.Timestamp)
-		timeDisplay := utils.FormatTime(timeSince)
-
-		shortHash := snap.Hash[:6]
-		fmt.Printf("  %s ", ui.Highlight(shortHash))
-		fmt.Printf("%s ", ui.Muted(timeDisplay.Text))
-
-		// Git commit
-		if snap.GitCommit != "" {
-			shortCommit := snap.GitCommit
-			if len(shortCommit) > 7 {
-				shortCommit = shortCommit[:7]
-			}
-			fmt.Printf("%s", ui.Muted("("+shortCommit+")"))
-		}
-		fmt.Println()
-
-		active := snap.Summary.ByState[state.Active]
-		planned := snap.Summary.ByState[state.Planned]
-		unstable := snap.Summary.ByState[state.Unstable]
-		unused := snap.Summary.ByState[state.Unused]
-
-		summary := ""
-		if active > 0 {
-			summary += ui.Success(fmt.Sprintf("Act %d", active))
-		}
-		if planned > 0 {
-			if summary != "" {
-				summary += " "
-			}
-			summary += ui.Warning(fmt.Sprintf("Pln %d", planned))
-		}
-		if unstable > 0 {
-			if summary != "" {
-				summary += " "
-			}
-			summary += ui.Error(fmt.Sprintf("Uns %d", unstable))
-		}
-		if unused > 0 {
-			if summary != "" {
-				summary += " "
-			}
-			summary += ui.Info(fmt.Sprintf("Use %d", unused))
-		}
-
-		fmt.Printf("     %s\n", summary)
-		fmt.Println()
+	items := make([]render.ListSnapshotItem, 0, len(snapshots))
+	for _, snap := range snapshots {
+		items = append(items, render.ListSnapshotItem{
+			Hash:      snap.Hash,
+			Timestamp: snap.Timestamp,
+			GitCommit: snap.GitCommit,
+			Summary:   snap.Summary,
+		})
 	}
 
-	fmt.Printf(ui.Muted("  Total: %d snapshots\n"), len(snapshots))
-	fmt.Println()
+	render.ListSnapshots(items)
 }

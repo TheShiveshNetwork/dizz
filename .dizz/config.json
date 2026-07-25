@@ -1,16 +1,69 @@
 {
+  "version": "1.0.0",
   "project_name": "dizz",
-  "root_path": ".",
+  "description": "State-aware assistant for humans and AI agents. Tracks intents, code health, and symbol states across sessions.",
+  "instructions": [
+    "No comments in production code. Intent is captured via dizz intent or AGENTS.md, not inline.",
+    "Return errors to the caller; log only at the CLI layer (cmd/). Internal packages never call log.Fatal or os.Exit.",
+    "No external dependencies beyond stdlib + cobra."
+  ],
+  "guardrails": [
+    {
+      "id": "gr-generated",
+      "paths": ["**/*.pb.go", "**/*.generated.go"],
+      "action": "read_only",
+      "reason": "auto-generated code"
+    }
+  ],
+  "severity_scale": {
+    "1": "Low - informational, no immediate action needed",
+    "2": "Medium - should be addressed soon",
+    "3": "High - critical, fix immediately"
+  },
+  "agent_defaults": {
+    "default_lens": "priority",
+    "min_severity": 1
+  },
+  "links": {
+    "contributing": "CONTRIBUTING.md",
+    "docs": "https://dizz.shitworks.co/docs"
+  },
+  "commands": {
+    "build": "go build ./...",
+    "test": "go test ./...",
+    "lint": "golangci-lint run",
+    "bench": "go test -bench=. ./tests/..."
+  },
   "include": [
     "**/*"
   ],
   "exclude": [
-    "**/*_test.go",
     "vendor/**",
     "node_modules/**",
     ".git/**",
     ".dizz/**",
+    "**/*.json",
+    "**/*.yaml",
+    "**/*.yml",
+    "**/*.toml",
+    "**/*.xml",
+    "**/*.config",
+    "**/*.conf",
+    "**/*.cfg",
+    "**/*.ini",
+    "**/*.env",
+    "**/*.env.*",
+    "**/*.md",
+    "**/*.txt",
+    "**/*.rst",
+    "**/*.lock",
+    "**/Makefile",
+    "**/Dockerfile",
+    "**/*.log",
+    "**/*.tmp",
+    "**/*.swp",
     "**/.DS_Store",
-    "**/Thumbs.db"
+    "**/Thumbs.db",
+    "**/*_test.go"
   ]
 }

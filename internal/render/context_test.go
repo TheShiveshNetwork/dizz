@@ -5,9 +5,9 @@ import (
 	"testing"
 	"time"
 
-	"github.com/TheShiveshNetwork/dizz/internal/integrations"
+	"github.com/TheShiveshNetwork/dizz/config"
+	"github.com/TheShiveshNetwork/dizz/integrations"
 	"github.com/TheShiveshNetwork/dizz/internal/state"
-	"github.com/TheShiveshNetwork/dizz/internal/store/ton"
 )
 
 func TestContextRenderer_EmptyProject(t *testing.T) {
@@ -36,8 +36,8 @@ func TestContextRenderer_EmptyProject(t *testing.T) {
 	if !strings.Contains(output, "abc1234") {
 		t.Fatalf("expected commit, got:\n%s", output)
 	}
-	if !strings.Contains(output, "# config") {
-		t.Fatalf("expected config section, got:\n%s", output)
+	if !strings.Contains(output, "# project") {
+		t.Fatalf("expected project section, got:\n%s", output)
 	}
 }
 
@@ -201,9 +201,6 @@ func TestContextRenderer_OutputIsValidTON(t *testing.T) {
 	if len(lines) < 2 {
 		t.Fatalf("expected at least 2 lines, got %d", len(lines))
 	}
-
-	_, err = ton.NewReader([]byte(output))
-	_ = err
 }
 
 func TestContextRenderer_GitInfo(t *testing.T) {
@@ -217,6 +214,9 @@ func TestContextRenderer_GitInfo(t *testing.T) {
 	}{
 		{"with git", ContextInfo{ProjectName: "p", Branch: "main", Commit: "abc1234", HasGit: true}, "abc1234"},
 		{"no git", ContextInfo{ProjectName: "p", HasGit: false}, "no git"},
+		{"with commit message", ContextInfo{ProjectName: "p", Branch: "main", Commit: "abc1234", HasGit: true, CommitMessage: "feat: add feature"}, "last_commit_msg"},
+		{"clean tree", ContextInfo{ProjectName: "p", Branch: "main", Commit: "abc1234", HasGit: true, Dirty: false}, "dirty|clean"},
+		{"dirty tree", ContextInfo{ProjectName: "p", Branch: "main", Commit: "abc1234", HasGit: true, Dirty: true}, "dirty|dirty"},
 	}
 
 	for _, tc := range tests {
@@ -230,6 +230,27 @@ func TestContextRenderer_GitInfo(t *testing.T) {
 				t.Fatalf("expected %q in output:\n%s", tc.contains, output)
 			}
 		})
+	}
+}
+
+func TestContextRenderer_GitCommitInfo(t *testing.T) {
+	ps := state.NewProjectState()
+	is := state.NewIntentState()
+
+	ps.GitCommit = &integrations.Commit{
+		Hash:    "abc1234def5678",
+		Message: "feat: add feature",
+		Time:    time.Now(),
+	}
+
+	renderer := NewContextRenderer()
+	output, err := renderer.Render(ps, is, ContextInfo{ProjectName: "p", HasGit: true}, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if !strings.Contains(output, "abc1234") {
+		t.Fatalf("expected commit hash in output: %s", output)
 	}
 }
 
@@ -275,8 +296,7 @@ func TestContextRenderer_MultipleSections(t *testing.T) {
 	}
 
 	sections := []string{
-		"Project:",
-		"# config",
+		"# project",
 		"# intents",
 		"# symbols",
 		"# todos",
@@ -288,24 +308,48 @@ func TestContextRenderer_MultipleSections(t *testing.T) {
 	}
 }
 
-func TestContextRenderer_GitCommitInfo(t *testing.T) {
+func TestContextRenderer_ProjectConfig(t *testing.T) {
 	ps := state.NewProjectState()
 	is := state.NewIntentState()
 
-	ps.GitCommit = &integrations.Commit{
-		Hash:    "abc1234def5678",
-		Message: "feat: add feature",
-		Time:    time.Now(),
-	}
-
 	renderer := NewContextRenderer()
-	output, err := renderer.Render(ps, is, ContextInfo{ProjectName: "p", HasGit: true}, nil)
+	output, err := renderer.Render(ps, is, ContextInfo{
+		ProjectName: "p",
+		Description: "Core project rules",
+		Instructions: []config.Instruction{
+			{Rule: "Do not commit secrets", Scope: "internal/**"},
+		},
+		Guardrails: []config.Guardrail{
+			{ID: "gr-security", Paths: []string{"internal/security/**"}, Action: "warn", Reason: "security-critical"},
+		},
+		Commands: map[string]string{
+			"build": "go build",
+			"test":  "go test ./...",
+		},
+		AgentDefaults: config.AgentDefaults{
+			DefaultLens: "priority",
+			MinSeverity: 1,
+		},
+	}, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	if !strings.Contains(output, "abc1234") {
-		t.Fatalf("expected commit hash in output: %s", output)
+	if !strings.Contains(output, "# project") {
+		t.Fatalf("missing project section: %s", output)
+	}
+	for _, expected := range []string{
+		"description|Core project rules|",
+		"instruction|Do not commit secrets@internal/**|",
+		"guardrail|warn|",
+		"command|build=go build|",
+		"command|test=go test ./...|",
+		"agent_lens|priority|",
+		"agent_min_severity|1|",
+	} {
+		if !strings.Contains(output, expected) {
+			t.Fatalf("missing %q in output:\n%s", expected, output)
+		}
 	}
 }
 
