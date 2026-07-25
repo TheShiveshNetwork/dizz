@@ -51,13 +51,6 @@ func (f *Filter) HandleKey(key string) (consumed bool, changed bool) {
 	}
 }
 
-func (f *Filter) Matches(text string) bool {
-	if !f.Mode || f.Query == "" {
-		return true
-	}
-	return strings.Contains(strings.ToLower(text), strings.ToLower(f.Query))
-}
-
 func (f *Filter) MatchesAny(texts ...string) bool {
 	if !f.Mode || f.Query == "" {
 		return true

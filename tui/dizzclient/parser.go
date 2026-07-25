@@ -4,8 +4,6 @@ import (
 	"bufio"
 	"bytes"
 	"fmt"
-	"os"
-	"path/filepath"
 	"regexp"
 	"strconv"
 	"strings"
@@ -235,10 +233,6 @@ func ParseSnapshotOutput(raw string) string {
 	return ""
 }
 
-func ParseVersionOutput(raw string) string {
-	return strings.TrimSpace(stripANSI(raw))
-}
-
 func ParseSnapshotListOutput(raw string) []SnapshotInfo {
 	lines := strings.Split(raw, "\n")
 	var entries []SnapshotInfo
@@ -274,15 +268,6 @@ func parseIntSafe(s string) int {
 func IsDizzInitialized() bool {
 	_, err := FindDizzRoot()
 	return err == nil
-}
-
-func WriteStateTON(data []byte) error {
-	root, err := FindDizzRoot()
-	if err != nil {
-		return err
-	}
-	path := filepath.Join(root, ".dizz", "context.ton")
-	return os.WriteFile(path, data, 0644)
 }
 
 func getField(fields []string, colMap map[string]int, key string) string {

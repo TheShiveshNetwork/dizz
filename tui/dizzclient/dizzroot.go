@@ -52,8 +52,3 @@ func RelPath(absPath string) string {
 	}
 	return rel
 }
-
-func ResetRootCache() {
-	dizzRootOnce = sync.Once{}
-	dizzRootCache = ""
-}

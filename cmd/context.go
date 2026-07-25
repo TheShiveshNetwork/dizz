@@ -35,6 +35,7 @@ var contextCmd = &cobra.Command{
 	},
 }
 
+// @dizz-ignore-unused
 func init() {
 	rootCmd.AddCommand(contextCmd)
 	contextCmd.Flags().BoolVar(&contextIntentOnly, "intents", false, "Show intents only")

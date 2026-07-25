@@ -489,6 +489,7 @@ func MarshalStateTON(ps *ProjectState, is *IntentState, snapshotHashes []string)
 	return buf.Bytes(), hash
 }
 
+// @dizz-ignore-unused
 func VerifyStateTONHash(data []byte) bool {
 	s := string(data)
 	idx := strings.LastIndex(s, "\nhash|")

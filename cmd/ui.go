@@ -24,10 +24,12 @@ automatically before launching.`,
 	RunE: runUI,
 }
 
+// @dizz-ignore-unused
 func init() {
 	rootCmd.AddCommand(uiCmd)
 }
 
+// @dizz-ignore-unused
 func runUI(cmd *cobra.Command, args []string) error {
 	path, err := exec.LookPath(tuiBinaryName)
 	if err == nil {

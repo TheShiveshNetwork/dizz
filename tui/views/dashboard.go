@@ -323,4 +323,5 @@ func (m *DashboardModel) Render(c *render.Canvas) {
 	c.SetContent((w-len(help))/2, h-1, render.StyleMuted, help)
 }
 
+// @dizz-ignore-unused
 func (m *DashboardModel) View() string { return "" }

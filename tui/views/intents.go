@@ -649,6 +649,7 @@ func (m *IntentsModel) renderResolveModal(c *render.Canvas) {
 	ui.RenderButton(c, btnStartX+btnW+spacing, cy, btnW, "OK", m.focusIdx == 1, false)
 }
 
+// @dizz-ignore-unused
 func (m *IntentsModel) View() string { return "" }
 
 func (m *IntentsModel) InputMode() bool { return m.showModal || m.filter.Active() }

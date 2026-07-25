@@ -29,24 +29,8 @@ func Status() (*Summary, error) {
 	return ParseStatusOutput(raw), nil
 }
 
-func LogAll() ([]Symbol, error) {
-	raw, err := execDizz("log", "--all")
-	if err != nil {
-		return nil, err
-	}
-	return ParseLogOutput(raw), nil
-}
-
 func LogDump() ([]Symbol, error) {
 	raw, err := execDizz("log", "--dump")
-	if err != nil {
-		return nil, err
-	}
-	return ParseLogOutput(raw), nil
-}
-
-func Log() ([]Symbol, error) {
-	raw, err := execDizz("log")
 	if err != nil {
 		return nil, err
 	}
@@ -94,10 +78,6 @@ func SnapshotCreate() (string, error) {
 	return raw, nil
 }
 
-func SnapshotCreateAuto() (string, error) {
-	return execDizz("snapshot", "--auto")
-}
-
 func SnapshotDiff() (string, error) {
 	return execDizz("snapshot", "--diff")
 }
@@ -116,17 +96,4 @@ func SnapshotCheckout(hash string) (string, error) {
 
 func SnapshotPrune(keep int) (string, error) {
 	return execDizz("snapshot", "prune", "--keep", fmt.Sprintf("%d", keep))
-}
-
-func Resume() (string, error) {
-	return execDizz("resume")
-}
-
-func Version() (string, error) {
-	return execDizz("version")
-}
-
-func InitDizz() error {
-	_, err := execDizz("init")
-	return err
 }

@@ -84,15 +84,6 @@ func (c *Canvas) Rect(x, y, w, h int, style tcell.Style, fill rune) {
 	}
 }
 
-func (c *Canvas) VLine(x, y0, y1 int, style tcell.Style, ch rune) {
-	if y0 > y1 {
-		y0, y1 = y1, y0
-	}
-	for y := y0; y <= y1; y++ {
-		c.SetCell(x, y, style, ch)
-	}
-}
-
 func (c *Canvas) HLine(x0, x1, y int, style tcell.Style, ch rune) {
 	if x0 > x1 {
 		x0, x1 = x1, x0
@@ -118,11 +109,4 @@ func (c *Canvas) Blit(src *Canvas, x, y int) {
 			c.SetCell(x+sx, y+sy, src.cells[sy][sx].Style, src.cells[sy][sx].Char)
 		}
 	}
-}
-
-func (c *Canvas) CellAt(x, y int) Cell {
-	if !c.InBounds(x, y) {
-		return Cell{Char: ' ', Style: tcell.StyleDefault}
-	}
-	return c.cells[y][x]
 }

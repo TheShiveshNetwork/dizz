@@ -385,6 +385,7 @@ func (m *SymbolsModel) renderDetail(c *render.Canvas, y int) {
 	}
 }
 
+// @dizz-ignore-unused
 func (m *SymbolsModel) View() string { return "" }
 
 func (m *SymbolsModel) InputMode() bool { return m.filter.Active() }

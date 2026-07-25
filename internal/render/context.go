@@ -177,13 +177,6 @@ func (r *ContextRenderer) writeSnapshots(buf *bytes.Buffer, hashes []string) {
 	fmt.Fprintln(buf)
 }
 
-func (r *ContextRenderer) InstabilityLabel(score float64) string {
-	if score < 0 {
-		return "?"
-	}
-	return fmt.Sprintf("%.2f", score)
-}
-
 func truncate(s string, n int) string {
 	if len(s) <= n {
 		return s

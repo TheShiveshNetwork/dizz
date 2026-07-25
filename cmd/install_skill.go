@@ -36,11 +36,13 @@ Without --provider, installs to all detected agents.`,
 	RunE: runInstallSkill,
 }
 
+// @dizz-ignore-unused
 func init() {
 	rootCmd.AddCommand(installSkillCmd)
 	installSkillCmd.Flags().StringP("provider", "p", "", "install to a specific provider only (e.g. opencode, cursor)")
 }
 
+// @dizz-ignore-unused
 func runInstallSkill(cmd *cobra.Command, args []string) error {
 	provider, _ := cmd.Flags().GetString("provider")
 

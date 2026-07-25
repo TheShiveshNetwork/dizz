@@ -251,6 +251,7 @@ outer:
 	m.filter.Render(c, 2, h-1)
 }
 
+// @dizz-ignore-unused
 func (m *TodosModel) View() string { return "" }
 
 func (m *TodosModel) InputMode() bool { return m.filter.Active() }

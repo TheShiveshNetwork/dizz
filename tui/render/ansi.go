@@ -56,24 +56,3 @@ func (c *Canvas) ANSIFrame() string {
 	b.WriteString("\033[0m")
 	return b.String()
 }
-
-func (c *Canvas) ANSIDiff(prev *Canvas) string {
-	if prev == nil || prev.width != c.width || prev.height != c.height {
-		return c.ANSIFrame()
-	}
-
-	var b strings.Builder
-	for y := 0; y < c.height; y++ {
-		for x := 0; x < c.width; x++ {
-			if c.cells[y][x] != prev.cells[y][x] {
-				cell := c.cells[y][x]
-				ansi := styleANSI(cell.Style)
-				b.WriteString(fmt.Sprintf("\033[%d;%dH%s%c", y+1, x+1, ansi, cell.Char))
-			}
-		}
-	}
-	if b.Len() > 0 {
-		b.WriteString("\033[0m")
-	}
-	return b.String()
-}

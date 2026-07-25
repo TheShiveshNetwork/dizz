@@ -10,6 +10,7 @@ import (
 
 var version = "dev"
 
+// @dizz-ignore-unused
 func main() {
 	p := tea.NewProgram(
 		app.NewModel(),

@@ -434,6 +434,7 @@ func (m *SnapshotsModel) renderPruneModal(c *render.Canvas) {
 	c.SetContent(cx, cy, render.StyleDim, fmt.Sprintf("Currently %d snapshots, will prune older ones", len(m.snapshots)))
 }
 
+// @dizz-ignore-unused
 func (m *SnapshotsModel) View() string { return "" }
 
 func (m *SnapshotsModel) InputMode() bool { return m.filter.Active() || m.showPruneModal }

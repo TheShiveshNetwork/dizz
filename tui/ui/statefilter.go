@@ -47,7 +47,3 @@ func (f *StateFilter) Reset() {
 func (f *StateFilter) SetValue(v string) {
 	f.current = v
 }
-
-func (f *StateFilter) Keys() map[string]string {
-	return f.keys
-}

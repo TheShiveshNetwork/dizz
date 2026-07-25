@@ -105,6 +105,7 @@ func (a *Analyzer) SupportedExtensions() []string {
 	return nonGo
 }
 
+// @dizz-ignore-unused
 // Supports returns true for every file whose language is in the registry and is
 // not Go (Go is handled by the AST analyzer with higher accuracy).
 func (a *Analyzer) Supports(file string) bool {
