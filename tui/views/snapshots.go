@@ -125,6 +125,9 @@ func (m *SnapshotsModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.lastMsg = msg.result
 			return m, m.refresh()
 		}
+
+	case ui.RefreshTick:
+		return m, m.refresh()
 	}
 
 	return m, nil

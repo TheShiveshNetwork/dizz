@@ -65,6 +65,9 @@ func (m *TodosModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.err = ""
 			m.buildGroups()
 		}
+
+	case ui.RefreshTick:
+		return m, m.refresh()
 	}
 
 	return m, nil

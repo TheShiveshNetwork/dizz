@@ -265,23 +265,10 @@ func (is *IntentState) GetActiveIntents() []Intent {
 }
 
 // @ignore-unused
-// TODO: add intent filters
 func (is *IntentState) GetIntentsByType(intentType IntentType) []Intent {
 	result := make([]Intent, 0, len(is.Intents))
 	for _, intent := range is.Intents {
 		if intent.Type == intentType {
-			result = append(result, intent)
-		}
-	}
-	return result
-}
-
-// @ignore-unused
-// TODO: add intent filters
-func (is *IntentState) GetIntentsBySeverity(minSeverity int) []Intent {
-	result := make([]Intent, 0, len(is.Intents))
-	for _, intent := range is.Intents {
-		if intent.Severity >= minSeverity {
 			result = append(result, intent)
 		}
 	}

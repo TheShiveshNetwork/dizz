@@ -75,6 +75,9 @@ func (m *SymbolsModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.err = ""
 			m.buildTable()
 		}
+
+	case ui.RefreshTick:
+		return m, m.refresh()
 	}
 
 	return m, nil

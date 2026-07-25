@@ -15,6 +15,7 @@ var Tabs = []Tab{
 	{Name: "Intents", Key: "3"},
 	{Name: "TODOs", Key: "4"},
 	{Name: "Snapshots", Key: "5"},
+	{Name: "Configs", Key: "6"},
 }
 
 func RenderSidebar(c *render.Canvas, active int, focused bool, x, y, width int) {

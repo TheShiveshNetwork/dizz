@@ -6,6 +6,7 @@ import (
 
 	"github.com/TheShiveshNetwork/dizz/tui/dizzclient"
 	"github.com/TheShiveshNetwork/dizz/tui/render"
+	"github.com/TheShiveshNetwork/dizz/tui/ui"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/gdamore/tcell/v2"
 )
@@ -61,6 +62,9 @@ func (m *DashboardModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 	case time.Time:
 		m.frameTick++
+
+	case ui.RefreshTick:
+		return m, m.refresh()
 	}
 
 	return m, nil

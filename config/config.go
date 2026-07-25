@@ -17,7 +17,6 @@ const (
 	CacheDirName   = "cache"
 
 	ConfigFile     = "config.json"
-	StateFile      = "state.json.gz"
 	StateTONFile   = "state.ton.gz"
 	ContextTONFile = "context.ton"
 
@@ -130,11 +129,6 @@ func RefsDirPath(root string) string {
 // ConfigFilePath returns the path to the config.json file.
 func ConfigFilePath(root string) string {
 	return filepath.Join(root, ConfigFile)
-}
-
-// StateFilePath returns the path to the state.json.gz file.
-func StateFilePath(root string) string {
-	return filepath.Join(root, StateFile)
 }
 
 // StateTONFilePath returns the path to the state.ton.gz file.

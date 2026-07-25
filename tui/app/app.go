@@ -13,6 +13,8 @@ import (
 
 type AnimationTick time.Time
 
+const refreshInterval = 15
+
 type ModalState interface {
 	IsModalActive() bool
 	RenderModal(*render.Canvas)
@@ -50,6 +52,7 @@ type Model struct {
 	initFrameTick int64
 	initBusy      bool
 	version       string
+	tickCount     int
 }
 
 type statusMsg struct {
@@ -89,6 +92,7 @@ func NewModel(version string) *Model {
 		views.NewIntentsModel(),
 		views.NewTodosModel(),
 		views.NewSnapshotsModel(),
+		views.NewConfigsModel(),
 	}
 
 	return m
@@ -116,14 +120,25 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 	case AnimationTick:
 		m.now = time.Time(msg)
-		if m.initialized && m.currentTab < len(m.views) {
+		if m.initialized {
+			m.tickCount++
+			if m.tickCount%refreshInterval == 0 {
+				var cmds []tea.Cmd
+				for i, v := range m.views {
+					newV, cmd := v.Update(ui.RefreshTick{})
+					m.views[i] = newV
+					if cmd != nil {
+						cmds = append(cmds, cmd)
+					}
+				}
+				cmds = append(cmds, m.refreshStatus(), m.refreshIntents())
+				return m, tea.Batch(append(cmds, m.tick())...)
+			}
 			var cmd tea.Cmd
 			m.views[m.currentTab], cmd = m.views[m.currentTab].Update(time.Time(msg))
 			return m, tea.Batch(m.tick(), cmd)
 		}
-		if !m.initialized {
-			m.initFrameTick++
-		}
+		m.initFrameTick++
 		return m, m.tick()
 
 	case statusMsg:
@@ -215,7 +230,7 @@ func (m *Model) View() string {
 
 	ui.RenderSidebar(c, m.currentTab, isSidebarFocused, contentLeftX, mainTop, leftPanelW-contentLeftX)
 
-	hideIntentsPanel := m.currentTab == 2
+	hideIntentsPanel := m.currentTab == 2 || m.currentTab == 5
 	if !hideIntentsPanel {
 		sepY := mainTop + len(ui.Tabs)
 		if sepY < mainBottom {
@@ -278,6 +293,8 @@ func (m *Model) View() string {
 			tabName = "todos"
 		case 4:
 			tabName = "snapshots"
+		case 5:
+			tabName = "configs"
 		}
 		ui.RenderHelpOverlay(c, tabName)
 	}
@@ -327,25 +344,43 @@ func (m *Model) handleKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		return m, nil
 
 	case "tab":
-		switch m.focusZone {
-		case "sidebar":
-			m.focusZone = "intents"
-		case "intents":
-			m.focusZone = "main"
-		case "main":
-			m.focusZone = "sidebar"
+		if m.intentsPanelHidden() {
+			switch m.focusZone {
+			case "sidebar", "intents":
+				m.focusZone = "main"
+			case "main":
+				m.focusZone = "sidebar"
+			}
+		} else {
+			switch m.focusZone {
+			case "sidebar":
+				m.focusZone = "intents"
+			case "intents":
+				m.focusZone = "main"
+			case "main":
+				m.focusZone = "sidebar"
+			}
 		}
 		m.showHelp = false
 		return m, nil
 
 	case "shift+tab":
-		switch m.focusZone {
-		case "sidebar":
-			m.focusZone = "main"
-		case "intents":
-			m.focusZone = "sidebar"
-		case "main":
-			m.focusZone = "intents"
+		if m.intentsPanelHidden() {
+			switch m.focusZone {
+			case "sidebar", "intents":
+				m.focusZone = "main"
+			case "main":
+				m.focusZone = "sidebar"
+			}
+		} else {
+			switch m.focusZone {
+			case "sidebar":
+				m.focusZone = "main"
+			case "intents":
+				m.focusZone = "sidebar"
+			case "main":
+				m.focusZone = "intents"
+			}
 		}
 		m.showHelp = false
 		return m, nil
@@ -355,6 +390,7 @@ func (m *Model) handleKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		case "sidebar":
 			m.currentTab = (m.currentTab - 1 + len(m.views)) % len(m.views)
 			m.showHelp = false
+			m.fixFocusZone()
 			return m, nil
 		case "intents":
 			m.intentsSel--
@@ -370,6 +406,7 @@ func (m *Model) handleKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		case "sidebar":
 			m.currentTab = (m.currentTab + 1) % len(m.views)
 			m.showHelp = false
+			m.fixFocusZone()
 			return m, nil
 		case "intents":
 			m.intentsSel++
@@ -413,12 +450,13 @@ func (m *Model) handleKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 			return m, nil
 		}
 
-	case "1", "2", "3", "4", "5":
+	case "1", "2", "3", "4", "5", "6":
 		if m.focusZone == "sidebar" {
 			tab := int(msg.String()[0] - '1')
 			if tab >= 0 && tab < len(m.views) {
 				m.currentTab = tab
 				m.showHelp = false
+				m.fixFocusZone()
 			}
 			return m, nil
 		}
@@ -479,6 +517,16 @@ func (m *Model) ensureIntentsVisible() {
 	}
 	if m.intentsSel >= m.intentsOff+listH {
 		m.intentsOff = m.intentsSel - listH + 1
+	}
+}
+
+func (m *Model) intentsPanelHidden() bool {
+	return m.currentTab == 2 || m.currentTab == 5
+}
+
+func (m *Model) fixFocusZone() {
+	if m.intentsPanelHidden() && m.focusZone == "intents" {
+		m.focusZone = "main"
 	}
 }
 

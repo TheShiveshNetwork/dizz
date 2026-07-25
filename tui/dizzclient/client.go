@@ -2,8 +2,11 @@ package dizzclient
 
 import (
 	"bytes"
+	"encoding/json"
 	"fmt"
+	"os"
 	"os/exec"
+	"path/filepath"
 	"regexp"
 	"strings"
 )
@@ -114,4 +117,32 @@ func SnapshotCheckout(hash string) (string, error) {
 
 func SnapshotPrune(keep int) (string, error) {
 	return execDizz("snapshot", "prune", "--keep", fmt.Sprintf("%d", keep))
+}
+
+func LoadProjectConfig() (*ProjectConfig, error) {
+	root, err := FindDizzRoot()
+	if err != nil {
+		return nil, err
+	}
+	data, err := os.ReadFile(filepath.Join(root, ".dizz", "config.json"))
+	if err != nil {
+		return nil, err
+	}
+	var cfg ProjectConfig
+	if err := json.Unmarshal(data, &cfg); err != nil {
+		return nil, err
+	}
+	return &cfg, nil
+}
+
+func SaveProjectConfig(cfg *ProjectConfig) error {
+	root, err := FindDizzRoot()
+	if err != nil {
+		return err
+	}
+	data, err := json.MarshalIndent(cfg, "", "  ")
+	if err != nil {
+		return err
+	}
+	return os.WriteFile(filepath.Join(root, ".dizz", "config.json"), data, 0644)
 }

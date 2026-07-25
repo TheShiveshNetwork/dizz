@@ -11,7 +11,7 @@ import (
 func (m *Model) renderIntentsMini(c *render.Canvas, x, y, w, h int, focused bool) {
 	active := m.activeIntents()
 
-	header := fmt.Sprintf("Intents [%d]", len(active))
+	header := fmt.Sprintf("Active Intents [%d]", len(active))
 	headerStyle := render.StyleHighlight.Bold(true)
 	if focused {
 		headerStyle = render.StyleHighlight.Bold(true).Foreground(tcell.NewRGBColor(100, 200, 255))

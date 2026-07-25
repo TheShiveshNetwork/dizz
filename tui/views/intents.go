@@ -64,7 +64,7 @@ func NewIntentsModel() *IntentsModel {
 			ColGap: 2,
 		},
 		stateFilter: ui.NewStateFilter(map[string]string{
-			"a": "active",
+			"o": "open",
 			"s": "resolved",
 			"c": "closed",
 		}),
@@ -83,7 +83,6 @@ func NewIntentsModel() *IntentsModel {
 			"m": "temporary",
 		}),
 	}
-	m.stateFilter.SetValue("active")
 	m.table.SortCol = 1
 	m.table.SortAsc = false
 	return m
@@ -131,6 +130,9 @@ func (m *IntentsModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		if msg.err != nil {
 			m.err = msg.err.Error()
 		}
+		return m, m.refresh()
+
+	case ui.RefreshTick:
 		return m, m.refresh()
 	}
 
@@ -558,8 +560,8 @@ func (m *IntentsModel) handleModalEnter() (tea.Model, tea.Cmd) {
 func (m *IntentsModel) buildHeader() string {
 	parts := "Intents"
 	sf := m.stateFilter.Value()
-	if sf == "active" {
-		parts += " [Active]"
+	if sf == "open" {
+		parts += " [Open]"
 	} else if sf == "resolved" {
 		parts += " [Resolved]"
 	} else if sf == "closed" {
@@ -622,7 +624,7 @@ func (m *IntentsModel) buildTable() {
 	}
 
 	sf := m.stateFilter.Value()
-	if sf == "active" {
+	if sf == "open" {
 		var f []dizzclient.Intent
 		for _, in := range filtered {
 			if in.Status == "active" || in.Status == "" {
@@ -731,7 +733,7 @@ func (m *IntentsModel) Render(c *render.Canvas) {
 	c.SetContent(w-2-len(countStr), 0, render.StyleMuted, countStr)
 
 	if !m.showModal {
-		filterHint := "g=sev p=type  a=act s=res c=clo  0-3=sev  t/f/r/q/h/m=type  x=clear  /=search  i=add"
+		filterHint := "g=sev p=type  o=open s=res c=clo  0-3=sev  t/f/r/q/h/m=type  x=clear  /=search  i=add"
 		c.SetContent(2, 1, render.StyleDim, filterHint)
 	}
 

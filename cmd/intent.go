@@ -18,6 +18,10 @@ var (
 	intentSeverity int
 	intentTags     []string
 	intentNote     string
+
+	intentListAll      bool
+	intentListSeverity []string
+	intentListType     []string
 )
 
 var intentCmd = &cobra.Command{
@@ -66,6 +70,9 @@ func init() {
 	intentAddCmd.Flags().StringVar(&intentType, "type", "todo", "Intent type (todo, fixme, refactor, question, hack, temporary)")
 	intentAddCmd.Flags().IntVar(&intentSeverity, "severity", 1, "Severity level (0-3)")
 	intentAddCmd.Flags().StringSliceVar(&intentTags, "tags", []string{}, "Tags for the intent")
+	intentListCmd.Flags().BoolVar(&intentListAll, "all", false, "Show all intents including resolved and closed")
+	intentListCmd.Flags().StringSliceVar(&intentListSeverity, "severity", nil, "Filter by severity (comma-separated: 0,1,2,3)")
+	intentListCmd.Flags().StringSliceVar(&intentListType, "type", nil, "Filter by type (comma-separated: todo,fixme,refactor,question,hack,temporary)")
 	intentResolveCmd.Flags().StringVar(&intentNote, "note", "", "Optional note for the resolution")
 	intentCloseCmd.Flags().StringVar(&intentNote, "note", "", "Optional note for closing")
 }
@@ -131,9 +138,50 @@ func runIntentList(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("failed to load intent state: %w", err)
 	}
 
-	intents := intentState.GetActiveIntents()
+	var intents []state.Intent
+	if intentListAll {
+		intents = intentState.Intents
+	} else {
+		intents = intentState.GetActiveIntents()
+	}
+
+	if len(intentListSeverity) > 0 {
+		sevSet := make(map[int]bool, len(intentListSeverity))
+		for _, s := range intentListSeverity {
+			var v int
+			if _, err := fmt.Sscanf(s, "%d", &v); err == nil && v >= 0 && v <= 3 {
+				sevSet[v] = true
+			}
+		}
+		var filtered []state.Intent
+		for _, in := range intents {
+			if sevSet[in.Severity] {
+				filtered = append(filtered, in)
+			}
+		}
+		intents = filtered
+	}
+
+	if len(intentListType) > 0 {
+		typeSet := make(map[string]bool, len(intentListType))
+		for _, t := range intentListType {
+			typeSet[t] = true
+		}
+		var filtered []state.Intent
+		for _, in := range intents {
+			if typeSet[string(in.Type)] {
+				filtered = append(filtered, in)
+			}
+		}
+		intents = filtered
+	}
+
 	if len(intents) == 0 {
-		fmt.Println("No active intents found.")
+		if intentListAll {
+			fmt.Println("No intents found.")
+		} else {
+			fmt.Println("No active intents found.")
+		}
 		return nil
 	}
 

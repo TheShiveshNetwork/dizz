@@ -1,5 +1,9 @@
 package dizzclient
 
+import (
+	"encoding/json"
+)
+
 type Symbol struct {
 	Name       string  `json:"name"`
 	File       string  `json:"file"`
@@ -52,4 +56,61 @@ type Summary struct {
 	ProjectName  string
 	Branch       string
 	Commit       string
+}
+
+type ConfigInstruction struct {
+	Rule  string `json:"rule"`
+	Scope string `json:"scope,omitempty"`
+}
+
+type ConfigGuardrail struct {
+	ID         string   `json:"id,omitempty"`
+	Paths      []string `json:"paths,omitempty"`
+	RequireAll bool     `json:"require_all,omitempty"`
+	Action     string   `json:"action"`
+	Reason     string   `json:"reason"`
+}
+
+type ConfigAgentDefaults struct {
+	DefaultLens string `json:"default_lens,omitempty"`
+	MinSeverity int    `json:"min_severity,omitempty"`
+}
+
+type ProjectConfig struct {
+	Version       string               `json:"version"`
+	ProjectName   string               `json:"project_name"`
+	Description   string               `json:"description"`
+	Commands      map[string]string    `json:"commands,omitempty"`
+	Instructions  json.RawMessage      `json:"instructions,omitempty"`
+	Guardrails    []ConfigGuardrail    `json:"guardrails,omitempty"`
+	SeverityScale map[string]string    `json:"severity_scale,omitempty"`
+	AgentDefaults *ConfigAgentDefaults `json:"agent_defaults,omitempty"`
+	Links         map[string]string    `json:"links,omitempty"`
+	Include       []string             `json:"include"`
+	Exclude       []string             `json:"exclude"`
+}
+
+func (c *ProjectConfig) ParseInstructions() []ConfigInstruction {
+	if len(c.Instructions) == 0 {
+		return nil
+	}
+
+	var result []ConfigInstruction
+
+	// Try as string array first
+	var strings []string
+	if err := json.Unmarshal(c.Instructions, &strings); err == nil {
+		for _, s := range strings {
+			result = append(result, ConfigInstruction{Rule: s})
+		}
+		return result
+	}
+
+	// Try as object array
+	var objects []ConfigInstruction
+	if err := json.Unmarshal(c.Instructions, &objects); err == nil {
+		return objects
+	}
+
+	return result
 }

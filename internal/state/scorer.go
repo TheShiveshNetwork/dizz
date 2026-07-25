@@ -501,7 +501,6 @@ func (s *Scorer) InterpretSignalsWithIntent(sigSet *signals.SignalSet, intentSta
 	// Apply enhanced scoring with intent weighting
 	for _, symbol := range symbolSlice {
 		enhancedScore := s.calculateEnhancedScore(symbol, intentState)
-		// Store enhanced score for use in mathematical scoring
 		// Note: We could add a new field but will reuse InstabilityScore for now
 		if intentState != nil {
 			symbol.InstabilityScore = enhancedScore

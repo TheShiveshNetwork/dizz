@@ -25,73 +25,34 @@ func NewStateStore(basePath string) *StateStore {
 }
 
 func (s *StateStore) LoadProjectState() (*state.ProjectState, error) {
-	// Try state.ton first (may be gzipped or uncompressed for backward compat)
 	tonPath := config.StateTONFilePath(s.basePath)
-	if data, err := os.ReadFile(tonPath); err == nil {
-		// Auto-detect gzip by magic number
-		if len(data) >= 2 && data[0] == gzipMagic[0] && data[1] == gzipMagic[1] {
-			reader, err := gzip.NewReader(bytes.NewReader(data))
-			if err != nil {
-				return nil, fmt.Errorf("failed to create gzip reader for state.ton: %w", err)
-			}
-			defer reader.Close()
+	data, err := os.ReadFile(tonPath)
+	if err != nil {
+		return nil, fmt.Errorf("state file does not exist: %w", err)
+	}
 
-			buf := bufferPool.Get().(*bytes.Buffer)
-			buf.Reset()
-			if _, err := buf.ReadFrom(reader); err != nil {
-				bufferPool.Put(buf)
-				return nil, fmt.Errorf("failed to decompress state.ton: %w", err)
-			}
-			data = buf.Bytes()
-			bufferPool.Put(buf)
-		}
-
-		ps, err := state.UnmarshalProjectStateTON(data)
+	if len(data) >= 2 && data[0] == gzipMagic[0] && data[1] == gzipMagic[1] {
+		reader, err := gzip.NewReader(bytes.NewReader(data))
 		if err != nil {
-			return nil, fmt.Errorf("failed to unmarshal state.ton: %w", err)
+			return nil, fmt.Errorf("failed to create gzip reader for state.ton: %w", err)
 		}
-		return ps, nil
-	}
+		defer reader.Close()
 
-	// Fall back to state.json.gz
-	gzPath := config.StateFilePath(s.basePath)
-	if data, err := os.ReadFile(gzPath); err == nil {
-		// Auto-detect gzip by magic number
-		if len(data) >= 2 && data[0] == gzipMagic[0] && data[1] == gzipMagic[1] {
-			reader, err := gzip.NewReader(bytes.NewReader(data))
-			if err != nil {
-				return nil, fmt.Errorf("failed to create gzip reader: %w", err)
-			}
-			defer reader.Close()
-
-			buf := bufferPool.Get().(*bytes.Buffer)
-			buf.Reset()
-			if _, err := buf.ReadFrom(reader); err != nil {
-				bufferPool.Put(buf)
-				return nil, fmt.Errorf("failed to decompress state file: %w", err)
-			}
-			data = buf.Bytes()
+		buf := bufferPool.Get().(*bytes.Buffer)
+		buf.Reset()
+		if _, err := buf.ReadFrom(reader); err != nil {
 			bufferPool.Put(buf)
+			return nil, fmt.Errorf("failed to decompress state.ton: %w", err)
 		}
-
-		var projectState state.ProjectState
-		if err := json.Unmarshal(data, &projectState); err != nil {
-			return nil, fmt.Errorf("failed to unmarshal project state: %w", err)
-		}
-		return &projectState, nil
+		data = buf.Bytes()
+		bufferPool.Put(buf)
 	}
 
-	// Fall back to uncompressed state.json (legacy)
-	oldPath := filepath.Join(s.basePath, "state.json")
-	if data, err := os.ReadFile(oldPath); err == nil {
-		var projectState state.ProjectState
-		if err := json.Unmarshal(data, &projectState); err != nil {
-			return nil, fmt.Errorf("failed to unmarshal state.json: %w", err)
-		}
-		return &projectState, nil
+	ps, err := state.UnmarshalProjectStateTON(data)
+	if err != nil {
+		return nil, fmt.Errorf("failed to unmarshal state.ton: %w", err)
 	}
-
-	return nil, fmt.Errorf("state file does not exist")
+	return ps, nil
 }
 
 func (s *StateStore) SaveProjectState(projectState *state.ProjectState) error {
@@ -138,19 +99,6 @@ func NewConfigStore(basePath string) *ConfigStore {
 	}
 }
 
-// oldConfig is the old configuration structure used for migration.
-type oldConfig struct {
-	ProjectName string   `json:"project_name"`
-	Include     []string `json:"include"`
-	Exclude     []string `json:"exclude"`
-	Agentic     struct {
-		Description  string   `json:"description"`
-		Rules        []string `json:"rules"`
-		Standards    []string `json:"standards"`
-		Instructions []string `json:"instructions"`
-	} `json:"agentic"`
-}
-
 // defaultConfig returns a minimal configuration with only required fields set.
 func defaultConfig(projectName string) *config.Config {
 	return &config.Config{
@@ -168,48 +116,16 @@ func (s *ConfigStore) LoadConfig() (*config.Config, error) {
 
 	data, err := os.ReadFile(configPath)
 	if err != nil {
-		// If config file does not exist, return the default config.
 		projectRoot, _ := os.Getwd()
 		return defaultConfig(filepath.Base(projectRoot)), nil
 	}
 
-	// First, check if it's the new config format by looking for version.
-	var temp map[string]interface{}
-	if err := json.Unmarshal(data, &temp); err != nil {
-		// If the config file is not valid JSON, return the default config.
+	var cfg config.Config
+	if err := json.Unmarshal(data, &cfg); err != nil {
 		projectRoot, _ := os.Getwd()
 		return defaultConfig(filepath.Base(projectRoot)), nil
 	}
-
-	if _, ok := temp["version"]; ok {
-		// Try to unmarshal into the new config struct.
-		var cfg config.Config
-		if err := json.Unmarshal(data, &cfg); err != nil {
-			// If the new config struct fails, return the default config.
-			projectRoot, _ := os.Getwd()
-			return defaultConfig(filepath.Base(projectRoot)), nil
-		}
-		return &cfg, nil
-	}
-
-	// Otherwise, try to unmarshal into the old config struct.
-	var oldCfg oldConfig
-	if err := json.Unmarshal(data, &oldCfg); err != nil {
-		// If the old config struct fails, return the default config.
-		projectRoot, _ := os.Getwd()
-		return defaultConfig(projectRoot), nil
-	}
-
-	// Convert the old config to the new config.
-	newCfg := defaultConfig(oldCfg.ProjectName)
-	newCfg.Version = config.ConfigVersion
-	newCfg.Description = oldCfg.Agentic.Description
-	newCfg.Include = oldCfg.Include
-	newCfg.Exclude = oldCfg.Exclude
-	// Note: The old config did not have Commands, Instructions, Guardrails, etc.
-	// We leave them as empty/zero values (the struct's zero value).
-
-	return newCfg, nil
+	return &cfg, nil
 }
 
 // SaveConfig saves the configuration to disk
