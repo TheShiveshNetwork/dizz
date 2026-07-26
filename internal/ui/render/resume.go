@@ -40,7 +40,7 @@ func ResumeOutput(data *ResumeData) {
 		}
 		for i := 0; i < limit; i++ {
 			fmt.Printf("    • %s\n", ui.Highlight(data.Planned[i].Name))
-			fmt.Printf("      %s\n", ui.Muted(data.Planned[i].File))
+			fmt.Printf("      %s\n", ui.Muted(utils.RelPath(data.Planned[i].File)))
 		}
 		if len(data.Planned) > 3 {
 			fmt.Printf(ui.Muted("    ... and %d more\n"), len(data.Planned)-3)

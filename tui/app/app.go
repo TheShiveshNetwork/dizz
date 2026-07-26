@@ -1,10 +1,11 @@
 package app
 
 import (
+	"fmt"
 	"path/filepath"
 	"time"
 
-	"github.com/TheShiveshNetwork/dizz/tui/dizzclient"
+	"github.com/TheShiveshNetwork/dizz/tui/client"
 	"github.com/TheShiveshNetwork/dizz/tui/render"
 	"github.com/TheShiveshNetwork/dizz/tui/ui"
 	"github.com/TheShiveshNetwork/dizz/tui/views"
@@ -13,7 +14,7 @@ import (
 
 type AnimationTick time.Time
 
-const refreshInterval = 15
+const refreshInterval = 30
 
 type ModalState interface {
 	IsModalActive() bool
@@ -33,9 +34,13 @@ type Model struct {
 	err         string
 	initialized bool
 
-	intents    []dizzclient.Intent
+	intents    []client.Intent
 	intentsSel int
 	intentsOff int
+
+	todos    []client.Todo
+	todosSel int
+	todosOff int
 
 	showModal     bool
 	modalType     string
@@ -53,17 +58,22 @@ type Model struct {
 	initBusy      bool
 	version       string
 	tickCount     int
+
+	lastStatusHash  string
+	lastIntentsHash string
+	lastTodosHash   string
+
+	viewLoaded []bool
 }
 
-type statusMsg struct {
-	summary *dizzclient.Summary
-	err     string
-	version string
-}
-
-type intentsMsg struct {
-	intents []dizzclient.Intent
-	err     string
+type batchRefreshMsg struct {
+	summary     *client.Summary
+	intents     []client.Intent
+	todos       []client.Todo
+	err         string
+	statusHash  string
+	intentsHash string
+	todosHash   string
 }
 
 type intentActionDoneMsg struct {
@@ -82,7 +92,7 @@ func NewModel(version string) *Model {
 		height:      24,
 		showHelp:    false,
 		now:         time.Now(),
-		initialized: dizzclient.IsDizzInitialized(),
+		initialized: client.IsDizzInitialized(),
 		version:     version,
 	}
 
@@ -94,6 +104,7 @@ func NewModel(version string) *Model {
 		views.NewSnapshotsModel(),
 		views.NewConfigsModel(),
 	}
+	m.viewLoaded = make([]bool, len(m.views))
 
 	return m
 }
@@ -102,11 +113,8 @@ func (m *Model) Init() tea.Cmd {
 	if !m.initialized {
 		return m.tick()
 	}
-	cmds := []tea.Cmd{m.tick(), m.refreshStatus(), m.refreshIntents()}
-	for _, v := range m.views {
-		cmds = append(cmds, v.Init())
-	}
-	return tea.Batch(cmds...)
+	m.viewLoaded[0] = true
+	return tea.Batch(m.tick(), m.refreshBatch(), m.views[0].Init())
 }
 
 func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
@@ -123,16 +131,7 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		if m.initialized {
 			m.tickCount++
 			if m.tickCount%refreshInterval == 0 {
-				var cmds []tea.Cmd
-				for i, v := range m.views {
-					newV, cmd := v.Update(ui.RefreshTick{})
-					m.views[i] = newV
-					if cmd != nil {
-						cmds = append(cmds, cmd)
-					}
-				}
-				cmds = append(cmds, m.refreshStatus(), m.refreshIntents())
-				return m, tea.Batch(append(cmds, m.tick())...)
+				return m, tea.Batch(m.tick(), m.refreshBatch())
 			}
 			var cmd tea.Cmd
 			m.views[m.currentTab], cmd = m.views[m.currentTab].Update(time.Time(msg))
@@ -141,29 +140,55 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.initFrameTick++
 		return m, m.tick()
 
-	case statusMsg:
+	case batchRefreshMsg:
 		if msg.err != "" {
 			m.err = msg.err
 		} else {
 			m.err = ""
-			m.statusData = ui.StatusData{
-				ProjectName: msg.summary.ProjectName,
-				Branch:      msg.summary.Branch,
-				Commit:      msg.summary.Commit,
-				Version:     msg.version,
+			changed := false
+			if msg.statusHash != m.lastStatusHash && msg.summary != nil {
+				m.statusData = ui.StatusData{
+					ProjectName: msg.summary.ProjectName,
+					Branch:      msg.summary.Branch,
+					Commit:      msg.summary.Commit,
+					Version:     m.version,
+				}
+				m.lastStatusHash = msg.statusHash
+				changed = true
 			}
-		}
-
-	case intentsMsg:
-		if msg.err == "" {
-			m.intents = msg.intents
+			if msg.intentsHash != m.lastIntentsHash {
+				m.intents = msg.intents
+				m.lastIntentsHash = msg.intentsHash
+				changed = true
+			}
+			if msg.todosHash != m.lastTodosHash {
+				m.todos = msg.todos
+				m.lastTodosHash = msg.todosHash
+				changed = true
+			}
+			if changed {
+				var cmds []tea.Cmd
+				for i, v := range m.views {
+					if !m.viewLoaded[i] {
+						continue
+					}
+					newV, cmd := v.Update(ui.RefreshTick{})
+					m.views[i] = newV
+					if cmd != nil {
+						cmds = append(cmds, cmd)
+					}
+				}
+				if len(cmds) > 0 {
+					return m, tea.Batch(cmds...)
+				}
+			}
 		}
 
 	case intentActionDoneMsg:
 		if msg.err != nil {
 			m.err = msg.err.Error()
 		}
-		return m, m.refreshIntents()
+		return m, m.refreshBatch()
 
 	case initDoneMsg:
 		m.initBusy = false
@@ -171,13 +196,10 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.err = msg.err.Error()
 			return m, nil
 		}
-		m.initialized = dizzclient.IsDizzInitialized()
+		m.initialized = client.IsDizzInitialized()
 		if m.initialized {
-			cmds := []tea.Cmd{m.refreshStatus(), m.refreshIntents()}
-			for _, v := range m.views {
-				cmds = append(cmds, v.Init())
-			}
-			return m, tea.Batch(cmds...)
+			m.viewLoaded[0] = true
+			return m, tea.Batch(m.refreshBatch(), m.views[0].Init())
 		}
 		return m, nil
 
@@ -223,7 +245,6 @@ func (m *Model) View() string {
 	}
 
 	isSidebarFocused := m.focusZone == "sidebar"
-	isIntentsFocused := m.focusZone == "intents"
 	isMainFocused := m.focusZone == "main"
 
 	contentLeftX := 0
@@ -244,7 +265,9 @@ func (m *Model) View() string {
 		if intentsH < 3 {
 			intentsH = 3
 		}
-		m.renderIntentsMini(c, contentLeftX, intentsTop, leftPanelW-contentLeftX, intentsH, isIntentsFocused)
+		isIntentsFocused := m.focusZone == "intents"
+		isTodosFocused := m.focusZone == "todos"
+		m.renderIntentsMini(c, contentLeftX, intentsTop, leftPanelW-contentLeftX, intentsH, isIntentsFocused, isTodosFocused)
 	}
 
 	rightSepStyle := render.StyleMuted
@@ -319,7 +342,7 @@ func (m *Model) handleKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 				m.initBusy = true
 				m.err = ""
 				return m, func() tea.Msg {
-					return initDoneMsg{err: dizzclient.Initialize()}
+					return initDoneMsg{err: client.Initialize()}
 				}
 			}
 		}
@@ -346,7 +369,7 @@ func (m *Model) handleKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	case "tab":
 		if m.intentsPanelHidden() {
 			switch m.focusZone {
-			case "sidebar", "intents":
+			case "sidebar", "intents", "todos":
 				m.focusZone = "main"
 			case "main":
 				m.focusZone = "sidebar"
@@ -356,6 +379,8 @@ func (m *Model) handleKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 			case "sidebar":
 				m.focusZone = "intents"
 			case "intents":
+				m.focusZone = "todos"
+			case "todos":
 				m.focusZone = "main"
 			case "main":
 				m.focusZone = "sidebar"
@@ -367,7 +392,7 @@ func (m *Model) handleKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	case "shift+tab":
 		if m.intentsPanelHidden() {
 			switch m.focusZone {
-			case "sidebar", "intents":
+			case "sidebar", "intents", "todos":
 				m.focusZone = "main"
 			case "main":
 				m.focusZone = "sidebar"
@@ -378,8 +403,10 @@ func (m *Model) handleKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 				m.focusZone = "main"
 			case "intents":
 				m.focusZone = "sidebar"
-			case "main":
+			case "todos":
 				m.focusZone = "intents"
+			case "main":
+				m.focusZone = "todos"
 			}
 		}
 		m.showHelp = false
@@ -388,10 +415,8 @@ func (m *Model) handleKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	case "up":
 		switch m.focusZone {
 		case "sidebar":
-			m.currentTab = (m.currentTab - 1 + len(m.views)) % len(m.views)
-			m.showHelp = false
-			m.fixFocusZone()
-			return m, nil
+			nextTab := (m.currentTab - 1 + len(m.views)) % len(m.views)
+			return m, m.switchTab(nextTab)
 		case "intents":
 			m.intentsSel--
 			if m.intentsSel < 0 {
@@ -399,15 +424,20 @@ func (m *Model) handleKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 			}
 			m.ensureIntentsVisible()
 			return m, nil
+		case "todos":
+			m.todosSel--
+			if m.todosSel < 0 {
+				m.todosSel = 0
+			}
+			m.ensureTodosVisible()
+			return m, nil
 		}
 
 	case "down":
 		switch m.focusZone {
 		case "sidebar":
-			m.currentTab = (m.currentTab + 1) % len(m.views)
-			m.showHelp = false
-			m.fixFocusZone()
-			return m, nil
+			nextTab := (m.currentTab + 1) % len(m.views)
+			return m, m.switchTab(nextTab)
 		case "intents":
 			m.intentsSel++
 			active := m.activeIntents()
@@ -415,6 +445,14 @@ func (m *Model) handleKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 				m.intentsSel = len(active) - 1
 			}
 			m.ensureIntentsVisible()
+			return m, nil
+		case "todos":
+			m.todosSel++
+			unresolved := m.unresolvedTodos()
+			if m.todosSel >= len(unresolved) {
+				m.todosSel = len(unresolved) - 1
+			}
+			m.ensureTodosVisible()
 			return m, nil
 		}
 
@@ -438,7 +476,7 @@ func (m *Model) handleKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		}
 
 	case "i":
-		if m.focusZone == "intents" {
+		if m.focusZone == "intents" || m.focusZone == "todos" {
 			m.showModal = true
 			m.modalType = "add"
 			m.focusIdx = 0
@@ -454,12 +492,10 @@ func (m *Model) handleKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		if m.focusZone == "sidebar" {
 			tab := int(msg.String()[0] - '1')
 			if tab >= 0 && tab < len(m.views) {
-				m.currentTab = tab
-				m.showHelp = false
-				m.fixFocusZone()
+				return m, m.switchTab(tab)
 			}
-			return m, nil
 		}
+		return m, nil
 	}
 
 	if m.showHelp && msg.String() == "esc" {
@@ -482,32 +518,101 @@ func (m *Model) tick() tea.Cmd {
 	})
 }
 
-func (m *Model) refreshStatus() tea.Cmd {
+func (m *Model) switchTab(tab int) tea.Cmd {
+	if tab == m.currentTab {
+		return nil
+	}
+	m.currentTab = tab
+	m.showHelp = false
+	m.fixFocusZone()
+	if !m.viewLoaded[tab] {
+		m.viewLoaded[tab] = true
+		return m.views[tab].Init()
+	}
+	return nil
+}
+
+func (m *Model) refreshBatch() tea.Cmd {
 	return func() tea.Msg {
-		s, err := dizzclient.Status()
-		if err != nil {
-			return statusMsg{err: err.Error()}
+		type statusResult struct {
+			summary *client.Summary
+			err     error
 		}
-		if s.ProjectName == "" {
-			if root, err := dizzclient.FindDizzRoot(); err == nil {
-				s.ProjectName = filepath.Base(root)
+		type intentsResult struct {
+			intents []client.Intent
+			err     error
+		}
+		type todosResult struct {
+			todos []client.Todo
+			err   error
+		}
+
+		statusCh := make(chan statusResult, 1)
+		intentsCh := make(chan intentsResult, 1)
+		todosCh := make(chan todosResult, 1)
+
+		go func() {
+			s, err := client.Status()
+			if err == nil && s.ProjectName == "" {
+				if root, rerr := client.FindDizzRoot(); rerr == nil {
+					s.ProjectName = filepath.Base(root)
+				}
 			}
+			statusCh <- statusResult{summary: s, err: err}
+		}()
+		go func() {
+			intents, err := client.ListIntents()
+			intentsCh <- intentsResult{intents: intents, err: err}
+		}()
+		go func() {
+			todos, err := client.ListTodos()
+			todosCh <- todosResult{todos: todos, err: err}
+		}()
+
+		sr := <-statusCh
+		ir := <-intentsCh
+		tr := <-todosCh
+
+		msg := batchRefreshMsg{}
+		if sr.err != nil {
+			msg.err = sr.err.Error()
+			return msg
 		}
-		return statusMsg{
-			summary: s,
-			version: m.version,
+		msg.summary = sr.summary
+		msg.statusHash = hashSummary(sr.summary)
+		if ir.err == nil {
+			msg.intents = ir.intents
+			msg.intentsHash = hashIntents(ir.intents)
 		}
+		if tr.err == nil {
+			msg.todos = tr.todos
+			msg.todosHash = hashTodos(tr.todos)
+		}
+		return msg
 	}
 }
 
-func (m *Model) refreshIntents() tea.Cmd {
-	return func() tea.Msg {
-		intents, err := dizzclient.ListIntents()
-		if err != nil {
-			return intentsMsg{err: err.Error()}
-		}
-		return intentsMsg{intents: intents}
+func hashSummary(s *client.Summary) string {
+	if s == nil {
+		return ""
 	}
+	return fmt.Sprintf("%d-%d-%d-%d-%d-%d-%d-%d",
+		s.TotalSymbols, s.Active, s.Planned, s.Unstable,
+		s.Unused, s.Abandoned, s.ActiveTodos, s.Intents)
+}
+
+func hashIntents(intents []client.Intent) string {
+	if len(intents) == 0 {
+		return "0"
+	}
+	return fmt.Sprintf("%d-%s", len(intents), intents[len(intents)-1].ID)
+}
+
+func hashTodos(todos []client.Todo) string {
+	if len(todos) == 0 {
+		return "0"
+	}
+	return fmt.Sprintf("%d-%s", len(todos), todos[len(todos)-1].File)
 }
 
 func (m *Model) ensureIntentsVisible() {
@@ -520,24 +625,44 @@ func (m *Model) ensureIntentsVisible() {
 	}
 }
 
+func (m *Model) ensureTodosVisible() {
+	listH := 8
+	if m.todosSel < m.todosOff {
+		m.todosOff = m.todosSel
+	}
+	if m.todosSel >= m.todosOff+listH {
+		m.todosOff = m.todosSel - listH + 1
+	}
+}
+
 func (m *Model) intentsPanelHidden() bool {
 	return m.currentTab == 2 || m.currentTab == 5
 }
 
 func (m *Model) fixFocusZone() {
-	if m.intentsPanelHidden() && m.focusZone == "intents" {
+	if m.intentsPanelHidden() && (m.focusZone == "intents" || m.focusZone == "todos") {
 		m.focusZone = "main"
 	}
 }
 
-func (m *Model) activeIntents() []dizzclient.Intent {
-	var active []dizzclient.Intent
+func (m *Model) activeIntents() []client.Intent {
+	var active []client.Intent
 	for _, in := range m.intents {
 		if in.Status == "" || in.Status == "active" {
 			active = append(active, in)
 		}
 	}
 	return active
+}
+
+func (m *Model) unresolvedTodos() []client.Todo {
+	var unresolved []client.Todo
+	for _, td := range m.todos {
+		if !td.Resolved {
+			unresolved = append(unresolved, td)
+		}
+	}
+	return unresolved
 }
 
 func (m *Model) isInInputMode() bool {

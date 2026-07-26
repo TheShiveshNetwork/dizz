@@ -84,6 +84,7 @@ var configSetDescriptionCmd = &cobra.Command{
 	RunE:  runConfigSetDescription,
 }
 
+// @dizz-ignore-unused
 func init() {
 	rootCmd.AddCommand(configCmd)
 	configCmd.AddCommand(configShowCmd)

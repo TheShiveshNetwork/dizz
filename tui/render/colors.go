@@ -1,6 +1,10 @@
 package render
 
-import "github.com/gdamore/tcell/v2"
+import (
+	"strings"
+
+	"github.com/gdamore/tcell/v2"
+)
 
 var (
 	ColorGreen  = tcell.NewRGBColor(int32(80), int32(200), int32(120))
@@ -48,6 +52,23 @@ func SeverityColor(sev int) tcell.Style {
 		return StyleInfo
 	default:
 		return StyleMuted
+	}
+}
+
+func TodoTypeStyle(typ string) tcell.Style {
+	switch strings.ToUpper(typ) {
+	case "TODO":
+		fg := tcell.NewRGBColor(255, 255, 255)
+		bg := tcell.NewRGBColor(40, 100, 180)
+		return tcell.StyleDefault.Foreground(fg).Background(bg)
+	case "FIXME":
+		fg := tcell.NewRGBColor(255, 255, 255)
+		bg := tcell.NewRGBColor(180, 50, 50)
+		return tcell.StyleDefault.Foreground(fg).Background(bg)
+	default:
+		fg := tcell.ColorWhite
+		bg := tcell.ColorGray
+		return tcell.StyleDefault.Foreground(fg).Background(bg)
 	}
 }
 

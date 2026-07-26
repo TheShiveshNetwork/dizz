@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/TheShiveshNetwork/dizz/tui/dizzclient"
+	"github.com/TheShiveshNetwork/dizz/tui/client"
 	"github.com/TheShiveshNetwork/dizz/tui/render"
 	"github.com/TheShiveshNetwork/dizz/tui/ui"
 	tea "github.com/charmbracelet/bubbletea"
@@ -454,10 +454,10 @@ func (m *Model) handleModalEnter() (tea.Model, tea.Cmd) {
 			if m.resolveIdx < len(active) {
 				id := active[m.resolveIdx].ID
 				return m, func() tea.Msg {
-					return intentActionDoneMsg{err: dizzclient.IntentResolve(id, note)}
+					return intentActionDoneMsg{err: client.IntentResolve(id, note)}
 				}
 			}
-			return m, m.refreshIntents()
+			return m, m.refreshBatch()
 		}
 		if m.focusIdx == 3 {
 			active := m.activeIntents()
@@ -469,10 +469,10 @@ func (m *Model) handleModalEnter() (tea.Model, tea.Cmd) {
 			if m.resolveIdx < len(active) {
 				id := active[m.resolveIdx].ID
 				return m, func() tea.Msg {
-					return intentActionDoneMsg{err: dizzclient.IntentClose(id, note)}
+					return intentActionDoneMsg{err: client.IntentClose(id, note)}
 				}
 			}
-			return m, m.refreshIntents()
+			return m, m.refreshBatch()
 		}
 		m.showModal = false
 		m.validationErr = ""
@@ -494,7 +494,7 @@ func (m *Model) handleModalEnter() (tea.Model, tea.Cmd) {
 			m.showModal = false
 			m.validationErr = ""
 			return m, func() tea.Msg {
-				return intentActionDoneMsg{err: dizzclient.IntentAdd(msg, typ, sev, nil)}
+				return intentActionDoneMsg{err: client.IntentAdd(msg, typ, sev, nil)}
 			}
 		}
 		if m.focusIdx == 3 {

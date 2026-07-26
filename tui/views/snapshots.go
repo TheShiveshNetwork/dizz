@@ -5,14 +5,14 @@ import (
 	"strings"
 	"unicode"
 
-	"github.com/TheShiveshNetwork/dizz/tui/dizzclient"
+	"github.com/TheShiveshNetwork/dizz/tui/client"
 	"github.com/TheShiveshNetwork/dizz/tui/render"
 	"github.com/TheShiveshNetwork/dizz/tui/ui"
 	tea "github.com/charmbracelet/bubbletea"
 )
 
 type SnapshotsModel struct {
-	snapshots []dizzclient.SnapshotInfo
+	snapshots []client.SnapshotInfo
 	filter    ui.Filter
 	selected  int
 	loading   bool
@@ -40,7 +40,7 @@ func (m *SnapshotsModel) Init() tea.Cmd {
 
 func (m *SnapshotsModel) refresh() tea.Cmd {
 	return func() tea.Msg {
-		entries, err := dizzclient.SnapshotList()
+		entries, err := client.SnapshotList()
 		if err != nil {
 			return snapshotsMsg{err: err.Error()}
 		}
@@ -49,7 +49,7 @@ func (m *SnapshotsModel) refresh() tea.Cmd {
 }
 
 type snapshotsMsg struct {
-	entries []dizzclient.SnapshotInfo
+	entries []client.SnapshotInfo
 	err     string
 }
 
@@ -232,7 +232,7 @@ func (m *SnapshotsModel) handlePruneKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 func (m *SnapshotsModel) runCreate() tea.Cmd {
 	m.loading = true
 	return func() tea.Msg {
-		result, err := dizzclient.SnapshotCreate()
+		result, err := client.SnapshotCreate()
 		if err != nil {
 			return createMsg{err: err.Error()}
 		}
@@ -242,7 +242,7 @@ func (m *SnapshotsModel) runCreate() tea.Cmd {
 
 func (m *SnapshotsModel) runDiff() tea.Cmd {
 	return func() tea.Msg {
-		content, err := dizzclient.SnapshotDiff()
+		content, err := client.SnapshotDiff()
 		if err != nil {
 			return diffMsg{err: err.Error()}
 		}
@@ -256,7 +256,7 @@ func (m *SnapshotsModel) runCheckout() tea.Cmd {
 	}
 	hash := m.snapshots[m.selected].Hash
 	return func() tea.Msg {
-		info, err := dizzclient.SnapshotCheckout(hash)
+		info, err := client.SnapshotCheckout(hash)
 		if err != nil {
 			return checkoutMsg{err: err.Error()}
 		}
@@ -266,7 +266,7 @@ func (m *SnapshotsModel) runCheckout() tea.Cmd {
 
 func (m *SnapshotsModel) runPrune(keep int) tea.Cmd {
 	return func() tea.Msg {
-		result, err := dizzclient.SnapshotPrune(keep)
+		result, err := client.SnapshotPrune(keep)
 		if err != nil {
 			return pruneMsg{err: err.Error()}
 		}

@@ -5,7 +5,7 @@ import (
 	"sort"
 	"strings"
 
-	"github.com/TheShiveshNetwork/dizz/tui/dizzclient"
+	"github.com/TheShiveshNetwork/dizz/tui/client"
 	"github.com/TheShiveshNetwork/dizz/tui/render"
 	"github.com/TheShiveshNetwork/dizz/tui/ui"
 	tea "github.com/charmbracelet/bubbletea"
@@ -26,7 +26,7 @@ var typePriority = map[string]int{
 }
 
 type IntentsModel struct {
-	intents     []dizzclient.Intent
+	intents     []client.Intent
 	table       ui.TableModel
 	filter      ui.Filter
 	stateFilter *ui.StateFilter
@@ -94,7 +94,7 @@ func (m *IntentsModel) Init() tea.Cmd {
 
 func (m *IntentsModel) refresh() tea.Cmd {
 	return func() tea.Msg {
-		intents, err := dizzclient.ListIntents()
+		intents, err := client.ListIntents()
 		if err != nil {
 			return intentsMsg{err: err.Error()}
 		}
@@ -103,7 +103,7 @@ func (m *IntentsModel) refresh() tea.Cmd {
 }
 
 type intentsMsg struct {
-	intents []dizzclient.Intent
+	intents []client.Intent
 	err     string
 }
 
@@ -505,7 +505,7 @@ func (m *IntentsModel) handleModalEnter() (tea.Model, tea.Cmd) {
 			if idx < len(m.intents) {
 				id := m.intents[idx].ID
 				return m, func() tea.Msg {
-					return intentActionDoneMsg{err: dizzclient.IntentResolve(id, note)}
+					return intentActionDoneMsg{err: client.IntentResolve(id, note)}
 				}
 			}
 			return m, m.refresh()
@@ -520,7 +520,7 @@ func (m *IntentsModel) handleModalEnter() (tea.Model, tea.Cmd) {
 			if idx < len(m.intents) {
 				id := m.intents[idx].ID
 				return m, func() tea.Msg {
-					return intentActionDoneMsg{err: dizzclient.IntentClose(id, note)}
+					return intentActionDoneMsg{err: client.IntentClose(id, note)}
 				}
 			}
 			return m, m.refresh()
@@ -544,7 +544,7 @@ func (m *IntentsModel) handleModalEnter() (tea.Model, tea.Cmd) {
 			m.showModal = false
 			m.validationErr = ""
 			return m, func() tea.Msg {
-				return intentActionDoneMsg{err: dizzclient.IntentAdd(msg, typ, sev, nil)}
+				return intentActionDoneMsg{err: client.IntentAdd(msg, typ, sev, nil)}
 			}
 		}
 		if m.focusIdx == 3 {
@@ -590,8 +590,8 @@ func (m *IntentsModel) buildHeader() string {
 
 func (m *IntentsModel) sortRows() {
 	sort.SliceStable(m.table.Rows, func(i, j int) bool {
-		inI, okI := m.table.Rows[i].Data.(dizzclient.Intent)
-		inJ, okJ := m.table.Rows[j].Data.(dizzclient.Intent)
+		inI, okI := m.table.Rows[i].Data.(client.Intent)
+		inJ, okJ := m.table.Rows[j].Data.(client.Intent)
 		if !okI || !okJ {
 			return false
 		}
@@ -614,7 +614,7 @@ func (m *IntentsModel) buildTable() {
 	filtered := m.intents
 
 	if m.filter.Active() && m.filter.Query != "" {
-		var f []dizzclient.Intent
+		var f []client.Intent
 		for _, in := range filtered {
 			if m.filter.MatchesAny(in.ID, string(in.Type), in.Message, in.Scope) {
 				f = append(f, in)
@@ -625,7 +625,7 @@ func (m *IntentsModel) buildTable() {
 
 	sf := m.stateFilter.Value()
 	if sf == "open" {
-		var f []dizzclient.Intent
+		var f []client.Intent
 		for _, in := range filtered {
 			if in.Status == "active" || in.Status == "" {
 				f = append(f, in)
@@ -633,7 +633,7 @@ func (m *IntentsModel) buildTable() {
 		}
 		filtered = f
 	} else if sf == "resolved" {
-		var f []dizzclient.Intent
+		var f []client.Intent
 		for _, in := range filtered {
 			if in.Status == "resolved" {
 				f = append(f, in)
@@ -641,7 +641,7 @@ func (m *IntentsModel) buildTable() {
 		}
 		filtered = f
 	} else if sf == "closed" {
-		var f []dizzclient.Intent
+		var f []client.Intent
 		for _, in := range filtered {
 			if in.Status == "closed" {
 				f = append(f, in)
@@ -652,7 +652,7 @@ func (m *IntentsModel) buildTable() {
 
 	if sv := m.sevFilter.Value(); sv != "" {
 		sevVal := int(sv[0] - '0')
-		var f []dizzclient.Intent
+		var f []client.Intent
 		for _, in := range filtered {
 			if in.Severity == sevVal {
 				f = append(f, in)
@@ -662,7 +662,7 @@ func (m *IntentsModel) buildTable() {
 	}
 
 	if tv := m.typeFilter.Value(); tv != "" {
-		var f []dizzclient.Intent
+		var f []client.Intent
 		for _, in := range filtered {
 			if string(in.Type) == tv {
 				f = append(f, in)

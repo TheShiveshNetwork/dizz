@@ -1,4 +1,4 @@
-package dizzclient
+package client
 
 import (
 	"bufio"
@@ -71,7 +71,7 @@ func ParseLogOutput(raw string) []Symbol {
 
 	sectionRe := regexp.MustCompile(`^\s*(PLANNED|UNUSED|UNSTABLE|ABANDONED)(\s|$)`)
 	activeSectionRe := regexp.MustCompile(`ACTIVE\s`)
-	fileRe := regexp.MustCompile(`^\s{2}(/\S+)\s+\((\d+)\s+items?\)`)
+	fileRe := regexp.MustCompile(`^\s{2}(\S+)\s+\((\d+)\s+items?\)`)
 	symbolRe := regexp.MustCompile(`^\s{5}•\s+(\S+)\s+(\d+):(\d+)`)
 	activeSymbolRe := regexp.MustCompile(`^\s{2}(\S[\S\s]*)$`)
 

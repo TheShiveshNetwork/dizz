@@ -13,6 +13,7 @@ import (
 	"github.com/TheShiveshNetwork/dizz/internal/state"
 	"github.com/TheShiveshNetwork/dizz/internal/store"
 	"github.com/TheShiveshNetwork/dizz/internal/ui"
+	"github.com/TheShiveshNetwork/dizz/internal/utils"
 	"github.com/spf13/cobra"
 )
 
@@ -103,7 +104,7 @@ func runContext() {
 		}
 		var buf bytes.Buffer
 		for _, symbol := range projectState.Symbols {
-			fmt.Fprintf(&buf, "%s|%s|%s|%d\n", symbol.File, symbol.Name, symbol.Type, symbol.ChurnCount)
+			fmt.Fprintf(&buf, "%s|%s|%s|%d\n", utils.RelPath(symbol.File), symbol.Name, symbol.Type, symbol.ChurnCount)
 		}
 		fmt.Print(buf.String())
 		return
@@ -116,7 +117,7 @@ func runContext() {
 		}
 		var buf bytes.Buffer
 		for _, todo := range projectState.GetActiveTodos() {
-			fmt.Fprintf(&buf, "%s|%d|%s|%s\n", todo.File, todo.Line, todo.Type, todo.Text)
+			fmt.Fprintf(&buf, "%s|%d|%s|%s\n", utils.RelPath(todo.File), todo.Line, todo.Type, todo.Text)
 		}
 		fmt.Print(buf.String())
 		return

@@ -1,4 +1,4 @@
-package dizzclient
+package client
 
 import (
 	"bytes"

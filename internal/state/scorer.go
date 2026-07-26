@@ -333,6 +333,7 @@ func (s *Scorer) abandonedConfidence(sym *Symbol) float64 {
 // InterpretSignalsWithIntent converts signals with intent enhancement.
 // When prevState is non-nil, InstabilityScore is carried forward for symbols
 // whose name and location are unchanged, avoiding redundant git calls.
+// @dizz-ignore-unused used in tests
 func (s *Scorer) InterpretSignalsWithIntent(sigSet *signals.SignalSet, intentState *IntentState, prevState *ProjectState) *ProjectState {
 	ps := NewProjectState()
 
@@ -509,8 +510,14 @@ func (s *Scorer) InterpretSignalsWithIntent(sigSet *signals.SignalSet, intentSta
 
 	s.applyMathematicalScoring(symbolSlice)
 
-	// Add all symbols to project state
-	for _, symbol := range symbolIndex {
+	sort.Slice(symbolSlice, func(i, j int) bool {
+		if symbolSlice[i].File != symbolSlice[j].File {
+			return symbolSlice[i].File < symbolSlice[j].File
+		}
+		return symbolSlice[i].Name < symbolSlice[j].Name
+	})
+
+	for _, symbol := range symbolSlice {
 		ps.AddSymbol(*symbol)
 	}
 

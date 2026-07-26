@@ -5,7 +5,7 @@ import (
 	"sort"
 	"strings"
 
-	"github.com/TheShiveshNetwork/dizz/tui/dizzclient"
+	"github.com/TheShiveshNetwork/dizz/tui/client"
 	"github.com/TheShiveshNetwork/dizz/tui/render"
 	"github.com/TheShiveshNetwork/dizz/tui/ui"
 	tea "github.com/charmbracelet/bubbletea"
@@ -13,7 +13,7 @@ import (
 )
 
 type SymbolsModel struct {
-	symbols     []dizzclient.Symbol
+	symbols     []client.Symbol
 	table       ui.TableModel
 	filter      ui.Filter
 	stateFilter *ui.StateFilter
@@ -48,7 +48,7 @@ func (m *SymbolsModel) Init() tea.Cmd {
 
 func (m *SymbolsModel) refresh() tea.Cmd {
 	return func() tea.Msg {
-		symbols, err := dizzclient.LogDump()
+		symbols, err := client.LogDump()
 		if err != nil {
 			return symbolsMsg{err: err.Error()}
 		}
@@ -57,7 +57,7 @@ func (m *SymbolsModel) refresh() tea.Cmd {
 }
 
 type symbolsMsg struct {
-	symbols []dizzclient.Symbol
+	symbols []client.Symbol
 	err     string
 }
 
@@ -134,7 +134,7 @@ func (m *SymbolsModel) buildTable() {
 	filtered := m.symbols
 
 	if m.stateFilter.Active() {
-		var f []dizzclient.Symbol
+		var f []client.Symbol
 		for _, s := range filtered {
 			if s.State == m.stateFilter.Value() {
 				f = append(f, s)
@@ -142,7 +142,7 @@ func (m *SymbolsModel) buildTable() {
 		}
 		filtered = f
 	} else {
-		var f []dizzclient.Symbol
+		var f []client.Symbol
 		for _, s := range filtered {
 			if s.State != "active" {
 				f = append(f, s)
@@ -152,9 +152,9 @@ func (m *SymbolsModel) buildTable() {
 	}
 
 	if m.filter.Active() && m.filter.Query != "" {
-		var f []dizzclient.Symbol
+		var f []client.Symbol
 		for _, s := range filtered {
-			if m.filter.MatchesAny(s.Name, dizzclient.RelPath(s.File), s.State) {
+			if m.filter.MatchesAny(s.Name, client.RelPath(s.File), s.State) {
 				f = append(f, s)
 			}
 		}
@@ -163,7 +163,7 @@ func (m *SymbolsModel) buildTable() {
 
 	m.table.Rows = make([]ui.Row, len(filtered))
 	for i, s := range filtered {
-		relFile := dizzclient.RelPath(s.File)
+		relFile := client.RelPath(s.File)
 		fileLine := fmt.Sprintf("%s:%d", relFile, s.Line)
 		if len(fileLine) > 42 {
 			fileLine = "..." + fileLine[len(fileLine)-39:]
@@ -233,7 +233,7 @@ func (m *SymbolsModel) Render(c *render.Canvas) {
 
 	tableH := h
 	if m.showDetail && len(m.table.Rows) > 0 && m.table.Selected < len(m.table.Rows) {
-		if sym, ok := m.table.Rows[m.table.Selected].Data.(dizzclient.Symbol); ok {
+		if sym, ok := m.table.Rows[m.table.Selected].Data.(client.Symbol); ok {
 			tableH = h - detailHeight(sym) - 2
 		}
 	}
@@ -277,7 +277,7 @@ func (m *SymbolsModel) buildHeader() string {
 	return strings.Join(parts, "")
 }
 
-func detailHeight(sym dizzclient.Symbol) int {
+func detailHeight(sym client.Symbol) int {
 	n := 4
 	if sym.Type != "" {
 		n++
@@ -300,7 +300,7 @@ func detailHeight(sym dizzclient.Symbol) int {
 func (m *SymbolsModel) renderDetail(c *render.Canvas, y int) {
 	w := c.Width()
 	row := m.table.Rows[m.table.Selected]
-	sym, ok := row.Data.(dizzclient.Symbol)
+	sym, ok := row.Data.(client.Symbol)
 	if !ok {
 		return
 	}
@@ -327,7 +327,7 @@ func (m *SymbolsModel) renderDetail(c *render.Canvas, y int) {
 		value    string
 		valStyle tcell.Style
 	}{
-		{"File", fmt.Sprintf("%s:%d", dizzclient.RelPath(sym.File), sym.Line), render.StyleInfo},
+		{"File", fmt.Sprintf("%s:%d", client.RelPath(sym.File), sym.Line), render.StyleInfo},
 		{"State", sym.State, render.StateColor(sym.State)},
 	}
 

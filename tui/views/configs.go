@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/TheShiveshNetwork/dizz/tui/dizzclient"
+	"github.com/TheShiveshNetwork/dizz/tui/client"
 	"github.com/TheShiveshNetwork/dizz/tui/render"
 	"github.com/TheShiveshNetwork/dizz/tui/ui"
 	tea "github.com/charmbracelet/bubbletea"
@@ -28,7 +28,7 @@ var configFields = []configField{
 }
 
 type ConfigsModel struct {
-	cfg          *dizzclient.ProjectConfig
+	cfg          *client.ProjectConfig
 	loading      bool
 	err          string
 	fieldIdx     int
@@ -52,7 +52,7 @@ func (m *ConfigsModel) Init() tea.Cmd {
 
 func (m *ConfigsModel) refresh() tea.Cmd {
 	return func() tea.Msg {
-		cfg, err := dizzclient.LoadProjectConfig()
+		cfg, err := client.LoadProjectConfig()
 		if err != nil {
 			return configLoadedMsg{err: err.Error()}
 		}
@@ -61,7 +61,7 @@ func (m *ConfigsModel) refresh() tea.Cmd {
 }
 
 type configLoadedMsg struct {
-	cfg *dizzclient.ProjectConfig
+	cfg *client.ProjectConfig
 	err string
 }
 
@@ -100,30 +100,34 @@ func (m *ConfigsModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	return m, nil
 }
 
+func (m *ConfigsModel) fieldRows(f configField) int {
+	fieldRows := 1
+	if f.kind != "text" {
+		items := m.getListItems(f.key)
+		fieldRows += len(items)
+		if fieldRows < 1 {
+			fieldRows = 1
+		}
+	}
+	return fieldRows
+}
+
 func (m *ConfigsModel) clampScroll(contentH int) {
 	if m.fieldIdx < m.scrollOffset {
 		m.scrollOffset = m.fieldIdx
 	}
 	for {
-		avail := contentH - 3
+		avail := contentH
 		if avail < 1 {
 			avail = 1
 		}
 		rows := 0
 		for i := m.scrollOffset; i < len(configFields); i++ {
-			f := configFields[i]
-			fieldRows := 1
-			if f.kind != "text" {
-				items := m.getListItems(f.key)
-				fieldRows += len(items)
-				if fieldRows < 1 {
-					fieldRows = 1
-				}
-			}
-			if rows+fieldRows > avail {
+			fr := m.fieldRows(configFields[i])
+			if rows+fr > avail {
 				break
 			}
-			rows += fieldRows
+			rows += fr
 		}
 		if m.fieldIdx >= m.scrollOffset+rows && rows > 0 {
 			m.scrollOffset++
@@ -134,25 +138,17 @@ func (m *ConfigsModel) clampScroll(contentH int) {
 }
 
 func (m *ConfigsModel) hasMoreBelow(contentH int) bool {
-	avail := contentH - 3
+	avail := contentH
 	if avail < 1 {
 		avail = 1
 	}
 	rows := 0
 	for i := m.scrollOffset; i < len(configFields); i++ {
-		f := configFields[i]
-		fieldRows := 1
-		if f.kind != "text" {
-			items := m.getListItems(f.key)
-			fieldRows += len(items)
-			if fieldRows < 1 {
-				fieldRows = 1
-			}
-		}
-		if rows+fieldRows > avail {
+		fr := m.fieldRows(configFields[i])
+		if rows+fr > avail {
 			return true
 		}
-		rows += fieldRows
+		rows += fr
 	}
 	return false
 }
@@ -295,7 +291,7 @@ func (m *ConfigsModel) handleEditKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 			m.appendListItem(f.key, m.inputBuf)
 		} else if f.kind == "instructions" && m.inputBuf != "" {
 			existing := m.cfg.ParseInstructions()
-			existing = append(existing, dizzclient.ConfigInstruction{Rule: m.inputBuf})
+			existing = append(existing, client.ConfigInstruction{Rule: m.inputBuf})
 			newData, _ := jsonMarshal(existing)
 			m.cfg.Instructions = newData
 		} else if f.kind == "guardrails" && m.inputBuf != "" {
@@ -308,7 +304,7 @@ func (m *ConfigsModel) handleEditKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 			if action == "" {
 				action = "warn"
 			}
-			m.cfg.Guardrails = append(m.cfg.Guardrails, dizzclient.ConfigGuardrail{
+			m.cfg.Guardrails = append(m.cfg.Guardrails, client.ConfigGuardrail{
 				Action: action,
 				Reason: reason,
 			})
@@ -336,7 +332,7 @@ func (m *ConfigsModel) handleEditKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		} else if f.kind == "instructions" {
 			if m.inputBuf != "" {
 				existing := m.cfg.ParseInstructions()
-				existing = append(existing, dizzclient.ConfigInstruction{Rule: m.inputBuf})
+				existing = append(existing, client.ConfigInstruction{Rule: m.inputBuf})
 				newData, _ := jsonMarshal(existing)
 				m.cfg.Instructions = newData
 				m.dirty = true
@@ -354,7 +350,7 @@ func (m *ConfigsModel) handleEditKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 				if action == "" {
 					action = "warn"
 				}
-				m.cfg.Guardrails = append(m.cfg.Guardrails, dizzclient.ConfigGuardrail{
+				m.cfg.Guardrails = append(m.cfg.Guardrails, client.ConfigGuardrail{
 					Action: action,
 					Reason: reason,
 				})
@@ -494,7 +490,7 @@ func (m *ConfigsModel) appendListItem(key, val string) {
 
 func (m *ConfigsModel) saveConfig() tea.Cmd {
 	return func() tea.Msg {
-		err := dizzclient.SaveProjectConfig(m.cfg)
+		err := client.SaveProjectConfig(m.cfg)
 		return configSavedMsg{err: errStr(err)}
 	}
 }
@@ -535,37 +531,42 @@ func (m *ConfigsModel) Render(c *render.Canvas) {
 		c.SetContent(w-2-len(m.saveMsg), 0, render.StyleSuccess.Bold(true), m.saveMsg)
 	}
 
-	y := 1
+	hintY := 1
 	if m.dirty && !m.editing {
-		c.SetContent(2, y, render.StyleWarning, "Unsaved changes")
+		c.SetContent(2, hintY, render.StyleWarning, "Unsaved changes")
 		btnText := " [ Ctrl+S ] Save "
 		btnStyle := ui.StyleBtnFocusSuccess
 		btnX := w - 2 - runewidth.StringWidth(btnText)
 		if btnX > 2+len("Unsaved changes")+2 {
-			c.SetContent(btnX, y, btnStyle, btnText)
+			c.SetContent(btnX, hintY, btnStyle, btnText)
 		}
-		y++
 	} else {
 		hint := "up/down=nav enter=edit s=save r=refresh"
 		f := configFields[m.fieldIdx]
 		if f.kind == "list" || f.kind == "instructions" || f.kind == "guardrails" {
 			hint = "up/down=nav tab=next-item e=add d=delete enter=edit s=save r=refresh"
 		}
-		c.SetContent(2, y, render.StyleDim, hint)
-		y++
+		c.SetContent(2, hintY, render.StyleDim, hint)
 	}
 
-	y++
-	contentTop := y
-	contentH := h - y
+	separatorY := 2
+	if separatorY < h {
+		for x := 0; x < w; x++ {
+			c.SetCell(x, separatorY, render.StyleMuted, '\u2500')
+		}
+	}
+
+	contentTop := 3
+	contentH := h - contentTop - 1
 	if contentH < 1 {
 		contentH = 1
 	}
 
-	m.clampScroll(h)
+	m.clampScroll(contentH)
 
+	y := contentTop
 	for fi := m.scrollOffset; fi < len(configFields); fi++ {
-		if y >= h {
+		if y >= h-1 {
 			break
 		}
 
@@ -618,7 +619,7 @@ func (m *ConfigsModel) Render(c *render.Canvas) {
 				y++
 			} else {
 				for ii, item := range items {
-					if y >= h {
+					if y >= h-1 {
 						break
 					}
 					itemStyle := render.StyleDefault
@@ -636,7 +637,7 @@ func (m *ConfigsModel) Render(c *render.Canvas) {
 					y++
 				}
 			}
-			if m.editing && selected && y < h {
+			if m.editing && selected && y < h-1 {
 				prompt := "  + "
 				display := m.inputBuf
 				maxW := w - 6
@@ -658,11 +659,13 @@ func (m *ConfigsModel) Render(c *render.Canvas) {
 		scrollHint := fmt.Sprintf("↑ %d more", m.scrollOffset)
 		c.SetContent(w-2-len(scrollHint), contentTop, render.StyleDim, scrollHint)
 	}
-	if m.hasMoreBelow(h) {
+	if m.hasMoreBelow(contentH) {
 		scrollHint := "↓ more"
-		c.SetContent(w-2-len(scrollHint), h-1, render.StyleDim, scrollHint)
+		c.SetContent(w-2-len(scrollHint), h-2, render.StyleDim, scrollHint)
 	}
 }
+
+func (m *ConfigsModel) View() string { return "" }
 
 func (m *ConfigsModel) InputMode() bool { return m.editing }
 

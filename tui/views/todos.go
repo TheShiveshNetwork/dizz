@@ -4,17 +4,17 @@ import (
 	"fmt"
 	"sort"
 
-	"github.com/TheShiveshNetwork/dizz/tui/dizzclient"
+	"github.com/TheShiveshNetwork/dizz/tui/client"
 	"github.com/TheShiveshNetwork/dizz/tui/render"
 	"github.com/TheShiveshNetwork/dizz/tui/ui"
 	tea "github.com/charmbracelet/bubbletea"
 )
 
 type TodosModel struct {
-	todos      []dizzclient.Todo
+	todos      []client.Todo
 	filter     ui.Filter
 	typeFilter *ui.StateFilter
-	grouped    map[string][]dizzclient.Todo
+	grouped    map[string][]client.Todo
 	files      []string
 	collapsed  map[string]bool
 	selected   int
@@ -38,7 +38,7 @@ func (m *TodosModel) Init() tea.Cmd {
 
 func (m *TodosModel) refresh() tea.Cmd {
 	return func() tea.Msg {
-		todos, err := dizzclient.ListTodos()
+		todos, err := client.ListTodos()
 		if err != nil {
 			return todosMsg{err: err.Error()}
 		}
@@ -47,7 +47,7 @@ func (m *TodosModel) refresh() tea.Cmd {
 }
 
 type todosMsg struct {
-	todos []dizzclient.Todo
+	todos []client.Todo
 	err   string
 }
 
@@ -127,9 +127,9 @@ func (m *TodosModel) buildGroups() {
 	filtered := m.todos
 
 	if m.filter.Active() && m.filter.Query != "" {
-		var f []dizzclient.Todo
+		var f []client.Todo
 		for _, t := range filtered {
-			if m.filter.MatchesAny(dizzclient.RelPath(t.File), t.Text, t.Type) {
+			if m.filter.MatchesAny(client.RelPath(t.File), t.Text, t.Type) {
 				f = append(f, t)
 			}
 		}
@@ -137,7 +137,7 @@ func (m *TodosModel) buildGroups() {
 	}
 
 	if tv := m.typeFilter.Value(); tv != "" {
-		var f []dizzclient.Todo
+		var f []client.Todo
 		for _, t := range filtered {
 			if t.Type == tv {
 				f = append(f, t)
@@ -146,7 +146,7 @@ func (m *TodosModel) buildGroups() {
 		filtered = f
 	}
 
-	m.grouped = make(map[string][]dizzclient.Todo)
+	m.grouped = make(map[string][]client.Todo)
 	for _, t := range filtered {
 		m.grouped[t.File] = append(m.grouped[t.File], t)
 	}
@@ -204,7 +204,7 @@ outer:
 		}
 
 		todos := m.grouped[file]
-		fileDisplay := dizzclient.RelPath(file)
+		fileDisplay := client.RelPath(file)
 		if len(fileDisplay) > w-10 {
 			fileDisplay = "..." + fileDisplay[len(fileDisplay)-w+13:]
 		}

@@ -29,7 +29,7 @@ func RenderTodos(todos []state.Todo) {
 		// Location (always muted)
 		fmt.Printf(
 			"  %s\n",
-			ui.Muted(fmt.Sprintf("%s:%d", todo.File, todo.Line)),
+			ui.Muted(fmt.Sprintf("%s:%d", utils.RelPath(todo.File), todo.Line)),
 		)
 
 		renderTodoBlock(todo.Type, todo.Text)
@@ -60,7 +60,7 @@ func RenderTodoList(todos []state.Todo) {
 		// Location (always muted)
 		fmt.Printf(
 			"  %s\n",
-			ui.Muted(fmt.Sprintf("%s:%d", todo.File, todo.Line)),
+			ui.Muted(fmt.Sprintf("%s:%d", utils.RelPath(todo.File), todo.Line)),
 		)
 
 		renderTodoBlock(todo.Type, todo.Text)

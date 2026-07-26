@@ -2,17 +2,19 @@ package views
 
 import (
 	"fmt"
+	"strings"
 	"time"
 
-	"github.com/TheShiveshNetwork/dizz/tui/dizzclient"
+	"github.com/TheShiveshNetwork/dizz/tui/client"
 	"github.com/TheShiveshNetwork/dizz/tui/render"
 	"github.com/TheShiveshNetwork/dizz/tui/ui"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/gdamore/tcell/v2"
+	"github.com/mattn/go-runewidth"
 )
 
 type DashboardModel struct {
-	summary   *dizzclient.Summary
+	summary   *client.Summary
 	frameTick int64
 	loading   bool
 	err       string
@@ -30,7 +32,7 @@ func (m *DashboardModel) Init() tea.Cmd {
 
 func (m *DashboardModel) refresh() tea.Cmd {
 	return func() tea.Msg {
-		s, err := dizzclient.Status()
+		s, err := client.Status()
 		if err != nil {
 			return dashboardMsg{err: err.Error()}
 		}
@@ -39,7 +41,7 @@ func (m *DashboardModel) refresh() tea.Cmd {
 }
 
 type dashboardMsg struct {
-	summary *dizzclient.Summary
+	summary *client.Summary
 	err     string
 }
 
@@ -96,7 +98,7 @@ func (m *DashboardModel) Render(c *render.Canvas) {
 	if s.TotalSymbols > 0 {
 		codeScore = (s.Active * 100) / s.TotalSymbols
 	}
-	scoreStr := fmt.Sprintf("Code Score: ● %d%%", codeScore)
+	scoreStr := fmt.Sprintf("Code Score: %d%%", codeScore)
 	c.SetContent(w-len(scoreStr)-4, 1, render.StyleHighlight, scoreStr)
 
 	barW := 20
@@ -134,17 +136,21 @@ func (m *DashboardModel) Render(c *render.Canvas) {
 		"Active": "ACT", "Planned": "PLN", "Unstable": "UNS",
 		"Unused": "UNU", "Abandoned": "ABD",
 	}
-	barX := w - barW - 4
+	barX := w - barW - 8
 	barY := 3
 	for i, it := range items {
 		rowY := barY + i
 		if rowY >= h-6 {
 			break
 		}
+		xOff := 0
+		if i == 0 {
+			xOff = -1
+		}
 		bar := render.RenderBar(it.count, maxCount, barW)
-		c.SetContent(barX, rowY, it.style, bar)
+		c.SetContent(barX+xOff, rowY, it.style, bar)
 		if code, ok := shortCodes[it.label]; ok {
-			c.SetContent(barX+barW+1, rowY, render.StyleDim, code)
+			c.SetContent(barX+xOff+barW+1, rowY, render.StyleDim, code)
 		}
 	}
 
@@ -155,6 +161,47 @@ func (m *DashboardModel) Render(c *render.Canvas) {
 		startY = 4
 	}
 	render.RenderDizzie(c, m.frameTick, startX, startY)
+
+	nextItems := m.buildNextActions()
+	if len(nextItems) > 0 {
+		bulbStyle := tcell.StyleDefault.Foreground(tcell.NewRGBColor(255, 200, 50)).Bold(true)
+		itemStyle := render.StyleDefault
+		nextW := barX - 4
+		if nextW < 20 {
+			nextW = 20
+		}
+		if nextW > 45 {
+			nextW = 45
+		}
+
+		headerText := "What to do next"
+		c.SetContent(2, barY, bulbStyle, "\u26A1 "+headerText)
+
+		for i, item := range nextItems {
+			rowY := barY + 1 + i
+			if rowY >= h-5 {
+				break
+			}
+			wrapped := wrapText(item, nextW-3)
+			for j, line := range wrapped {
+				if rowY+j >= h-5 {
+					break
+				}
+				prefix := "  "
+				if j == 0 {
+					prefix = "\u2022 "
+				}
+				display := prefix + line
+				if runewidth.StringWidth(display) > nextW {
+					display = display[:nextW-3] + "..."
+				}
+				c.SetContent(2, rowY+j, itemStyle, display)
+			}
+			if len(wrapped) > 1 {
+				rowY += len(wrapped) - 1
+			}
+		}
+	}
 
 	if s.ActiveTodos > 0 {
 		todoMsg := fmt.Sprintf("TODOs: %d", s.ActiveTodos)
@@ -169,6 +216,89 @@ func (m *DashboardModel) Render(c *render.Canvas) {
 		help = help[:w-2]
 	}
 	c.SetContent((w-len(help))/2, h-1, render.StyleMuted, help)
+}
+
+func (m *DashboardModel) buildNextActions() []string {
+	s := m.summary
+	if s == nil {
+		return nil
+	}
+
+	var items []string
+
+	if s.Planned > 0 {
+		items = append(items, fmt.Sprintf("Implement %d planned symbol%s", s.Planned, plural(s.Planned)))
+	}
+	if s.Unstable > 0 {
+		items = append(items, fmt.Sprintf("Stabilize %d high-churn symbol%s", s.Unstable, plural(s.Unstable)))
+	}
+	if s.Unused > 0 {
+		items = append(items, fmt.Sprintf("Connect or remove %d unused symbol%s", s.Unused, plural(s.Unused)))
+	}
+	if s.Abandoned > 0 {
+		items = append(items, fmt.Sprintf("Review %d abandoned symbol%s for cleanup", s.Abandoned, plural(s.Abandoned)))
+	}
+	if s.ActiveTodos > 0 {
+		items = append(items, fmt.Sprintf("Address %d TODO/FIXME comment%s", s.ActiveTodos, plural(s.ActiveTodos)))
+	}
+	if s.Intents > 0 {
+		items = append(items, fmt.Sprintf("Resolve %d open intent%s", s.Intents, plural(s.Intents)))
+	}
+	if len(items) == 0 {
+		items = append(items, "All clean! Consider adding tests or docs")
+	}
+	return items
+}
+
+func plural(n int) string {
+	if n == 1 {
+		return ""
+	}
+	return "s"
+}
+
+func wrapText(text string, maxWidth int) []string {
+	if maxWidth < 10 {
+		return []string{text}
+	}
+	if runewidth.StringWidth(text) <= maxWidth {
+		return []string{text}
+	}
+
+	words := strings.Fields(text)
+	var lines []string
+	var current strings.Builder
+	currentW := 0
+
+	for _, word := range words {
+		wordW := runewidth.StringWidth(word)
+		if current.Len() == 0 {
+			if wordW > maxWidth {
+				lines = append(lines, word[:maxWidth])
+				continue
+			}
+			current.WriteString(word)
+			currentW = wordW
+		} else if currentW+1+wordW <= maxWidth {
+			current.WriteString(" ")
+			current.WriteString(word)
+			currentW += 1 + wordW
+		} else {
+			lines = append(lines, current.String())
+			current.Reset()
+			currentW = 0
+			if wordW > maxWidth {
+				lines = append(lines, word[:maxWidth])
+				continue
+			}
+			current.WriteString(word)
+			currentW = wordW
+		}
+	}
+	if current.Len() > 0 {
+		lines = append(lines, current.String())
+	}
+	return lines
 }
 
 // @dizz-ignore-unused

@@ -6,6 +6,7 @@ import (
 
 	"github.com/TheShiveshNetwork/dizz/internal/state"
 	"github.com/TheShiveshNetwork/dizz/internal/ui"
+	"github.com/TheShiveshNetwork/dizz/internal/utils"
 )
 
 type FileGroup struct {
@@ -70,7 +71,7 @@ func RenderSymbolGroup(args RenderArgs) {
 		// File line
 		fmt.Printf(
 			"  %s %s\n",
-			ColorByState(group.File, groupState),
+			ColorByState(utils.RelPath(group.File), groupState),
 			ui.Muted(fmt.Sprintf("(%d items)", group.Count)),
 		)
 
