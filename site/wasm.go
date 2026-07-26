@@ -29,6 +29,7 @@ func getWasmVersion(this js.Value, args []js.Value) interface{} {
 	}
 }
 
+// @dizz-ignore-unused
 func getWasmCommands(this js.Value, args []js.Value) interface{} {
 	// Return available CLI commands that can be executed
 	commands := []map[string]interface{}{

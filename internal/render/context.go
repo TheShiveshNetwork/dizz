@@ -9,6 +9,7 @@ import (
 	"github.com/TheShiveshNetwork/dizz/integrations"
 	"github.com/TheShiveshNetwork/dizz/internal/state"
 	"github.com/TheShiveshNetwork/dizz/internal/store/ton"
+	"github.com/TheShiveshNetwork/dizz/internal/utils"
 )
 
 type ContextInfo struct {
@@ -158,7 +159,7 @@ func (r *ContextRenderer) writeTodos(buf *bytes.Buffer, ps *state.ProjectState) 
 	w := ton.NewWriter(buf)
 	w.WriteHeader("file", "line", "type", "text")
 	for _, todo := range activeTodos {
-		w.WriteRecord(todo.File, fmt.Sprintf("%d", todo.Line), todo.Type, todo.Text)
+		w.WriteRecord(utils.RelPath(todo.File), fmt.Sprintf("%d", todo.Line), todo.Type, todo.Text)
 	}
 	fmt.Fprintln(buf)
 }
@@ -175,13 +176,6 @@ func (r *ContextRenderer) writeSnapshots(buf *bytes.Buffer, hashes []string) {
 		w.WriteRecord(truncate(h, 8))
 	}
 	fmt.Fprintln(buf)
-}
-
-func (r *ContextRenderer) InstabilityLabel(score float64) string {
-	if score < 0 {
-		return "?"
-	}
-	return fmt.Sprintf("%.2f", score)
 }
 
 func truncate(s string, n int) string {

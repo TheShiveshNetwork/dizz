@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 	"os/exec"
+	"os/user"
 	"path/filepath"
 	"regexp"
 	"strconv"
@@ -16,6 +17,29 @@ func IsRepo() bool {
 	cmd := exec.Command("git", "rev-parse", "--git-dir")
 	err := cmd.Run()
 	return err == nil
+}
+
+// DetectUser returns the current user name by checking git config, OS user, and environment variables.
+func DetectUser() string {
+	if IsRepo() {
+		cmd := exec.Command("git", "config", "user.name")
+		if output, err := cmd.Output(); err == nil {
+			name := strings.TrimSpace(string(output))
+			if name != "" {
+				return name
+			}
+		}
+	}
+	if u, err := user.Current(); err == nil && u.Username != "" {
+		return u.Username
+	}
+	if name := os.Getenv("USER"); name != "" {
+		return name
+	}
+	if name := os.Getenv("USERNAME"); name != "" {
+		return name
+	}
+	return "unknown"
 }
 
 // Commit represents a git commit with metadata
@@ -266,25 +290,6 @@ func GetFileLastModified(filePath string) (time.Time, error) {
 	return time.Unix(timestamp, 0), nil
 }
 
-func getPostCommitHookPath() (string, error) {
-	cmd := exec.Command("git", "rev-parse", "--git-path", "hooks/post-commit")
-	out, err := cmd.Output()
-	if err != nil {
-		return "", err
-	}
-	return strings.TrimSpace(string(out)), nil
-}
-
-func InstallPostCommitHook(hookContent string) error {
-	hookPath, err := getPostCommitHookPath()
-	if err != nil {
-		return err
-	}
-	content := "#!/bin/sh\n" + hookContent
-
-	return os.WriteFile(hookPath, []byte(content), 0755)
-}
-
 // GitCache stores git analysis results to avoid repeated operations
 type GitCache struct {
 	mu               sync.RWMutex
@@ -491,38 +496,6 @@ func batchFunctionChurn(functionRanges map[string]bool, result *GitBatchResult) 
 	return nil
 }
 
-// InstallGlobalRouterHook creates the global router hook and sets
-// git --global core.hooksPath so it fires on every commit in any repo.
-func InstallGlobalRouterHook(hooksDir string) error {
-	if err := os.MkdirAll(hooksDir, 0755); err != nil {
-		return fmt.Errorf("create hooks dir: %w", err)
-	}
-
-	hookPath := filepath.Join(hooksDir, "post-commit")
-	content := `#!/usr/bin/env sh
-
-# dizz global router hook
-# Delegates to .dizz/hooks/post-commit if it exists in the current repo.
-
-DIZZ_HOOKS=".dizz/hooks/post-commit"
-
-if [ -f "$DIZZ_HOOKS" ] && [ -x "$DIZZ_HOOKS" ]; then
-    git config core.hooksPath ".dizz/hooks" 2>/dev/null || true
-    exec "$DIZZ_HOOKS"
-fi
-`
-	if err := os.WriteFile(hookPath, []byte(content), 0755); err != nil {
-		return fmt.Errorf("write router hook: %w", err)
-	}
-
-	cmd := exec.Command("git", "config", "--global", "core.hooksPath", hooksDir)
-	if out, err := cmd.CombinedOutput(); err != nil {
-		return fmt.Errorf("set global hooksPath: %s: %w", strings.TrimSpace(string(out)), err)
-	}
-
-	return nil
-}
-
 // InstallLocalPostCommitHook writes the dizz post-commit hook to the given path
 // inside .dizz/hooks/ and ensures it is executable.
 func InstallLocalPostCommitHook(hookPath, hookContent string) error {
@@ -574,6 +547,7 @@ func EnsureLocalHooksConfigured(trackDir string) bool {
 	return true
 }
 
+// @dizz-ignore-unused
 // InvalidateCache clears the git cache (useful for testing or force refresh)
 func InvalidateCache() {
 	cache.mu.Lock()

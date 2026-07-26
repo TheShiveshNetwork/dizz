@@ -25,6 +25,7 @@ func (a *Analyzer) SupportedExtensions() []string {
 	return []string{".go"}
 }
 
+// @dizz-ignore-unused
 // Supports checks if file is a Go file
 func (a *Analyzer) Supports(file string) bool {
 	return IsGoFile(file)

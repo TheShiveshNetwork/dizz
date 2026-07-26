@@ -889,6 +889,7 @@ var langIndex = func() map[string]LanguageConfig {
 // allExtensions is the cached result of AllExtensions, computed at init time.
 var allExtensions []string
 
+// @dizz-ignore-unused
 func init() {
 	allExtensions = make([]string, 0, len(extIndex))
 	for ext := range extIndex {

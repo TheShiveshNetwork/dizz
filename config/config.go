@@ -17,11 +17,8 @@ const (
 	CacheDirName   = "cache"
 
 	ConfigFile     = "config.json"
-	StateFile      = "state.json.gz"
 	StateTONFile   = "state.ton.gz"
 	ContextTONFile = "context.ton"
-	IntentFile     = "intent.json"
-	DeltaFileExt   = ".delta"
 
 	DefaultBranch = "main"
 )
@@ -49,6 +46,7 @@ type Instruction struct {
 	Scope string `json:"scope,omitempty"` // omitted = global
 }
 
+// @dizz-ignore-unused
 func (i *Instruction) UnmarshalJSON(data []byte) error {
 	var s string
 	if err := json.Unmarshal(data, &s); err == nil {
@@ -64,6 +62,7 @@ func (i *Instruction) UnmarshalJSON(data []byte) error {
 	return nil
 }
 
+// @dizz-ignore-unused
 func (i Instruction) MarshalJSON() ([]byte, error) {
 	if i.Scope == "" {
 		return json.Marshal(i.Rule)
@@ -132,11 +131,6 @@ func ConfigFilePath(root string) string {
 	return filepath.Join(root, ConfigFile)
 }
 
-// StateFilePath returns the path to the state.json.gz file.
-func StateFilePath(root string) string {
-	return filepath.Join(root, StateFile)
-}
-
 // StateTONFilePath returns the path to the state.ton.gz file.
 func StateTONFilePath(root string) string {
 	return filepath.Join(root, StateTONFile)
@@ -147,11 +141,6 @@ func ContextTONFilePath(root string) string {
 	return filepath.Join(root, ContextTONFile)
 }
 
-// IntentFilePath returns the path to the intent.json file.
-func IntentFilePath(root string) string {
-	return filepath.Join(root, IntentFile)
-}
-
 // HooksDirPath returns the path to the hooks directory.
 func HooksDirPath(root string) string {
 	return filepath.Join(root, TrackDirName, HooksDirName)
@@ -160,19 +149,4 @@ func HooksDirPath(root string) string {
 // CacheDirPath returns the path to the cache directory.
 func CacheDirPath(root string) string {
 	return filepath.Join(root, TrackDirName, CacheDirName)
-}
-
-// CacheManifestPath returns the path to the cache manifest.json file.
-func CacheManifestPath(root string) string {
-	return filepath.Join(root, TrackDirName, CacheDirName, "manifest.json")
-}
-
-// CacheSignalsDirPath returns the path to the cache signals directory.
-func CacheSignalsDirPath(root string) string {
-	return filepath.Join(root, TrackDirName, CacheDirName, "signals")
-}
-
-// DeltaFilePath returns the path to a delta file.
-func DeltaFilePath(root string, hash string) string {
-	return filepath.Join(root, TrackDirName, ObjectsDirName, hash[:2], hash[2:]+DeltaFileExt)
 }

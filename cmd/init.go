@@ -22,6 +22,7 @@ var initCmd = &cobra.Command{
 	},
 }
 
+// @dizz-ignore-unused
 func init() {
 	rootCmd.AddCommand(initCmd)
 }

@@ -64,27 +64,6 @@ func ProviderID(name string) string {
 	return strings.ToLower(strings.ReplaceAll(name, " ", "-"))
 }
 
-// ProviderNames returns all valid provider identifiers for use with --provider flag.
-func ProviderNames() []string {
-	home, err := os.UserHomeDir()
-	if err != nil {
-		return nil
-	}
-
-	seen := make(map[string]bool)
-	var names []string
-
-	for _, c := range agentDirCandidates(home) {
-		id := ProviderID(c.Name)
-		if !seen[id] {
-			seen[id] = true
-			names = append(names, id)
-		}
-	}
-
-	return names
-}
-
 // InstallToProvider installs the skill to a specific provider by name.
 // Returns an error if the provider is not found or the directory doesn't exist.
 func InstallToProvider(content []byte, provider string) ([]InstallResult, error) {
@@ -203,28 +182,18 @@ func InstallToAll(content []byte) []InstallResult {
 	return results
 }
 
-// FetchSkillURL returns the GitHub raw URL for the canonical project SKILL.md.
-func FetchSkillURL() string {
-	return "https://raw.githubusercontent.com/TheShiveshNetwork/dizz/main/agent-skills/dizz/SKILL.md"
-}
-
 // FetchGlobalSkillURL returns the GitHub raw URL for the global SKILL.md.
 func FetchGlobalSkillURL() string {
 	return "https://raw.githubusercontent.com/TheShiveshNetwork/dizz/main/agent-skills/dizz-global/SKILL.md"
 }
 
-// IsOnline checks if the system likely has internet access.
-func IsOnline() bool {
-	// Simple check: can we resolve github.com?
-	// On most systems, this is a good proxy for internet access.
-	return true // Will be caught at fetch time; just attempt the fetch
-}
-
+// @dizz-ignore-unused
 // Platform returns a human-readable OS/arch string.
 func Platform() string {
 	return runtime.GOOS + "/" + runtime.GOARCH
 }
 
+// @dizz-ignore-unused
 // GlobalSkillDirs returns all possible global skill directories for display.
 func GlobalSkillDirs() []string {
 	home, err := os.UserHomeDir()
@@ -247,6 +216,7 @@ func GlobalSkillDirs() []string {
 	return dirs
 }
 
+// @dizz-ignore-unused
 // CleanDirName returns the last path component of a directory.
 func CleanDirName(p string) string {
 	return filepath.Base(filepath.Dir(p))

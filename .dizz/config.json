@@ -64,6 +64,7 @@
     "**/*.swp",
     "**/.DS_Store",
     "**/Thumbs.db",
-    "**/*_test.go"
+    "**/*_test.go",
+    "**/wasm_exec.js"
   ]
 }

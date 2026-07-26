@@ -45,6 +45,7 @@ Checkpoints (full snapshots) are created every 10 deltas.`,
 	},
 }
 
+// @dizz-ignore-unused
 func init() {
 	rootCmd.AddCommand(snapshotCmd)
 	snapshotCmd.Flags().BoolVar(&autoSnapshot, "auto", false, "Automatic snapshot (called by git hook)")

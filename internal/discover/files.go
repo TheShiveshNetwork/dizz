@@ -58,6 +58,7 @@ func Files(root string, include, exclude []string) ([]string, error) {
 	return files, err
 }
 
+// @dizz-ignore-unused
 // CodeFiles returns all source files under root that belong to any language
 // registered in the language registry, honoring the given exclude patterns.
 //

@@ -173,6 +173,7 @@ type IntentStatus string
 const (
 	IntentActive   IntentStatus = "active"
 	IntentResolved IntentStatus = "resolved"
+	IntentClosed   IntentStatus = "closed"
 	IntentDeferred IntentStatus = "deferred"
 )
 
@@ -264,23 +265,10 @@ func (is *IntentState) GetActiveIntents() []Intent {
 }
 
 // @ignore-unused
-// TODO: add intent filters
 func (is *IntentState) GetIntentsByType(intentType IntentType) []Intent {
 	result := make([]Intent, 0, len(is.Intents))
 	for _, intent := range is.Intents {
 		if intent.Type == intentType {
-			result = append(result, intent)
-		}
-	}
-	return result
-}
-
-// @ignore-unused
-// TODO: add intent filters
-func (is *IntentState) GetIntentsBySeverity(minSeverity int) []Intent {
-	result := make([]Intent, 0, len(is.Intents))
-	for _, intent := range is.Intents {
-		if intent.Severity >= minSeverity {
 			result = append(result, intent)
 		}
 	}
@@ -292,6 +280,20 @@ func (is *IntentState) ResolveIntent(id string, resolution Resolution) error {
 	for i, intent := range is.Intents {
 		if intent.ID == id {
 			is.Intents[i].Status = IntentResolved
+			is.Intents[i].Resolution = &resolution
+			is.Intents[i].UpdatedAt = time.Now()
+			is.UpdatedAt = time.Now()
+			return nil
+		}
+	}
+	return fmt.Errorf("intent not found: %s", id)
+}
+
+// CloseIntent marks an intent as closed
+func (is *IntentState) CloseIntent(id string, resolution Resolution) error {
+	for i, intent := range is.Intents {
+		if intent.ID == id {
+			is.Intents[i].Status = IntentClosed
 			is.Intents[i].Resolution = &resolution
 			is.Intents[i].UpdatedAt = time.Now()
 			is.UpdatedAt = time.Now()

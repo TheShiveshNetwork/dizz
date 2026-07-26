@@ -6,6 +6,7 @@ import (
 
 	"github.com/TheShiveshNetwork/dizz/internal/state"
 	"github.com/TheShiveshNetwork/dizz/internal/ui"
+	"github.com/TheShiveshNetwork/dizz/internal/utils"
 )
 
 type SnapshotSaveData struct {
@@ -20,7 +21,7 @@ func SnapshotSaved(data *SnapshotSaveData) {
 	if data.HasGit && data.GitCommit != "" {
 		fmt.Printf("  %s %s\n", ui.Muted("Git commit:"), ui.Muted(data.GitCommit[:7]))
 	}
-	fmt.Printf("  %s %s\n", ui.Muted("Object:"), ui.Muted(data.ObjectPath))
+	fmt.Printf("  %s %s\n", ui.Muted("Object:"), ui.Muted(utils.RelPath(data.ObjectPath)))
 	fmt.Println()
 	fmt.Println(ui.Muted("💡 Snapshots are immutable. Use them to track progress over time."))
 }

@@ -1,7 +1,6 @@
 package ton
 
 import (
-	"bytes"
 	"fmt"
 	"io"
 	"strings"
@@ -151,24 +150,4 @@ func escape(s string) string {
 		}
 	}
 	return b.String()
-}
-
-// BytesWriter is a convenience wrapper that writes to a bytes.Buffer.
-type BytesWriter struct {
-	*Writer
-	buf bytes.Buffer
-}
-
-func NewBytesWriter() *BytesWriter {
-	bw := &BytesWriter{}
-	bw.Writer = NewWriter(&bw.buf)
-	return bw
-}
-
-func (bw *BytesWriter) Bytes() []byte {
-	return bw.buf.Bytes()
-}
-
-func (bw *BytesWriter) String() string {
-	return bw.buf.String()
 }

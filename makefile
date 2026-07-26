@@ -96,3 +96,21 @@ wasm:
 serve-site:
 	cd site/server && go run server.go
 
+## Build the TUI binary (dizzie)
+.PHONY: build-tui
+build-tui:
+	@echo "🔨 Building dizzie..."
+	@mkdir -p bin
+	cd tui && $(GO) build $(GOFLAGS) -ldflags "$$(echo $(LDFLAGS) | sed 's|cmd\.version|main.version|')" -o ../bin/dizzie .
+	@echo "✅ Built bin/dizzie"
+
+## Run the TUI (after build)
+.PHONY: run-tui
+run-tui: build-tui
+	@bin/dizzie
+
+## Install the TUI
+.PHONY: install-tui
+install-tui:
+	cd tui && $(GO) install $(GOFLAGS) -ldflags "$$(echo $(LDFLAGS) | sed 's|cmd\.version|main.version|')" .
+

@@ -70,6 +70,7 @@ var universalFunctionPatterns = []*regexp.Regexp{
 // so we only pay the compilation cost once per language.
 var compiledFunctionPatterns = make(map[string][]*regexp.Regexp)
 
+// @dizz-ignore-unused
 // init compiles function patterns for all registered languages at startup.
 func init() {
 	for _, lc := range language.All() {
