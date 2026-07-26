@@ -1,0 +1,58 @@
+name: Release Dizzie
+
+on:
+  push:
+    tags:
+      - "dizzie-v*"
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version: stable
+
+      - name: Extract version from tag
+        id: version
+        run: echo "tag=${GITHUB_REF#refs/tags/dizzie-v}" >> "$GITHUB_OUTPUT"
+
+      - name: Generate embed files
+        run: go generate ./internal/defaults/
+
+      - name: Build binaries
+        run: |
+          VERSION="${{ steps.version.outputs.tag }}"
+          LDFLAGS="-s -w -X main.version=${VERSION}"
+
+          mkdir -p dist
+
+          for GOOS in linux darwin windows; do
+            for GOARCH in amd64 arm64; do
+              if [ "$GOOS" = "windows" ] && [ "$GOARCH" = "arm64" ]; then
+                continue
+              fi
+              BINARY="dizzie-${GOOS}-${GOARCH}"
+              if [ "$GOOS" = "windows" ]; then
+                BINARY="${BINARY}.exe"
+              fi
+              echo "Building ${BINARY}..."
+              cd tui && CGO_ENABLED=0 GOOS="$GOOS" GOARCH="$GOARCH" \
+                go build -trimpath -ldflags "$LDFLAGS" -o "../dist/${BINARY}" . && cd ..
+            done
+          done
+
+      - name: Create GitHub Release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh release create "dizzie-v${{ steps.version.outputs.tag }}" \
+            --repo "${{ github.repository }}" \
+            --title "dizzie v${{ steps.version.outputs.tag }}" \
+            --generate-notes \
+            dist/*

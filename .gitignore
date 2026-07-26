@@ -3,6 +3,8 @@ dizz-debug
 !agent-skills/**
 !.agents/skills/dizz
 
+internal/defaults/agent-skills/
+
 bin/
 
 dist/
