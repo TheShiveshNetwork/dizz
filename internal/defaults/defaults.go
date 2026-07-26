@@ -1,5 +1,9 @@
 package defaults
 
+//go:generate mkdir -p agent-skills
+//go:generate cp -r ../../agent-skills/dizz agent-skills/dizz
+//go:generate cp -r ../../agent-skills/dizz-global agent-skills/dizz-global
+
 import (
 	_ "embed"
 
