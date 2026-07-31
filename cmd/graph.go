@@ -21,6 +21,8 @@ var (
 	graphDepth      int
 	graphJSON       bool
 	graphFile       string
+	graphPort       int
+	graphOpen       bool
 )
 
 var graphCmd = &cobra.Command{
@@ -42,6 +44,8 @@ func init() {
 	graphCmd.PersistentFlags().IntVar(&graphDepth, "depth", 3, "Traversal depth for blast radius")
 	graphCmd.PersistentFlags().BoolVar(&graphJSON, "json", false, "Emit machine-readable JSON")
 	graphCmd.PersistentFlags().StringVar(&graphFile, "file", "", "Disambiguate a symbol by its file path")
+	graphCmd.PersistentFlags().IntVar(&graphPort, "port", 0, "Port for the web visualizer (0 picks a free port)")
+	graphCmd.PersistentFlags().BoolVar(&graphOpen, "open", true, "Open the web visualizer in the default browser")
 
 	graphCmd.AddCommand(graphBuildCmd)
 	graphCmd.AddCommand(graphStatsCmd)
@@ -52,6 +56,8 @@ func init() {
 	graphCmd.AddCommand(graphPathCmd)
 	graphCmd.AddCommand(graphScopeCmd)
 	graphCmd.AddCommand(graphTONCmd)
+	graphCmd.AddCommand(graphDumpCmd)
+	graphCmd.AddCommand(graphVisualizeCmd)
 }
 
 // loadGraph derives the graph for the current project. Co-change analysis is
@@ -361,6 +367,27 @@ var graphTONCmd = &cobra.Command{
 		}
 		_, err = os.Stdout.Write(data)
 		return err
+	},
+}
+
+var graphDumpCmd = &cobra.Command{
+	Use:   "dump",
+	Short: "Dump the graph as JSON for visualizers",
+	RunE: func(cmd *cobra.Command, args []string) error {
+		g, _, err := loadGraph(graphCoChange)
+		if err != nil {
+			return err
+		}
+		return printJSON(g.DumpJSON())
+	},
+}
+
+var graphVisualizeCmd = &cobra.Command{
+	Use:   "visualize",
+	Short: "Serve an interactive 3D web view of the graph",
+	Long:  visualizeLong,
+	RunE: func(cmd *cobra.Command, args []string) error {
+		return runVisualize(graphCoChange, graphPort, graphOpen)
 	},
 }
 

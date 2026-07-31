@@ -4,8 +4,8 @@ import (
 	"testing"
 	"time"
 
-	commonPkg "github.com/TheShiveshNetwork/dizz/internal/common"
 	"github.com/TheShiveshNetwork/dizz/integrations"
+	commonPkg "github.com/TheShiveshNetwork/dizz/internal/common"
 )
 
 // TestSymbolExtraction tests if symbols are being extracted from files

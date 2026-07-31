@@ -51,6 +51,15 @@ var ViewBindings = map[string][]KeyBinding{
 		{Key: "t f", Desc: "Filter TODO / FIXME"},
 		{Key: "x", Desc: "Clear filter"},
 	},
+	"configs": {
+		{Key: "enter", Desc: "Edit field / item"},
+		{Key: "a", Desc: "Add item"},
+		{Key: "d", Desc: "Delete item"},
+		{Key: "tab", Desc: "Next item"},
+		{Key: "esc", Desc: "Back (guardrails)"},
+		{Key: "s", Desc: "Save config"},
+		{Key: "r", Desc: "Refresh"},
+	},
 }
 
 func RenderHelp(c *render.Canvas, activeTab string, width, height int) {
