@@ -24,6 +24,9 @@ func FindDizzRoot() (string, error) {
 	for {
 		dizzDir := filepath.Join(dir, ".dizz")
 		if _, err := os.Stat(dizzDir); err == nil {
+			if _, err := os.Stat(filepath.Join(dizzDir, "config.json")); err != nil {
+				return "", fmt.Errorf("config.json not found in %s. Run 'dizz init' first.", dizzDir)
+			}
 			return dir, nil
 		}
 		parent := filepath.Dir(dir)

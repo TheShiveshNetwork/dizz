@@ -27,7 +27,7 @@
 
 <h2>Overview</h2>
 
-`dizz` reads your Git history, looks at your code, and tells you what needs doing. TODOs, half-finished work, things changing too often — it tracks all of it. Takes snapshots so you never lose context. Agents love it because it speaks their language.
+`dizz` reads your Git history, looks at your code, and tells you what needs doing. TODOs, half-finished work, things changing too often - it tracks all of it. Takes snapshots so you never lose context. Agents love it because it speaks their language.
 
 No setup. No internet. Won't touch your code.
 
@@ -44,7 +44,7 @@ No setup. No internet. Won't touch your code.
 <div class="feature">
 <h1>🤖</h1>
 <h3>AI Agent Ready</h3>
-<p>Speaks TON — a token-optimized format AI agents understand instantly. Auto-discovers via <code>dizz install-skill</code>.</p>
+<p>Speaks TON - a token-optimized format AI agents understand instantly. Auto-discovers via <code>dizz install-skill</code>.</p>
 </div>
 
 <div class="feature">
@@ -56,7 +56,7 @@ No setup. No internet. Won't touch your code.
 <div class="feature">
 <h1>📊</h1>
 <h3>State Tracking</h3>
-<p>Tracks every symbol as active, planned, unstable, unused, or abandoned — based on real usage and Git history.</p>
+<p>Tracks every symbol as active, planned, unstable, unused, or abandoned - based on real usage and Git history.</p>
 </div>
 
 <div class="feature">
@@ -85,8 +85,8 @@ No setup. No internet. Won't touch your code.
 
 <div class="command-card">
 <div class="command-name">dizz log</div>
-<div class="command-desc">Full analysis — planned work, unstable areas, unused and abandoned code.</div>
-<div class="command-usage">dizz log [--all] [--verbose]</div>
+<div class="command-desc">Full analysis - planned work, unstable areas, unused and abandoned code.</div>
+<div class="command-usage">dizz log [-a] [-v] [-d] [--filter &lt;state&gt;]</div>
 </div>
 
 <div class="command-card">
@@ -104,19 +104,43 @@ No setup. No internet. Won't touch your code.
 <div class="command-card">
 <div class="command-name">dizz snapshot</div>
 <div class="command-desc">Create immutable, content-addressed state records with delta support.</div>
-<div class="command-usage">dizz snapshot [--auto] [--diff]</div>
+<div class="command-usage">dizz snapshot [--auto] [--diff] | snapshot list|checkout|prune</div>
 </div>
 
 <div class="command-card">
 <div class="command-name">dizz intent</div>
 <div class="command-desc">Track long-lived project goals separate from throwaway TODOs.</div>
-<div class="command-usage">dizz intent add|list|resolve</div>
+<div class="command-usage">dizz intent add|list|resolve|close</div>
+</div>
+
+<div class="command-card">
+<div class="command-name">dizz config</div>
+<div class="command-desc">Inspect and manage project config - description, instructions, guardrails.</div>
+<div class="command-usage">dizz config show|add-instruction|add-guardrail|set-description</div>
+</div>
+
+<div class="command-card">
+<div class="command-name">dizz graph</div>
+<div class="command-desc">Query the derived project knowledge graph - blast radius, traces, coupling.</div>
+<div class="command-usage">dizz graph build|stats|query|trace|cochanges|tests|path|scope|ton|dump|visualize</div>
+</div>
+
+<div class="command-card">
+<div class="command-name">dizz visualize</div>
+<div class="command-desc">Interactive 3D web view of the knowledge graph in your browser.</div>
+<div class="command-usage">dizz visualize [--port N] [--cochange]</div>
+</div>
+
+<div class="command-card">
+<div class="command-name">dizz todo</div>
+<div class="command-desc">List TODO/FIXME markers found in your codebase.</div>
+<div class="command-usage">dizz todo list</div>
 </div>
 
 <div class="command-card">
 <div class="command-name">dizz install-skill</div>
 <div class="command-desc">Auto-detect AI agents and install the dizz skill for automatic discovery.</div>
-<div class="command-usage">dizz install-skill</div>
+<div class="command-usage">dizz install-skill [-p &lt;provider&gt;]</div>
 </div>
 
 <div class="command-card">
@@ -132,9 +156,15 @@ No setup. No internet. Won't touch your code.
 </div>
 
 <div class="command-card">
+<div class="command-name">dizz ui</div>
+<div class="command-desc">Launch (or install) the dizz Terminal UI.</div>
+<div class="command-usage">dizz ui</div>
+</div>
+
+<div class="command-card">
 <div class="command-name">dizz version</div>
 <div class="command-desc">Show current version and build information.</div>
-<div class="command-usage">dizz version [--verbose]</div>
+<div class="command-usage">dizz version</div>
 </div>
 
 <div class="command-card">

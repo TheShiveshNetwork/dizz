@@ -51,6 +51,21 @@ Flags combine: `dizz config show -i -g` loads instructions and guardrails togeth
 
 > **Note:** TODOs, FIXMEs, and HACKs are file-level markers - they appear and disappear as code changes. Intents are project-level records - once added they persist and can only be resolved, never silently removed.
 
+## Graph queries (blast radius, coupling, tests)
+
+Ask targeted questions about how code is connected instead of reading files. All commands accept `--json` for machine-readable output; `--cochange` adds git-history coupling. Full syntax: `dizz graph --help`.
+
+| You need... | Command |
+|---|---|
+| What breaks if I change X | `dizz graph query <entity> --depth 3` |
+| Everything about X (callers, callees, tests, intents) | `dizz graph trace <entity>` |
+| Hidden coupling - files that change together but never import each other | `dizz graph cochanges <file>` |
+| Is X tested | `dizz graph tests <entity>` |
+| Shortest connection between two entities | `dizz graph path <from> <to>` |
+| What the graph contains | `dizz graph stats` |
+
+Entity forms: `symbol:Name@file`, `file:path`, `intent:id`, or a bare unique name. The graph is derived from the last analysis, so run `dizz context` once if a symbol you expect is missing.
+
 ## The self-growing memory loop
 
 This is what makes dizz more than a static file: every fix that gets made can feed back into the project's own memory, so it gets more accurate over time instead of going stale the way a hand-written doc does. This loop is the actual "brain" — more than any single command.
@@ -77,5 +92,4 @@ Guardrails are enforced by the global dizz skill on every file change. If you ne
 ```bash
 dizz config show --guardrails
 ```
-
 

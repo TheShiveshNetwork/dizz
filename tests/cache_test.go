@@ -4,8 +4,8 @@ import (
 	"testing"
 	"time"
 
-	commonPkg "github.com/TheShiveshNetwork/dizz/internal/common"
 	"github.com/TheShiveshNetwork/dizz/integrations"
+	commonPkg "github.com/TheShiveshNetwork/dizz/internal/common"
 )
 
 // TestCacheInvalidation tests how cache affects analysis performance

@@ -1,6 +1,8 @@
 package render
 
 import (
+	"strings"
+
 	"github.com/gdamore/tcell/v2"
 	"github.com/mattn/go-runewidth"
 )
@@ -109,4 +111,19 @@ func (c *Canvas) Blit(src *Canvas, x, y int) {
 			c.SetCell(x+sx, y+sy, src.cells[sy][sx].Style, src.cells[sy][sx].Char)
 		}
 	}
+}
+
+func (c *Canvas) String() string {
+	var sb strings.Builder
+	for y := 0; y < c.height; y++ {
+		for x := 0; x < c.width; x++ {
+			ch := c.cells[y][x].Char
+			if ch == 0 {
+				ch = ' '
+			}
+			sb.WriteRune(ch)
+		}
+		sb.WriteString("\n")
+	}
+	return sb.String()
 }

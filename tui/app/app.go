@@ -21,6 +21,10 @@ type ModalState interface {
 	RenderModal(*render.Canvas)
 }
 
+type TabConsumer interface {
+	WantsTab() bool
+}
+
 type Model struct {
 	currentTab int
 	views      []tea.Model
@@ -359,6 +363,11 @@ func (m *Model) handleKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 			m.views[m.currentTab], cmd = m.views[m.currentTab].Update(msg)
 			return m, cmd
 		}
+		if m.focusZone == "main" && m.isInInputMode() {
+			var cmd tea.Cmd
+			m.views[m.currentTab], cmd = m.views[m.currentTab].Update(msg)
+			return m, cmd
+		}
 	}
 
 	switch msg.String() {
@@ -367,6 +376,13 @@ func (m *Model) handleKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		return m, nil
 
 	case "tab":
+		if m.focusZone == "main" && m.currentTab < len(m.views) {
+			if tc, ok := m.views[m.currentTab].(TabConsumer); ok && tc.WantsTab() {
+				var cmd tea.Cmd
+				m.views[m.currentTab], cmd = m.views[m.currentTab].Update(msg)
+				return m, cmd
+			}
+		}
 		if m.intentsPanelHidden() {
 			switch m.focusZone {
 			case "sidebar", "intents", "todos":
@@ -390,6 +406,13 @@ func (m *Model) handleKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		return m, nil
 
 	case "shift+tab":
+		if m.focusZone == "main" && m.currentTab < len(m.views) {
+			if tc, ok := m.views[m.currentTab].(TabConsumer); ok && tc.WantsTab() {
+				var cmd tea.Cmd
+				m.views[m.currentTab], cmd = m.views[m.currentTab].Update(msg)
+				return m, cmd
+			}
+		}
 		if m.intentsPanelHidden() {
 			switch m.focusZone {
 			case "sidebar", "intents", "todos":
