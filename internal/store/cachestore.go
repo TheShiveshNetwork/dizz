@@ -147,6 +147,32 @@ func (sc *SignalCache) GetRel(relPath string, contentHash string, mtime time.Tim
 	return sc.loadSignals(relPath)
 }
 
+// AllSignals returns every cached signal grouped by the relative path of the
+// file they were extracted from. The manifest must be loaded first via
+// LoadManifest. Files whose cached entry is missing or corrupt are skipped.
+// This is the enumeration entry point used by derived consumers (e.g. the
+// knowledge graph) that need the full signal set without re-running analysis.
+func (sc *SignalCache) AllSignals() map[string][]signals.Signal {
+	sc.mu.RLock()
+	files := make([]string, 0, len(sc.manifest.Files))
+	for relPath := range sc.manifest.Files {
+		files = append(files, relPath)
+	}
+	sc.mu.RUnlock()
+
+	if len(files) == 0 {
+		return nil
+	}
+
+	result := make(map[string][]signals.Signal, len(files))
+	for _, relPath := range files {
+		if sigs, ok := sc.loadSignals(relPath); ok && len(sigs) > 0 {
+			result[relPath] = sigs
+		}
+	}
+	return result
+}
+
 func (sc *SignalCache) Set(filePath string, contentHash string, mtime time.Time, sigs []signals.Signal) error {
 	relPath, err := filepath.Rel(sc.projectRoot, filePath)
 	if err != nil {
