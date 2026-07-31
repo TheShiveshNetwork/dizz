@@ -24,6 +24,7 @@ One-command setup. Git compatible. No internet. Won't touch your code.
 - [Why dizz?](#why-dizz)
 - [Features](#features)
 - [Commands](#commands)
+- [Knowledge Graph](#knowledge-graph)
 - [AI Agent Integration](#ai-agent-integration)
 - [What dizz is not](#what-dizz-is-not)
 - [Symbol States](#symbol-states)
@@ -86,6 +87,7 @@ Git tells you *what* changed and *when*. The source code tells you *what* exists
 | **Symbol states** | Every function/type classified as active, planned, unstable, unused, or abandoned |
 | **Immutable snapshots** | Content-addressed records of project state — rollback, diff, audit |
 | **Intent system** | Long-lived project goals, severity-scored, kept separate from disposable TODO/FIXME comments — an intent can't quietly vanish the way a comment does when someone deletes a line, so an agent can trust it's still accurate |
+| **Knowledge graph** | Derives a live project graph from persisted state (symbols, files, imports, test coverage, intent similarity), queryable via `dizz graph` and explorable in an interactive 3D web view |
 | **AI agent integration** | `dizz context` outputs a compact, token-optimized format (TON — Token-Optimized Notation); auto-discovers via agent skill system |
 | **Zero config** | Works immediately in any project with any language |
 
@@ -100,9 +102,65 @@ Git tells you *what* changed and *when*. The source code tells you *what* exists
 | `dizz context` | Token-optimized project dump for AI agents (TON format, ~2 KB) |
 | `dizz config` | Manage and inspect `.dizz/config.json` (supports filtering flags) |
 | `dizz intent` | Manage long-lived project intents (add, list, resolve) |
+| `dizz graph` | Query the derived project knowledge graph (see [Knowledge Graph](#knowledge-graph)) |
+| `dizz visualize` | Serve an interactive 3D web view of the graph in your browser |
 | `dizz install-skill` | Install dizz skill into AI agent directories for auto-discovery |
 | `dizz list` | Show snapshot history |
 | `dizz resume` | Instant context recovery after time away |
+
+## Knowledge Graph
+
+`dizz graph` derives a project knowledge graph purely from persisted dizz state
+(`state.ton.gz`, `intent.ton`, the per-file signal cache, snapshots, and config),
+plus opt-in Git history. No code analysis happens here and the graph is never
+materialized, so every invocation re-derives it in-memory and it is always live.
+Run `dizz context` or `dizz log` at least once so state exists.
+
+```bash
+dizz graph build         # summary of graph shape (nodes, edges, node/edge types)
+dizz graph query main    # blast radius of changing an entity
+dizz graph trace main    # callers, callees, tests, intents, co-changes of an entity
+dizz graph tests main    # which tests cover a symbol or file
+dizz graph path main Foo # shortest path between two entities
+dizz graph scope "internal/auth/**"   # all files matching a path glob
+dizz graph cochanges main             # files that historically change together (requires git)
+```
+
+Subcommands | What it does
+------------|-------------
+`graph build` / `graph stats` | Summarize the graph shape
+`graph query <entity>` | Blast radius: everything affected by changing an entity, scored by depth
+`graph trace <entity>` | Full trace: callers, callees, imports, tests, intents, TODOs, co-changes
+`graph tests <entity>` | Which tests cover a symbol or file (with match confidence)
+`graph cochanges <entity>` | Hidden coupling: files that historically change together (requires git, use `--cochange`)
+`graph path <from> <to>` | Shortest path between two entities
+`graph scope <glob>` | All files matching a path glob
+`graph ton` / `graph dump` | Dump the full graph in TON or JSON format
+`graph visualize` | Same as `dizz visualize`
+
+Entities resolve by name (`main`, `ParseConfig`), or unambiguously with
+`symbol:Name@path` / `file:path` / `intent:id` prefixes. All graph subcommands
+accept `--json` for machine-readable output.
+
+### Interactive visualization
+
+`dizz visualize` (or `dizz graph visualize`) serves an interactive 3D
+force-directed view of the graph on `127.0.0.1` and opens it in your default
+browser. Explore the project as a living map: files, symbols, imports, test
+coverage, and intent similarity links (intents connected by text similarity,
+computed with IDF-weighted cosine over stemmed tokens).
+
+```bash
+dizz visualize                        # open in browser on a free port
+dizz visualize --open=false           # just print the URL, don't launch a browser
+dizz visualize --port 8080            # pick a specific port
+dizz visualize --cochange             # include git co-change coupling analysis
+dizz visualize --similarity-threshold 0.3 --similarity-topk 4   # tune intent links
+```
+
+The view renders client-side with no server round-trips after load: nodes group
+by type (file, symbol, intent, test), colored by symbol state, and you can click
+a node to focus on its neighbors.
 
 ## AI Agent Integration
 
