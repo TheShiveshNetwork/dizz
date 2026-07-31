@@ -19,6 +19,7 @@ const (
 	EdgeModifies      EdgeType = "MODIFIED_BY"
 	EdgeChangedIn     EdgeType = "CHANGED_IN"
 	EdgeHasTodo       EdgeType = "HAS_TODO"
+	EdgeRelatedTo     EdgeType = "RELATED_TO"
 )
 
 // Edge is a directed relationship between two nodes. It always carries a

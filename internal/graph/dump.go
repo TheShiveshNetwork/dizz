@@ -1,20 +1,25 @@
 package graph
 
+import "fmt"
+
 // DumpNode is a node in the JSON dump consumed by visualizers (TUI, web).
 type DumpNode struct {
-	ID     string   `json:"id"`
-	Label  string   `json:"label"`
-	Type   NodeType `json:"type"`
-	State  string   `json:"state,omitempty"`
-	File   string   `json:"file,omitempty"`
-	Degree int      `json:"degree"`
+	ID     string            `json:"id"`
+	Label  string            `json:"label"`
+	Type   NodeType          `json:"type"`
+	State  string            `json:"state,omitempty"`
+	File   string            `json:"file,omitempty"`
+	Degree int               `json:"degree"`
+	Attrs  map[string]string `json:"attrs,omitempty"`
 }
 
 // DumpLink is an edge in the JSON dump consumed by visualizers.
 type DumpLink struct {
-	Source string   `json:"source"`
-	Target string   `json:"target"`
-	Type   EdgeType `json:"type"`
+	Source string            `json:"source"`
+	Target string            `json:"target"`
+	Type   EdgeType          `json:"type"`
+	Weight float64           `json:"weight,omitempty"`
+	Attrs  map[string]string `json:"attrs,omitempty"`
 }
 
 // Dump is the full JSON-serializable view of the graph.
@@ -41,6 +46,7 @@ func (g *Graph) DumpJSON() Dump {
 			Type:  n.Type,
 			State: n.Attr("state"),
 			File:  n.Attr("file"),
+			Attrs: flattenAttrs(n.Attrs),
 		}
 		if dn.File == "" {
 			dn.File = n.Attr("path")
@@ -49,9 +55,25 @@ func (g *Graph) DumpJSON() Dump {
 		d.Nodes = append(d.Nodes, dn)
 	}
 	for _, e := range links {
-		d.Links = append(d.Links, DumpLink{Source: e.From, Target: e.To, Type: e.Type})
+		d.Links = append(d.Links, DumpLink{Source: e.From, Target: e.To, Type: e.Type, Weight: e.Weight, Attrs: e.Attrs})
 	}
 	return d
+}
+
+// flattenAttrs renders node attribute values as strings for JSON consumers.
+func flattenAttrs(attrs map[string]interface{}) map[string]string {
+	if len(attrs) == 0 {
+		return nil
+	}
+	out := make(map[string]string, len(attrs))
+	for k, v := range attrs {
+		if s, ok := v.(string); ok {
+			out[k] = s
+		} else {
+			out[k] = fmt.Sprintf("%v", v)
+		}
+	}
+	return out
 }
 
 // Degree returns the total number of incident edges for a node.

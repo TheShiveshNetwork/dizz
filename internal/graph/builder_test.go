@@ -47,6 +47,11 @@ func writeFixtureProject(t *testing.T) string {
 		CreatedAt: time.Now(), UpdatedAt: time.Now(), CreatedBy: "test", Severity: 2,
 		Confidence: 1.0, Status: state.IntentActive,
 	})
+	is.Intents = append(is.Intents, state.Intent{
+		ID: "int_002", Type: state.Refactor, Message: "Refactor token system", Scope: "pkg/auth.go",
+		CreatedAt: time.Now(), UpdatedAt: time.Now(), CreatedBy: "test", Severity: 1,
+		Confidence: 1.0, Status: state.IntentResolved,
+	})
 	if err := store.NewIntentStore(trackDir).SaveIntentState(is); err != nil {
 		t.Fatalf("save intent: %v", err)
 	}

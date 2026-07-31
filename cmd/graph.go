@@ -14,15 +14,17 @@ import (
 )
 
 var (
-	graphCoChange   bool
-	graphMinJaccard float64
-	graphMinCommits int
-	graphMaxCommits int
-	graphDepth      int
-	graphJSON       bool
-	graphFile       string
-	graphPort       int
-	graphOpen       bool
+	graphCoChange     bool
+	graphMinJaccard   float64
+	graphMinCommits   int
+	graphMaxCommits   int
+	graphDepth        int
+	graphJSON         bool
+	graphFile         string
+	graphPort         int
+	graphOpen         bool
+	graphSimThreshold float64
+	graphSimTopK      int
 )
 
 var graphCmd = &cobra.Command{
@@ -46,6 +48,8 @@ func init() {
 	graphCmd.PersistentFlags().StringVar(&graphFile, "file", "", "Disambiguate a symbol by its file path")
 	graphCmd.PersistentFlags().IntVar(&graphPort, "port", 0, "Port for the web visualizer (0 picks a free port)")
 	graphCmd.PersistentFlags().BoolVar(&graphOpen, "open", true, "Open the web visualizer in the default browser")
+	graphCmd.PersistentFlags().Float64Var(&graphSimThreshold, "similarity-threshold", 0.4, "Minimum text similarity for RELATED_TO edges")
+	graphCmd.PersistentFlags().IntVar(&graphSimTopK, "similarity-topk", 6, "Max RELATED_TO edges per intent")
 
 	graphCmd.AddCommand(graphBuildCmd)
 	graphCmd.AddCommand(graphStatsCmd)
@@ -72,6 +76,8 @@ func loadGraph(includeCoChange bool) (*graphpkg.Graph, *graphpkg.QueryEngine, er
 	opts.MinJaccard = graphMinJaccard
 	opts.CoChangeMinCommits = graphMinCommits
 	opts.CoChangeMaxCommits = graphMaxCommits
+	opts.SimilarityThreshold = graphSimThreshold
+	opts.SimilarityTopK = graphSimTopK
 	g, err := graphpkg.Build(opts)
 	if err != nil {
 		return nil, nil, err

@@ -13,11 +13,31 @@
   #hud h1 span { color: #58a6ff; }
   #hud .stats { font-size: 12px; color: #8b949e; }
   #hud .stats b { color: #e6edf3; font-weight: 600; }
-  #legend { position: fixed; left: 16px; bottom: 16px; z-index: 10; background: rgba(22,27,34,0.9); border: 1px solid #30363d; border-radius: 8px; padding: 10px 14px; font-size: 11px; line-height: 1.9; pointer-events: none; }
+  #legend { position: fixed; left: 16px; bottom: 16px; z-index: 10; background: rgba(22,27,34,0.92); border: 1px solid #30363d; border-radius: 8px; padding: 10px 14px; font-size: 11px; line-height: 1.9; max-height: 60vh; overflow-y: auto; }
   #legend .dot { display: inline-block; width: 10px; height: 10px; border-radius: 50%; margin-right: 7px; vertical-align: middle; }
-  #legend .row { display: flex; align-items: center; }
+  #legend .edge-dot { display: inline-block; width: 14px; height: 3px; border-radius: 2px; margin-right: 7px; vertical-align: middle; }
+  #legend .row { display: flex; align-items: center; cursor: pointer; user-select: none; border-radius: 4px; padding: 0 4px; }
+  #legend .row:hover { background: rgba(88,166,255,0.12); }
   #legend .row span { color: #8b949e; }
-  #hint { position: fixed; right: 16px; bottom: 16px; z-index: 10; font-size: 11px; color: #8b949e; text-align: right; line-height: 1.8; pointer-events: none; background: rgba(22,27,34,0.7); border-radius: 8px; padding: 8px 12px; }
+  #legend .row.on span { color: #e6edf3; }
+  #legend .row.off { opacity: 0.35; }
+  #legend .row.off .dot, #legend .row.off .edge-dot { filter: grayscale(1); }
+  #legend .row.links-row { cursor: default; }
+  #legend .row.links-row:hover { background: transparent; }
+  #legend .divider { height: 1px; background: #21262d; margin: 6px 0; }
+  #legend .legend-title { font-size: 10px; text-transform: uppercase; letter-spacing: 0.8px; color: #6e7681; margin: 2px 0 2px 4px; }
+  #detail { position: fixed; top: 0; right: 0; bottom: 0; width: 340px; background: rgba(13,17,23,0.96); border-left: 1px solid #30363d; z-index: 15; overflow-y: auto; padding: 56px 18px 18px; display: none; }
+  #detail .close { position: fixed; top: 46px; right: 16px; cursor: pointer; color: #8b949e; font-size: 20px; line-height: 1; z-index: 16; }
+  #detail .close:hover { color: #e6edf3; }
+  #detail h2 { font-size: 14px; font-weight: 600; margin-bottom: 6px; word-break: break-word; }
+  #detail .meta { font-size: 11px; color: #8b949e; margin-bottom: 6px; word-break: break-all; }
+  #detail .badge { display: inline-block; font-size: 10px; text-transform: uppercase; letter-spacing: 0.6px; border-radius: 4px; padding: 2px 7px; margin: 0 6px 6px 0; border: 1px solid #30363d; }
+  #detail h3 { font-size: 11px; text-transform: uppercase; letter-spacing: 0.8px; color: #8b949e; margin: 14px 0 6px; border-top: 1px solid #21262d; padding-top: 10px; }
+  #detail ul { list-style: none; }
+  #detail li { font-size: 12px; padding: 6px 9px; border-radius: 6px; background: #161b22; margin-bottom: 5px; word-break: break-word; }
+  #detail li .sim { color: #8b949e; font-size: 10px; }
+  #detail li b { color: #e6edf3; font-weight: 500; }
+  #hint { position: fixed; top: 52px; left: 16px; z-index: 10; font-size: 11px; color: #8b949e; line-height: 1.8; pointer-events: none; background: rgba(22,27,34,0.7); border-radius: 8px; padding: 8px 12px; }
   #hint b { color: #e6edf3; }
   #err { position: fixed; inset: 0; display: none; align-items: center; justify-content: center; z-index: 20; background: #0d1117; text-align: center; padding: 24px; }
   #err .card { max-width: 560px; }
@@ -33,16 +53,19 @@
   <div class="stats"><b id="nodeCount">0</b> nodes &middot; <b id="linkCount">0</b> edges &middot; <span id="rootName"></span></div>
 </div>
 <div id="legend">
-  <div class="row"><span class="dot" style="background:#50c878;"></span><span>active</span></div>
-  <div class="row"><span class="dot" style="background:#dcc83c;"></span><span>planned</span></div>
-  <div class="row"><span class="dot" style="background:#dc5050;"></span><span>unstable</span></div>
-  <div class="row"><span class="dot" style="background:#50b4dc;"></span><span>unused</span></div>
-  <div class="row"><span class="dot" style="background:#6e7681;"></span><span>abandoned / file / meta</span></div>
-  <div class="row"><span class="dot" style="background:#d2a8ff;"></span><span>dependency</span></div>
+  <div class="legend-title">node filters &middot; click to toggle</div>
+  <div id="legendRows"></div>
+  <div class="divider"></div>
+  <div class="legend-title">links</div>
+  <div class="row links-row"><span class="edge-dot" style="background:rgba(57,197,207,0.55);"></span><span>similarity (intent)</span></div>
 </div>
 <div id="hint">
   <b>drag</b> rotate &middot; <b>scroll</b> zoom &middot; <b>hover</b> inspect<br>
-  <b>click</b> pin focus &middot; <b>esc</b> release
+  <b>click</b> node = details &middot; <b>click</b> legend = filter &middot; <b>esc</b> release
+</div>
+<div id="detail">
+  <div class="close" id="detailClose" title="close">&times;</div>
+  <div id="detailBody"></div>
 </div>
 <div id="err"><div class="card"><h2>Graph could not be loaded</h2><p id="errMsg"></p></div></div>
 <script src="https://unpkg.com/3d-force-graph@1.80.0/dist/3d-force-graph.min.js"></script>
@@ -78,7 +101,8 @@
     CO_CHANGES_WITH: 'rgba(240,136,62,0.35)',
     SCOPE_MATCH: 'rgba(210,168,255,0.30)',
     HAS_TODO: 'rgba(248,81,73,0.40)',
-    PROTECTS: 'rgba(240,136,62,0.30)'
+    PROTECTS: 'rgba(240,136,62,0.30)',
+    RELATED_TO: 'rgba(57,197,207,0.55)'
   };
   var defaultLink = 'rgba(139,148,158,0.15)';
 
@@ -91,35 +115,261 @@
     return 2 + Math.log2(n.degree + 1);
   }
 
+  function escapeHtml(s) {
+    return String(s == null ? '' : s)
+      .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+  }
+
+  var allNodes = [];
+  var allLinks = [];
+  var nodesById = {};
+  var hidden = {};
+  var selectedNode = null;
+  var graph = null;
+
+  var filters = [
+    { key: 'state:active', label: 'active', color: '#50c878' },
+    { key: 'state:planned', label: 'planned', color: '#dcc83c' },
+    { key: 'state:unstable', label: 'unstable', color: '#dc5050' },
+    { key: 'state:unused', label: 'unused', color: '#50b4dc' },
+    { key: 'state:abandoned', label: 'abandoned', color: '#6e7681' },
+    { key: 'type:file', label: 'file', color: '#6e7681' },
+    { key: 'type:symbol', label: 'symbol', color: '#58a6ff' },
+    { key: 'type:intent', label: 'intent', color: '#d2a8ff' },
+    { key: 'type:todo', label: 'todo', color: '#f85149' },
+    { key: 'type:test', label: 'test', color: '#3fb950' },
+    { key: 'type:dep', label: 'dependency', color: '#d2a8ff' },
+    { key: 'type:module', label: 'module', color: '#e3b341' },
+    { key: 'type:guardrail', label: 'guardrail', color: '#f0883e' },
+    { key: 'type:snapshot', label: 'snapshot', color: '#8b949e' },
+    { key: 'type:commit', label: 'commit', color: '#8b949e' }
+  ];
+
+  function filterKey(n) {
+    if (n.state && stateColors[n.state]) return 'state:' + n.state;
+    return 'type:' + n.type;
+  }
+
+  function buildLegend() {
+    var lg = document.getElementById('legendRows');
+    filters.forEach(function (f) {
+      var row = document.createElement('div');
+      row.className = 'row on';
+      row.dataset.filter = f.key;
+      var dot = document.createElement('span');
+      dot.className = 'dot';
+      dot.style.background = f.color;
+      var lbl = document.createElement('span');
+      lbl.textContent = f.label;
+      row.appendChild(dot);
+      row.appendChild(lbl);
+      row.addEventListener('click', function () {
+        if (hidden[f.key]) { delete hidden[f.key]; } else { hidden[f.key] = true; }
+        row.classList.toggle('off', !!hidden[f.key]);
+        row.classList.toggle('on', !hidden[f.key]);
+        applyFilter();
+      });
+      lg.appendChild(row);
+    });
+  }
+
+  function visibleLinks() {
+    var ids = {};
+    allNodes.forEach(function (n) {
+      if (!hidden[filterKey(n)]) ids[n.id] = true;
+    });
+    return allLinks.filter(function (l) {
+      return ids[l.source] && ids[l.target];
+    }).map(function (l) {
+      return { source: l.source, target: l.target, type: l.type, weight: l.weight, attrs: l.attrs };
+    });
+  }
+
+  function applyFilter() {
+    var nodes = allNodes.filter(function (n) { return !hidden[filterKey(n)]; });
+    var links = visibleLinks();
+    graph.graphData({ nodes: nodes, links: links });
+    document.getElementById('nodeCount').textContent = nodes.length;
+    document.getElementById('linkCount').textContent = links.length;
+    if (selectedNode && hidden[filterKey(selectedNode)]) {
+      closeDetail();
+    } else if (selectedNode) {
+      renderDetail(selectedNode);
+    }
+  }
+
+  function linksOf(nodeId) {
+    return allLinks.filter(function (l) {
+      return l.source === nodeId || l.target === nodeId;
+    });
+  }
+
+  function neighborsOf(nodeId) {
+    var out = {};
+    allLinks.forEach(function (l) {
+      if (l.source === nodeId) out[l.target] = true;
+      if (l.target === nodeId) out[l.source] = true;
+    });
+    return out;
+  }
+
+  function relatedOf(node) {
+    return linksOf(node.id).filter(function (l) { return l.type === 'RELATED_TO'; });
+  }
+
+  function otherNode(l, nodeId) {
+    var id = l.source === nodeId ? l.target : l.source;
+    return nodesById[id];
+  }
+
+  function item(text, extra) {
+    return '<li>' + text + (extra ? ' <span class="sim">' + extra + '</span>' : '') + '</li>';
+  }
+
+  function section(title, inner) {
+    if (!inner) return '';
+    return '<h3>' + title + '</h3><ul>' + inner + '</ul>';
+  }
+
+  function attr(n, k) {
+    return (n.attrs && n.attrs[k]) || '';
+  }
+
+  function todosFor(node) {
+    return allLinks.filter(function (l) {
+      return l.type === 'HAS_TODO' && l.source === node.id;
+    }).map(function (l) {
+      var t = nodesById[l.target];
+      if (!t) return '';
+      var line = attr(t, 'line');
+      return item(escapeHtml(t.label), line ? 'line ' + escapeHtml(line) : '');
+    }).join('');
+  }
+
+  function symbolsInFile(node) {
+    return allLinks.filter(function (l) {
+      return l.type === 'CONTAINS' && l.source === node.id;
+    }).map(function (l) {
+      var s = nodesById[l.target];
+      if (!s || s.type !== 'symbol') return '';
+      return item(escapeHtml(s.label), s.state ? escapeHtml(s.state) : '');
+    }).join('');
+  }
+
+  function scopedFiles(node) {
+    return allLinks.filter(function (l) {
+      return l.type === 'SCOPE_MATCH' && l.source === node.id;
+    }).map(function (l) {
+      var f = nodesById[l.target];
+      if (!f) return '';
+      return item(escapeHtml(f.label));
+    }).join('');
+  }
+
+  function relatedList(node) {
+    return relatedOf(node).map(function (l) {
+      var o = otherNode(l, node.id);
+      if (!o) return '';
+      var pct = Math.round((l.weight || 0) * 100);
+      return item('<b>' + escapeHtml(o.label) + '</b> (' + escapeHtml(o.type) + ')', 'similarity ' + pct + '%');
+    }).join('');
+  }
+
+  function detailsList(node) {
+    var a = node.attrs || {};
+    return Object.keys(a).sort().map(function (k) {
+      return item('<b>' + escapeHtml(k) + '</b>: ' + escapeHtml(a[k]));
+    }).join('');
+  }
+
+  function renderDetail(node) {
+    selectedNode = node;
+    var a = node.attrs || {};
+    var html = '';
+    html += '<h2>' + escapeHtml(node.label) + '</h2>';
+    html += '<div class="meta">';
+    html += '<span class="badge" style="background:' + nodeColor(node) + '22;color:' + nodeColor(node) + ';border-color:' + nodeColor(node) + '66;">' + escapeHtml(node.type) + '</span>';
+    if (node.state) {
+      html += '<span class="badge" style="background:#21262d;color:' + (stateColors[node.state] || '#e6edf3') + ';">' + escapeHtml(node.state) + '</span>';
+    }
+    html += '</div>';
+    if (node.file) html += '<div class="meta">' + escapeHtml(node.file) + '</div>';
+    html += '<div class="meta">' + escapeHtml(node.id) + '</div>';
+
+    if (node.type === 'file') {
+      var symCount = allLinks.filter(function (l) { return l.type === 'CONTAINS' && l.source === node.id; }).length;
+      if (a.language) html += '<div class="meta">language: ' + escapeHtml(a.language) + '</div>';
+      if (a.churn) html += '<div class="meta">churn: <b>' + escapeHtml(a.churn) + '</b> commits</div>';
+      html += section('Todos', todosFor(node));
+      html += section('Symbols (' + symCount + ')', symbolsInFile(node));
+    } else if (node.type === 'symbol') {
+      var kv = '';
+      ['type', 'state', 'file', 'language', 'line', 'end_line', 'churn', 'instability', 'confidence', 'is_called', 'is_defined', 'has_todo', 'marker', 'source'].forEach(function (k) {
+        if (a[k] !== undefined && a[k] !== '') kv += item('<b>' + escapeHtml(k) + '</b>: ' + escapeHtml(a[k]));
+      });
+      html += section('Details', kv);
+      html += section('Todos', todosFor(node));
+    } else if (node.type === 'intent') {
+      var ikv = '';
+      ['id', 'type', 'severity', 'status', 'scope', 'tags', 'created_by'].forEach(function (k) {
+        if (a[k] !== undefined && a[k] !== '') ikv += item('<b>' + escapeHtml(k) + '</b>: ' + escapeHtml(a[k]));
+      });
+      html += section('Intent', ikv);
+      html += section('Related', relatedList(node));
+      html += section('Scoped files', scopedFiles(node));
+    } else if (node.type === 'todo') {
+      html += section('Todo', item('<b>text</b>: ' + escapeHtml(node.label)) +
+        (a.file ? item('<b>file</b>: ' + escapeHtml(a.file)) : '') +
+        (a.line ? item('<b>line</b>: ' + escapeHtml(a.line)) : '') +
+        (a.type ? item('<b>type</b>: ' + escapeHtml(a.type)) : ''));
+    } else {
+      html += section('Details', detailsList(node));
+    }
+
+    document.getElementById('detailBody').innerHTML = html;
+    document.getElementById('detail').style.display = 'block';
+  }
+
+  function closeDetail() {
+    selectedNode = null;
+    document.getElementById('detail').style.display = 'none';
+  }
+
+  document.getElementById('detailClose').addEventListener('click', function () {
+    graph.nodeOpacity(0.9);
+    graph.linkOpacity(0.6);
+    closeDetail();
+  });
+
   fetch('/graph.json').then(function (r) {
     if (!r.ok) throw new Error('GET /graph.json -> ' + r.status);
     return r.json();
   }).then(function (data) {
-    var nodes = data.nodes.map(function (n) {
+    allNodes = data.nodes.map(function (n) {
       return {
         id: n.id,
         label: n.label,
         type: n.type,
         state: n.state,
         file: n.file,
-        degree: n.degree
+        degree: n.degree,
+        attrs: n.attrs || {}
       };
     });
-    var links = data.links.map(function (l) {
-      return { source: l.source, target: l.target, type: l.type };
+    allLinks = data.links.map(function (l) {
+      return { source: l.source, target: l.target, type: l.type, weight: l.weight, attrs: l.attrs || {} };
     });
+    allNodes.forEach(function (n) { nodesById[n.id] = n; });
 
-    document.getElementById('nodeCount').textContent = nodes.length;
-    document.getElementById('linkCount').textContent = links.length;
     if (data.project_root) {
       var parts = data.project_root.split('/').filter(Boolean);
       document.getElementById('rootName').textContent = parts[parts.length - 1] || data.project_root;
     }
 
     var container = document.getElementById('graph');
-    var graph = ForceGraph3D()(container)
+    graph = ForceGraph3D()(container)
       .backgroundColor('#0d1117')
-      .graphData({ nodes: nodes, links: links })
       .nodeLabel(function (n) {
         var file = n.file ? ' <i>' + n.file + '</i>' : '';
         var state = n.state ? ' [<b>' + n.state + '</b>]' : '';
@@ -130,26 +380,55 @@
       .nodeVal(nodeSize)
       .nodeOpacity(0.9)
       .linkColor(function (l) { return linkColors[l.type] || defaultLink; })
-      .linkWidth(0.6)
+      .linkLabel(function (l) {
+        if (l.type === 'RELATED_TO') return 'similarity ' + Math.round((l.weight || 0) * 100) + '%';
+        if (l.type === 'HAS_TODO') return 'has todo';
+        if (l.type === 'SCOPE_MATCH') return 'scope match';
+        return null;
+      })
+      .linkWidth(function (l) {
+        if (l.type === 'RELATED_TO') return Math.max(0.4, (l.weight || 0) * 2);
+        return 0.6;
+      })
       .linkOpacity(0.6)
       .linkDirectionalParticles(0)
-      .linkCurvature(0.15)
-      .d3AlphaDecay(0.045)
+      .linkCurvature(function (l) { return l.type === 'RELATED_TO' ? 0.15 : 0; })
+      .nodeResolution(6)
+      .d3AlphaDecay(0.08)
       .d3VelocityDecay(0.32)
-      .warmupTicks(90)
-      .cooldownTicks(220)
+      .warmupTicks(60)
+      .cooldownTicks(120)
       .onNodeClick(function (node) {
-        graph.nodeOpacity(function (n) { return n === node ? 1 : 0.25; });
-        graph.linkOpacity(function (l) {
-          return l.source.id === node.id || l.target.id === node.id ? 0.9 : 0.06;
+        var nb = neighborsOf(node.id);
+        graph.nodeOpacity(function (n) {
+          if (n === node) return 1;
+          if (nb[n.id]) return 0.9;
+          return 0.35;
         });
+        graph.linkOpacity(function (l) {
+          return (l.source.id === node.id || l.target.id === node.id) ? 0.85 : 0.25;
+        });
+        renderDetail(node);
+        if (node.x !== undefined && node.x !== null) {
+          var cam = graph.cameraPosition();
+          graph.cameraPosition(
+            { x: node.x + (cam.x - node.x) * 0.5, y: node.y + (cam.y - node.y) * 0.5, z: node.z + (cam.z - node.z) * 0.5 },
+            { x: node.x, y: node.y, z: node.z },
+            600
+          );
+        }
       })
       .onBackgroundClick(function () {
         graph.nodeOpacity(0.9);
         graph.linkOpacity(0.6);
+        closeDetail();
+      })
+      .onEngineStop(function () {
+        if (!selectedNode) graph.zoomToFit(600);
       });
 
-    graph.zoomToFit(600);
+    buildLegend();
+    applyFilter();
   }).catch(function (err) {
     var e = document.getElementById('err');
     e.style.display = 'flex';

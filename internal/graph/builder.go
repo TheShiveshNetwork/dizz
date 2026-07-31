@@ -20,29 +20,33 @@ import (
 // BuildOptions controls how much the graph derives. Options only affect the
 // graph command itself — the underlying analysis pipeline is never invoked.
 type BuildOptions struct {
-	ProjectRoot        string
-	IncludeCoChange    bool
-	MinJaccard         float64
-	CoChangeMinCommits int
-	CoChangeMaxCommits int
-	IncludeSnapshots   bool
-	IncludeGuardrails  bool
-	IncludeModules     bool
-	IncludeTodos       bool
+	ProjectRoot         string
+	IncludeCoChange     bool
+	MinJaccard          float64
+	CoChangeMinCommits  int
+	CoChangeMaxCommits  int
+	IncludeSnapshots    bool
+	IncludeGuardrails   bool
+	IncludeModules      bool
+	IncludeTodos        bool
+	SimilarityThreshold float64
+	SimilarityTopK      int
 }
 
 // DefaultBuildOptions returns the default derivation options.
 func DefaultBuildOptions(projectRoot string) BuildOptions {
 	return BuildOptions{
-		ProjectRoot:        projectRoot,
-		IncludeCoChange:    false,
-		MinJaccard:         0.3,
-		CoChangeMinCommits: 3,
-		CoChangeMaxCommits: 1000,
-		IncludeSnapshots:   true,
-		IncludeGuardrails:  true,
-		IncludeModules:     true,
-		IncludeTodos:       true,
+		ProjectRoot:         projectRoot,
+		IncludeCoChange:     false,
+		MinJaccard:          0.3,
+		CoChangeMinCommits:  3,
+		CoChangeMaxCommits:  1000,
+		IncludeSnapshots:    true,
+		IncludeGuardrails:   true,
+		IncludeModules:      true,
+		IncludeTodos:        true,
+		SimilarityThreshold: 0.4,
+		SimilarityTopK:      6,
 	}
 }
 
@@ -219,6 +223,11 @@ func Build(opts BuildOptions) (*Graph, error) {
 	// 5. Todos.
 	if opts.IncludeTodos {
 		addTodoNodes(g, ps, rangesByFile)
+	}
+
+	// 5b. Intent<->intent and intent<->todo similarity links.
+	if opts.SimilarityThreshold > 0 {
+		addIntentSimilarityEdges(g, is, ps.Todos, opts.SimilarityThreshold, opts.SimilarityTopK)
 	}
 
 	// 6. Snapshots.
