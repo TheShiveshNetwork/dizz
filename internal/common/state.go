@@ -441,7 +441,10 @@ func writeStateTON(trackDir string, ps *state.ProjectState, is *state.IntentStat
 	os.Rename(tmpPath, contextTONPath)
 }
 
-// FindProjectRoot searches up directory tree for .dizz directory
+// FindProjectRoot searches up the directory tree for a valid .dizz project:
+// a .dizz directory that also contains a config.json. A bare .dizz directory
+// (e.g. one created by the installer in the user's home) is not a project and
+// errors out instead of being treated as a project root.
 func FindProjectRoot() (string, error) {
 	cwd, err := os.Getwd()
 	if err != nil {
@@ -452,6 +455,9 @@ func FindProjectRoot() (string, error) {
 	for {
 		trackDir := config.TrackDirPath(dir)
 		if _, err := os.Stat(trackDir); err == nil {
+			if _, err := os.Stat(config.ConfigFilePath(trackDir)); err != nil {
+				return "", fmt.Errorf("config.json not found in %s. Run 'dizz init' first.", trackDir)
+			}
 			return dir, nil
 		}
 

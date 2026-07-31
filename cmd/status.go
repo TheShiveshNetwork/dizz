@@ -44,7 +44,7 @@ func runStatus() {
 		os.Exit(1)
 	}
 
-	configStore := store.NewConfigStore(trackDir)
+	configStore := store.NewConfigStore(config.TrackDirPath(trackDir))
 	cfg, _ := configStore.LoadConfig()
 
 	var intentSummary *state.IntentSummary
