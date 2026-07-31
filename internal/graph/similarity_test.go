@@ -1,8 +1,14 @@
 package graph
 
 import (
+	"fmt"
+	"math"
 	"testing"
 )
+
+func almostEqual(a, b float64) bool {
+	return math.Abs(a-b) < 1e-3
+}
 
 func TestSimilarity(t *testing.T) {
 	cases := []struct {
@@ -11,14 +17,44 @@ func TestSimilarity(t *testing.T) {
 	}{
 		{"refactor auth", "refactor auth", 1},
 		{"Refactor auth", "refactor token", 0.5},
-		{"fix login bug", "login form", 0.5},
+		{"fix login bug", "login form", 1 / math.Sqrt(6)},
 		{"completely unrelated xyz", "token refactor", 0},
 		{"", "anything", 0},
 		{"auth refactor", "refactor auth", 1},
+		{"caching cache", "cache", 1},
+		{"tokens weighting", "token weight", 1},
+		{"the tokens", "token", 1},
+		{"cache invalidation", "caching invalidations", 1},
 	}
 	for _, c := range cases {
-		if got := Similarity(c.a, c.b); got != c.want {
+		if got := Similarity(c.a, c.b); !almostEqual(got, c.want) {
 			t.Errorf("Similarity(%q, %q) = %v, want %v", c.a, c.b, got, c.want)
+		}
+	}
+}
+
+func TestTokenizeStemmingAndStopwords(t *testing.T) {
+	cases := []struct {
+		in   string
+		want []string
+	}{
+		{"Refactor auth", []string{"refactor", "auth"}},
+		{"the tokens weighting", []string{"token", "weight"}},
+		{"caching cache caches", []string{"cach", "cach", "cach"}},
+		{"refactor refactoring", []string{"refactor", "refactor"}},
+		{"pkg/auth.go", []string{"pkg", "auth", "go"}},
+	}
+	for _, c := range cases {
+		got := tokenize(c.in)
+		if len(got) != len(c.want) {
+			t.Errorf("tokenize(%q) = %v, want %v", c.in, got, c.want)
+			continue
+		}
+		for i := range got {
+			if got[i] != c.want[i] {
+				t.Errorf("tokenize(%q) = %v, want %v", c.in, got, c.want)
+				break
+			}
 		}
 	}
 }
@@ -34,29 +70,41 @@ func TestBuildIntentSimilarityEdges(t *testing.T) {
 	intentB := IntentID("int_002")
 	todoID := TodoID("pkg/auth.go", 15)
 
-	// Intent <-> intent: "Refactor auth" vs "Refactor token system" share
-	// one of two tokens -> 0.5. Resolved intents are included too.
-	for _, pair := range [][2]string{{intentA, intentB}, {intentB, intentA}} {
-		if !g.HasEdge(EdgeRelatedTo, pair[0], pair[1]) {
-			t.Errorf("missing RELATED_TO edge %s -> %s", pair[0], pair[1])
+	// IDF-weighted cosine scores over the fixture corpus (message + tags only):
+	//   intentA <-> intentB : 0.172  (single shared stem "refactor", below default 0.2)
+	//   intentA <-> todo    : 0.270  (refactor)
+	//   intentB <-> todo    : 0.638  (refactor + token)
+	expected := []struct {
+		a, b string
+		want float64
+	}{
+		{intentA, todoID, 0.270},
+		{todoID, intentA, 0.270},
+		{intentB, todoID, 0.638},
+		{todoID, intentB, 0.638},
+	}
+	for _, e := range expected {
+		if !g.HasEdge(EdgeRelatedTo, e.a, e.b) {
+			t.Errorf("missing RELATED_TO edge %s -> %s", e.a, e.b)
+			continue
+		}
+		edge := g.Edge(EdgeKey(EdgeRelatedTo, e.a, e.b))
+		if edge == nil || !almostEqual(edge.Weight, e.want) {
+			t.Errorf("edge %s -> %s weight = %v, want %v", e.a, e.b, edge.Weight, e.want)
+		}
+		if edge != nil && edge.Attrs["similarity"] != fmt.Sprintf("%.3f", edge.Weight) {
+			t.Errorf("edge %s -> %s similarity attr = %v", e.a, e.b, edge.Attrs["similarity"])
 		}
 	}
-	if e := g.Edge(EdgeKey(EdgeRelatedTo, intentA, intentB)); e == nil || e.Weight != 0.5 {
-		t.Errorf("intent-intent weight = %v, want 0.5", e.Weight)
+
+	if n := len(g.EdgesOfType(EdgeRelatedTo)); n != len(expected) {
+		t.Errorf("RELATED_TO edge count = %d, want %d", n, len(expected))
 	}
 
-	// Intent <-> todo: "Refactor auth" vs "refactor token" -> 0.5.
-	if !g.HasEdge(EdgeRelatedTo, intentA, todoID) {
-		t.Errorf("missing RELATED_TO intent -> todo")
-	}
-	if !g.HasEdge(EdgeRelatedTo, todoID, intentA) {
-		t.Errorf("missing RELATED_TO todo -> intent")
-	}
-	if e := g.Edge(EdgeKey(EdgeRelatedTo, intentA, todoID)); e == nil || e.Weight != 0.5 {
-		t.Errorf("intent-todo weight = %v, want 0.5", e.Weight)
-	}
-	if e := g.Edge(EdgeKey(EdgeRelatedTo, intentA, todoID)); e == nil || e.Attrs["similarity"] != "0.500" {
-		t.Errorf("similarity attr = %v, want 0.500", e.Attrs["similarity"])
+	// Single-stem overlap ("refactor" shared once) is below the default
+	// threshold, so intentA and intentB must not be linked.
+	if g.HasEdge(EdgeRelatedTo, intentA, intentB) {
+		t.Errorf("unexpected RELATED_TO edge %s -> %s at default threshold", intentA, intentB)
 	}
 
 	// No RELATED_TO edges to symbols or files.
@@ -78,6 +126,22 @@ func TestSimilarityThresholdAndTopK(t *testing.T) {
 	}
 	if n := len(g.EdgesOfType(EdgeRelatedTo)); n != 0 {
 		t.Errorf("threshold above 1.0 should produce no RELATED_TO edges, got %d", n)
+	}
+}
+
+func TestSimilarityTopKTruncation(t *testing.T) {
+	projectRoot := writeFixtureProject(t)
+	opts := DefaultBuildOptions(projectRoot)
+	opts.SimilarityThreshold = 0.1
+	opts.SimilarityTopK = 1
+	g, err := Build(opts)
+	if err != nil {
+		t.Fatalf("build: %v", err)
+	}
+	// With topK 1 each node links to at most one other, so the 3-candidate
+	// corpus yields at most 3 directed edges (one best pick per node).
+	if n := len(g.EdgesOfType(EdgeRelatedTo)); n > 3 {
+		t.Errorf("topK=1 should cap RELATED_TO edges, got %d", n)
 	}
 }
 

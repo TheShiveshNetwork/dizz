@@ -57,6 +57,6 @@ func init() {
 	visualizeCmd.Flags().BoolVar(&graphCoChange, "cochange", false, "Include co-change coupling analysis (requires git)")
 	visualizeCmd.Flags().IntVar(&graphPort, "port", 0, "Port for the web visualizer (0 picks a free port)")
 	visualizeCmd.Flags().BoolVar(&graphOpen, "open", true, "Open the web visualizer in the default browser")
-	visualizeCmd.Flags().Float64Var(&graphSimThreshold, "similarity-threshold", 0.4, "Minimum text similarity for RELATED_TO edges")
+	visualizeCmd.Flags().Float64Var(&graphSimThreshold, "similarity-threshold", 0.2, "Minimum text similarity for RELATED_TO edges")
 	visualizeCmd.Flags().IntVar(&graphSimTopK, "similarity-topk", 6, "Max RELATED_TO edges per intent")
 }

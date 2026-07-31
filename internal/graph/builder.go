@@ -45,7 +45,7 @@ func DefaultBuildOptions(projectRoot string) BuildOptions {
 		IncludeGuardrails:   true,
 		IncludeModules:      true,
 		IncludeTodos:        true,
-		SimilarityThreshold: 0.4,
+		SimilarityThreshold: 0.2,
 		SimilarityTopK:      6,
 	}
 }
