@@ -1,6 +1,6 @@
 # Benchmarks
 
-Hardware: Intel i5-10300H @ 2.50GHz, 16GB RAM, Linux, SSD
+Hardware: Intel i5-10300H @ 2.50GHz, 8GB RAM, Linux, SSD
 
 ## CLI Performance (`dizz status` — dizz itself, 251 symbols, 77 Go files)
 
@@ -11,6 +11,19 @@ Hardware: Intel i5-10300H @ 2.50GHz, 16GB RAM, Linux, SSD
 | Content change (existing function) | **~35ms** | Same signal set → short-circuit |
 | Content change (new function) | **~80ms** | Scorer carries forward git data for unchanged symbols |
 | State file size | **8.3 KB** | gzip, 93% reduction from ~109 KB |
+
+## Agent Context (`dizz context` — the agent-facing path, dizz repo, 742 symbols)
+
+Measured with `BenchmarkAgentContext` and `TestAgentContextEfficiency` in
+`tests/context_benchmark_test.go`.
+
+| Metric | Value | Notes |
+|--------|-------|-------|
+| Warm end-to-end (`dizz context`) | **~70ms** | Full analysis + TON render (CLI-measured 71-77ms, in-process 66ms) |
+| Cold first run | **~740ms** | After cache wipe |
+| Fresh context output | **1.8KB / ~450 tokens** | TON format, pipe-delimited |
+| Raw state files replaced | **141.8KB** | state.ton.gz + intent.ton + context.ton + config.json |
+| Byte reduction | **78x** | 141,795 bytes vs 1,816 bytes of context |
 
 ## Microbenchmarks
 
