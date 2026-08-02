@@ -91,53 +91,22 @@ func CodeFilesWithIncludes(root string, customIncludes, exclude []string) ([]str
 	return Files(root, includePatterns, exclude)
 }
 
-// matchPattern performs simple glob-like pattern matching
+// matchPattern performs glob-like pattern matching. ** matches any number of
+// path segments, * matches within a single segment, and a leading / anchors
+// the pattern. Patterns without ** use the legacy wildcard semantics.
 func matchPattern(path, pattern string) bool {
 	if path == pattern {
 		return true
 	}
-
-	// Convert glob pattern to simple matching
-	// ** means any directory depth
-	// * means any characters in segment
-
-	// Handle ** (recursive)
 	if strings.Contains(pattern, "**") {
-		parts := strings.Split(pattern, "**")
-		if len(parts) == 2 {
-			prefix := strings.TrimSuffix(parts[0], "/")
-			suffix := strings.TrimPrefix(parts[1], "/")
-
-			if prefix != "" && !strings.HasPrefix(path, prefix) {
-				return false
-			}
-
-			if suffix != "" && !strings.HasSuffix(path, suffix) {
-				// Check if suffix is an extension pattern
-				if strings.HasPrefix(suffix, "*") {
-					ext := strings.TrimPrefix(suffix, "*")
-					return strings.HasSuffix(path, ext)
-				}
-				return false
-			}
-
-			return true
-		}
-
-		// Handle **/middle/** pattern (e.g. **/node_modules/**)
-		if len(parts) >= 3 && parts[0] == "" && parts[len(parts)-1] == "" {
-			slashed := "/" + path + "/"
-			for i := 1; i < len(parts)-1; i++ {
-				middle := strings.Trim(parts[i], "/")
-				if middle != "" && !strings.Contains(slashed, "/"+middle+"/") {
-					return false
-				}
-			}
-			return true
-		}
+		return matchGlobSegments(strings.Split(path, "/"), strings.Split(pattern, "/"))
 	}
+	return matchSimplePattern(path, pattern)
+}
 
-	// Handle simple wildcard
+// matchSimplePattern handles patterns without ** using the legacy behavior:
+// a leading * matches a path suffix, a trailing * matches a path prefix.
+func matchSimplePattern(path, pattern string) bool {
 	if strings.Contains(pattern, "*") {
 		// Simple extension matching
 		if strings.HasPrefix(pattern, "*") {
@@ -152,6 +121,46 @@ func matchPattern(path, pattern string) bool {
 		}
 	}
 
+	return false
+}
+
+// matchGlobSegments recursively matches path segments against pattern
+// segments, where a ** segment matches zero or more path segments.
+func matchGlobSegments(wp, pp []string) bool {
+	if len(pp) == 0 {
+		return len(wp) == 0
+	}
+	if pp[0] == "**" {
+		for i := 0; i <= len(wp); i++ {
+			if matchGlobSegments(wp[i:], pp[1:]) {
+				return true
+			}
+		}
+		return false
+	}
+	if len(wp) == 0 {
+		return false
+	}
+	if !matchSegment(wp[0], pp[0]) {
+		return false
+	}
+	return matchGlobSegments(wp[1:], pp[1:])
+}
+
+// matchSegment matches one path segment against one pattern segment.
+func matchSegment(w, p string) bool {
+	if p == "*" {
+		return true
+	}
+	if p == w {
+		return true
+	}
+	if strings.HasPrefix(p, "*") {
+		return strings.HasSuffix(w, strings.TrimPrefix(p, "*"))
+	}
+	if strings.HasSuffix(p, "*") {
+		return strings.HasPrefix(w, strings.TrimSuffix(p, "*"))
+	}
 	return false
 }
 

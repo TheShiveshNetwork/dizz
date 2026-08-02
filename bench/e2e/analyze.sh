@@ -102,6 +102,20 @@ export_metrics() {
   ] | @tsv' "$1" 2>/dev/null
 }
 
+# dizz_usage: dizz CLI invocations in a session export.
+# Prints tsv: total_dizz_calls  dizz_context_calls  distinct_commands.
+dizz_usage() {
+  jq -r '
+    [.. | objects | select(.type? == "tool" and .tool == "bash")
+     | (.state.input.command // .state.input // "")
+     | select(type == "string" and startswith("dizz "))] as $cmds
+    | ($cmds | length) as $total
+    | ([$cmds[] | select(startswith("dizz context"))] | length) as $ctx
+    | ($cmds | unique | sort | join(", ")) as $uniq
+    | "\($total)\t\($ctx)\t\($uniq)"
+  ' "$1" 2>/dev/null
+}
+
 # ---------------------------------------------------------------------------
 # Discover tasks / conditions
 # ---------------------------------------------------------------------------
@@ -240,6 +254,32 @@ else
   emit "- OK: dizz success rate is within 20 points of the control."
 fi
 
+# dizz CLI usage per task (whether the agent actually used dizz as a tool)
+if [ -d "$RESULTS_DIR/01_deadcode/with_dizz" ]; then
+  emit ""
+  emit "## dizz usage (with_dizz)"
+  emit "| task | runs w/ dizz | runs w/ dizz context | avg dizz calls |"
+  emit "|---|---|---|---|"
+  for t in "${TASKS[@]}"; do
+    dir="$RESULTS_DIR/$t/with_dizz"
+    [ -d "$dir" ] || continue
+    rows=""
+    for meta in "$dir"/run_*.meta.json; do
+      [ -f "$meta" ] || continue
+      export_file="$(meta_get "$meta" export_file)"
+      exp="$dir/$export_file"
+      [ -s "$exp" ] || continue
+      read -r tot ctx _uniq <<< "$(dizz_usage "$exp")" || true
+      [ -n "$tot" ] && rows+="$tot $ctx\n"
+    done
+    using="$(printf '%b' "$rows" | awk '{ if ($1 > 0) n++ } END { print n + 0 }')"
+    ctx_runs="$(printf '%b' "$rows" | awk '{ if ($2 > 0) n++ } END { print n + 0 }')"
+    nruns="$(printf '%b' "$rows" | wc -l)"
+    avg="$(printf '%b' "$rows" | awk '{ s += $1; n++ } END { if (n > 0) printf "%.1f", s / n; else print "-" }')"
+    emit "| $t | $using/$nruns | $ctx_runs/$nruns | $avg |"
+  done
+fi
+
 # ---------------------------------------------------------------------------
 # all_metrics.csv
 # ---------------------------------------------------------------------------
@@ -247,14 +287,15 @@ write_all_csv() {
   local csv="$RESULTS_DIR/all_metrics.csv"
   : > "$csv"
   {
-    echo "task,condition,run,status,success,duration_s,rc,dizz_context_bytes,input_tokens,output_tokens,reasoning_tokens,cache_read,cache_write,cost,tool_calls,files_changed,additions,deletions"
+    echo "task,condition,run,status,success,duration_s,rc,dizz_context_bytes,context_mode,input_tokens,output_tokens,reasoning_tokens,cache_read,cache_write,cost,tool_calls,files_changed,additions,deletions"
     for t in "${TASKS[@]}"; do
       for c in with_dizz without_dizz; do
         for meta in "$RESULTS_DIR/$t/$c"/run_*.meta.json; do
           [ -f "$meta" ] || continue
-          local run rc ctx exp input output reasoning cache_read cache_write cost tool_calls files_changed additions deletions
+          local run rc ctx mode exp input output reasoning cache_read cache_write cost tool_calls files_changed additions deletions
           run="$(meta_get "$meta" run)"; rc="$(meta_get "$meta" rc)"
           ctx="$(meta_get "$meta" dizz_context_bytes)"; ctx="${ctx:-0}"
+          mode="$(meta_get "$meta" context_mode)"; mode="${mode:-skill}"
           export_file="$(meta_get "$meta" export_file)"
           exp="$RESULTS_DIR/$t/$c/$export_file"
           input=""; output=""; reasoning=""; cache_read=""; cache_write=""; cost=""; tool_calls=""; files_changed=""; additions=""; deletions=""
@@ -262,7 +303,7 @@ write_all_csv() {
             read -r input output reasoning cache_read cache_write cost tool_calls files_changed additions deletions \
               <<< "$(export_metrics "$exp")" || true
           fi
-          echo "$t,$c,$run,$(meta_get "$meta" status),$(meta_get "$meta" success),$(meta_get "$meta" duration_s),$rc,$ctx,$input,$output,$reasoning,$cache_read,$cache_write,$cost,$tool_calls,$files_changed,$additions,$deletions"
+          echo "$t,$c,$run,$(meta_get "$meta" status),$(meta_get "$meta" success),$(meta_get "$meta" duration_s),$rc,$ctx,$mode,$input,$output,$reasoning,$cache_read,$cache_write,$cost,$tool_calls,$files_changed,$additions,$deletions"
         done
       done
     done
@@ -399,6 +440,26 @@ build_seq_report() {
   else
     emit "- OK: dizz success rate is within 20 points of the control."
   fi
+
+  # dizz CLI usage per session (skill.md behavior: `dizz context` init in
+  # session 1, targeted commands in later sessions).
+  emit ""
+  emit "## dizz usage (with_dizz sessions)"
+  emit "| session | runs w/ dizz | runs w/ dizz context | avg dizz calls | commands |"
+  emit "|---|---|---|---|---|"
+  for (( i = 1; i <= max_idx; i++ )); do
+    rows="$(seq_dizz_rows with_dizz "$i")"
+    using="$(printf '%s\n' "$rows" | awk -F'\t' '{ if ($2 > 0) n++ } END { print n + 0 }')"
+    ctx_runs="$(printf '%s\n' "$rows" | awk -F'\t' '{ if ($3 > 0) n++ } END { print n + 0 }')"
+    nruns="$(printf '%s\n' "$rows" | awk 'NF { n++ } END { print n + 0 }')"
+    avg="$(printf '%s\n' "$rows" | awk -F'\t' '{ s += $2; n++ } END { if (n > 0) printf "%.1f", s / n; else print "-" }')"
+    cmds="$(seq_dizz_cmds with_dizz "$i" | paste -sd ',' - | sed 's/,/, /g')"
+    [ -n "$cmds" ] || cmds="-"
+    emit "| $i | $using/$nruns | $ctx_runs/$nruns | $avg | $cmds |"
+  done
+  c1="$(seq_dizz_rows with_dizz 1 | awk -F'\t' '{ if ($3 > 0) n++ } END { print n + 0 }')"
+  n1="$(seq_dizz_rows with_dizz 1 | awk 'NF { n++ } END { print n + 0 }')"
+  emit "- Session 1 init via \`dizz context\`: $c1/$n1 runs (skill.md compliance)"
 }
 
 # seq_cumulative: running total of a column per cell, printed when idx reached.
@@ -445,6 +506,38 @@ seq_cell_success() {
     }'
 }
 
+# seq_dizz_rows: per-run dizz usage at session index idx.
+# Prints tsv: run  total_dizz_calls  dizz_context_calls
+seq_dizz_rows() {
+  local cond="$1" idx="$2"
+  local dir="$RESULTS_DIR/seq/$cond"
+  local meta export_file exp run tot ctx
+  for meta in "$dir"/run_*_session_${idx}_*.meta.json; do
+    [ -f "$meta" ] || continue
+    run="$(meta_get "$meta" run)"
+    export_file="$(meta_get "$meta" export_file)"
+    exp="$dir/$export_file"
+    [ -s "$exp" ] || continue
+    read -r tot ctx _uniq <<< "$(dizz_usage "$exp")" || true
+    [ -n "$tot" ] && printf '%s\t%s\t%s\n' "$run" "$tot" "$ctx"
+  done
+}
+
+# seq_dizz_cmds: distinct dizz commands across runs at session index idx.
+seq_dizz_cmds() {
+  local cond="$1" idx="$2"
+  local dir="$RESULTS_DIR/seq/$cond"
+  local meta export_file exp uniq
+  for meta in "$dir"/run_*_session_${idx}_*.meta.json; do
+    [ -f "$meta" ] || continue
+    export_file="$(meta_get "$meta" export_file)"
+    exp="$dir/$export_file"
+    [ -s "$exp" ] || continue
+    read -r _tot _ctx uniq <<< "$(dizz_usage "$exp")" || true
+    [ -n "$uniq" ] && printf '%s\n' "$uniq"
+  done | sed 's/, /\n/g' | sort -u
+}
+
 delta_pct() {
   local w="$1" o="$2"
   if [ "$w" != "-" ] && [ "$o" != "-" ] && [ "$o" != "0" ]; then
@@ -461,14 +554,15 @@ write_seq_csv() {
   local csv="$RESULTS_DIR/seq_metrics.csv"
   : > "$csv"
   {
-    echo "condition,run,session_index,task,status,success,duration_s,rc,dizz_context_bytes,input_tokens,output_tokens,reasoning_tokens,cache_read,cache_write,cost,tool_calls,files_changed,additions,deletions"
+    echo "condition,run,session_index,task,status,success,duration_s,rc,dizz_context_bytes,context_mode,input_tokens,output_tokens,reasoning_tokens,cache_read,cache_write,cost,tool_calls,files_changed,additions,deletions"
     for c in with_dizz without_dizz; do
       [ -d "$RESULTS_DIR/seq/$c" ] || continue
       for meta in "$RESULTS_DIR/seq/$c"/run_*_session_*_*.meta.json; do
         [ -f "$meta" ] || continue
-        local run idx rc ctx exp input output reasoning cache_read cache_write cost tool_calls files_changed additions deletions
+        local run idx rc ctx mode exp input output reasoning cache_read cache_write cost tool_calls files_changed additions deletions
         run="$(meta_get "$meta" run)"; idx="$(meta_get "$meta" session_index)"
         rc="$(meta_get "$meta" rc)"; ctx="$(meta_get "$meta" dizz_context_bytes)"; ctx="${ctx:-0}"
+        mode="$(meta_get "$meta" context_mode)"; mode="${mode:-skill}"
         export_file="$(meta_get "$meta" export_file)"
         exp="$RESULTS_DIR/seq/$c/$export_file"
         input=""; output=""; reasoning=""; cache_read=""; cache_write=""; cost=""; tool_calls=""; files_changed=""; additions=""; deletions=""
@@ -476,7 +570,7 @@ write_seq_csv() {
           read -r input output reasoning cache_read cache_write cost tool_calls files_changed additions deletions \
             <<< "$(export_metrics "$exp")" || true
         fi
-        echo "$c,$run,$idx,$(meta_get "$meta" task),$(meta_get "$meta" status),$(meta_get "$meta" success),$(meta_get "$meta" duration_s),$rc,$ctx,$input,$output,$reasoning,$cache_read,$cache_write,$cost,$tool_calls,$files_changed,$additions,$deletions"
+        echo "$c,$run,$idx,$(meta_get "$meta" task),$(meta_get "$meta" status),$(meta_get "$meta" success),$(meta_get "$meta" duration_s),$rc,$ctx,$mode,$input,$output,$reasoning,$cache_read,$cache_write,$cost,$tool_calls,$files_changed,$additions,$deletions"
       done
     done
   } > "$csv"

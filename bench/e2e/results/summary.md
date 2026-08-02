@@ -6,7 +6,7 @@
 | input tokens | 37,877 | 35,626 | +6.3% |
 | output tokens | 4,742 | 3,780 | +25.4% |
 | cache reads | 153,344 | 125,312 | +22.4% |
-| duration (s) | 53.0 | 45.0 | +17.8% |
+| duration (s) | 51.0 | 38.7 | +31.6% |
 | tool calls | 17.0 | 16.0 | +6.2% |
 | files changed | 2.0 | 2.0 | +0.0% |
 
@@ -31,11 +31,11 @@
 ## Per task - duration (s)
 | task | with_dizz | without_dizz | delta | delta% |
 |---|---|---|---|---|
-| 01_deadcode | 40.0 | 37.0 | 3.0 | +8.1% |
-| 02_bugfix | 13.0 | 14.0 | -1.0 | -7.1% |
-| 03_todos | 45.0 | 49.0 | -4.0 | -8.2% |
-| 04_plan | 71.0 | 57.0 | 14.0 | +24.6% |
-| 05_refactor | 72.0 | 149.0 | -77.0 | -51.7% |
+| 01_deadcode | 37.6 | 32.6 | 5.1 | +15.5% |
+| 02_bugfix | 9.8 | 10.3 | -0.6 | -5.4% |
+| 03_todos | 42.9 | 47.0 | -4.1 | -8.7% |
+| 04_plan | 67.3 | 48.6 | 18.7 | +38.5% |
+| 05_refactor | 65.6 | 58.3 | 7.3 | +12.5% |
 
 ## Per task - tool calls
 | task | with_dizz | without_dizz | delta | delta% |
@@ -51,6 +51,15 @@
 - without_dizz success rate: 88.0%
 - OK: dizz success rate is within 20 points of the control.
 
+## dizz usage (with_dizz)
+| task | runs w/ dizz | runs w/ dizz context | avg dizz calls |
+|---|---|---|---|
+| 01_deadcode | 0/5 | 0/5 | 0.0 |
+| 02_bugfix | 1/5 | 1/5 | 0.2 |
+| 03_todos | 1/5 | 1/5 | 0.2 |
+| 04_plan | 2/5 | 2/5 | 0.6 |
+| 05_refactor | 3/5 | 3/5 | 1.8 |
+
 # dizz e2e sequence benchmark
 
 One project per (condition, run); tasks run as consecutive opencode sessions on the same project. Session 1 is the first run; later sessions are subsequent runs on accumulated state.
@@ -58,53 +67,53 @@ One project per (condition, run); tasks run as consecutive opencode sessions on 
 ## Per session - input tokens
 | session | with_dizz | without_dizz | delta | delta% |
 |---|---|---|---|---|
-| 1 | 41,567 | 36,790 | 4,777 | +13.0% |
-| 2 | 16,163 | 13,611 | 2,552 | +18.7% |
-| 3 | 23,088 | 16,868 | 6,220 | +36.9% |
+| 1 | 40,476 | 31,855 | 8,621 | +27.1% |
+| 2 | 8,040 | 7,485 | 555.0 | +7.4% |
+| 3 | 7,390 | 5,214 | 2,176 | +41.7% |
 
 ## Per session - output tokens
 | session | with_dizz | without_dizz | delta | delta% |
 |---|---|---|---|---|
-| 1 | 5,713 | 3,281 | 2,432 | +74.1% |
-| 2 | 907.0 | 545.0 | 362.0 | +66.4% |
-| 3 | 7,272 | 4,206 | 3,066 | +72.9% |
+| 1 | 4,631 | 2,927 | 1,704 | +58.2% |
+| 2 | 594.0 | 533.0 | 61.0 | +11.4% |
+| 3 | 6,798 | 4,682 | 2,116 | +45.2% |
 
 ## Per session - cache reads
 | session | with_dizz | without_dizz | delta | delta% |
 |---|---|---|---|---|
-| 1 | 141,184 | 107,008 | 34,176 | +31.9% |
-| 2 | 76,928 | 52,480 | 24,448 | +46.6% |
-| 3 | 256,256 | 155,008 | 101,248 | +65.3% |
+| 1 | 140,672 | 106,752 | 33,920 | +31.8% |
+| 2 | 61,696 | 45,056 | 16,640 | +36.9% |
+| 3 | 261,376 | 187,264 | 74,112 | +39.6% |
 
 ## Per session - duration (s)
 | session | with_dizz | without_dizz | delta | delta% |
 |---|---|---|---|---|
-| 1 | 56.0 | 35.0 | 21.0 | +60.0% |
-| 2 | 19.0 | 14.0 | 5.0 | +35.7% |
-| 3 | 67.0 | 41.0 | 26.0 | +63.4% |
+| 1 | 53.0 | 32.0 | 21.0 | +65.6% |
+| 2 | 14.0 | 13.0 | 1.0 | +7.7% |
+| 3 | 71.0 | 47.0 | 24.0 | +51.1% |
 
 ## Cumulative input tokens after each session
 | after session | with_dizz | without_dizz | delta% |
 |---|---|---|---|
-| 1 | 41,567 | 36,790 | +13.0% |
-| 2 | 57,730 | 51,289 | +12.6% |
-| 3 | 79,475 | 67,931 | +17.0% |
+| 1 | 40,476 | 31,855 | +27.1% |
+| 2 | 47,773 | 39,321 | +21.5% |
+| 3 | 55,603 | 43,988 | +26.4% |
 
 ## First run vs subsequent runs
 | metric | with_dizz | without_dizz | delta% |
 |---|---|---|---|
-| input_tokens - first run | 41,567 | 36,790 | +13.0% |
-| input_tokens - avg per subsequent session | 19,813 | 15,730 | +26.0% |
-| input_tokens - total | 79,475 | 67,931 | +17.0% |
-| output_tokens - first run | 5,713 | 3,281 | +74.1% |
-| output_tokens - avg per subsequent session | 4,361 | 2,363 | +84.6% |
-| output_tokens - total | 13,101 | 8,355 | +56.8% |
-| cache_read - first run | 141,184 | 107,008 | +31.9% |
-| cache_read - avg per subsequent session | 174,784 | 103,744 | +68.5% |
-| cache_read - total | 506,368 | 342,784 | +47.7% |
-| duration_s - first run | 56.0 | 35.0 | +60.0% |
-| duration_s - avg per subsequent session | 45.0 | 27.5 | +63.6% |
-| duration_s - total | 136.0 | 97.0 | +40.2% |
+| input_tokens - first run | 40,476 | 31,855 | +27.1% |
+| input_tokens - avg per subsequent session | 7,715 | 6,373 | +21.1% |
+| input_tokens - total | 55,603 | 43,988 | +26.4% |
+| output_tokens - first run | 4,631 | 2,927 | +58.2% |
+| output_tokens - avg per subsequent session | 3,758 | 2,608 | +44.1% |
+| output_tokens - total | 12,673 | 8,106 | +56.3% |
+| cache_read - first run | 140,672 | 106,752 | +31.8% |
+| cache_read - avg per subsequent session | 161,536 | 120,128 | +34.5% |
+| cache_read - total | 463,744 | 334,464 | +38.7% |
+| duration_s - first run | 53.0 | 32.0 | +65.6% |
+| duration_s - avg per subsequent session | 42.0 | 32.0 | +31.2% |
+| duration_s - total | 141.0 | 101.0 | +39.6% |
 
 ## Success rate by session
 | session | with_dizz | without_dizz |
@@ -117,3 +126,11 @@ One project per (condition, run); tasks run as consecutive opencode sessions on 
 - with_dizz full-cell success rate: 100.0% (5/5)
 - without_dizz full-cell success rate: 100.0% (5/5)
 - OK: dizz success rate is within 20 points of the control.
+
+## dizz usage (with_dizz sessions)
+| session | runs w/ dizz | runs w/ dizz context | avg dizz calls | commands |
+|---|---|---|---|---|
+| 1 | 3/5 | 3/5 | 0.8 | dizz context, dizz context 2>&1 | head -100, dizz context 2>&1 | head -50, dizz log 2>&1 | head -120 |
+| 2 | 1/5 | 1/5 | 0.2 | dizz context 2>&1 | head -50 |
+| 3 | 5/5 | 5/5 | 1.4 | dizz config show --guardrails, dizz context, dizz context 2>&1 || echo "dizz not available", dizz context 2>&1 | head -50, dizz intent list 2>&1 || echo "dizz unavailable" |
+- Session 1 init via `dizz context`: 3/5 runs (skill.md compliance)
