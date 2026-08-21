@@ -165,29 +165,10 @@ func percentile(sorted []float64, p float64) float64 {
 // Score interprets a symbol's state from signals
 func (s *Scorer) Score(symbol *Symbol) {
 	// Priority rules (in order):
-	// 1. Explicit intent markers override everything
-	// 2. Todos indicate planned work
-	// 3. Calculate instability score (mathematical scoring determines final state)
+	// 1. Todos indicate planned work
+	// 2. Calculate instability score (mathematical scoring determines final state)
 
-	// Rule 1: Intent markers
-	if symbol.IntentMarker != "" {
-		switch symbol.IntentMarker {
-		case "planned":
-			symbol.State = Planned
-			symbol.Confidence = 1.0 // Explicit intent = high confidence
-			return
-		case "active":
-			symbol.State = Active
-			symbol.Confidence = 1.0
-			return
-		case "deprecated":
-			symbol.State = Abandoned
-			symbol.Confidence = 1.0
-			return
-		}
-	}
-
-	// Rule 2: Todos
+	// Rule 1: Todos
 	if symbol.HasTodo {
 		symbol.State = Planned
 		symbol.Confidence = 0.7
@@ -256,22 +237,6 @@ func (s *Scorer) applyMathematicalScoring(symbols []*Symbol) {
 		if symbol.HasTodo {
 			symbol.State = Planned
 			symbol.Confidence = 0.7
-			continue
-		}
-
-		// Same carry-forward issue for intent markers.
-		if symbol.IntentMarker != "" {
-			switch symbol.IntentMarker {
-			case "planned":
-				symbol.State = Planned
-				symbol.Confidence = 1.0
-			case "active":
-				symbol.State = Active
-				symbol.Confidence = 1.0
-			case "deprecated":
-				symbol.State = Abandoned
-				symbol.Confidence = 1.0
-			}
 			continue
 		}
 
@@ -445,21 +410,6 @@ func (s *Scorer) InterpretSignalsWithIntent(sigSet *signals.SignalSet, intentSta
 					if todo.Line >= symbol.Line && todo.Line <= symbol.EndLine {
 						symbol.HasTodo = true
 						break
-					}
-				}
-			}
-		}
-	}
-
-	// Match intent markers to symbols in the same file and line range
-	for _, sig := range sigSet.ByType(signals.IntentMarker) {
-		if symbols, ok := fileIndex[sig.File]; ok {
-			for _, symbol := range symbols {
-				if sig.Line >= symbol.Line && sig.Line <= symbol.EndLine {
-					if markerType, ok := sig.Metadata["marker_type"].(string); ok && markerType == "state" {
-						if value, ok := sig.Metadata["value"].(string); ok {
-							symbol.IntentMarker = value
-						}
 					}
 				}
 			}

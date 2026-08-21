@@ -99,21 +99,3 @@ func SkillInstructions(_ string) []byte {
 func GlobalSkillInstructions() []byte {
 	return globalSkillContent
 }
-
-// GlobalRouterHookContent returns the content for the global router hook.
-func GlobalRouterHookContent() string {
-	return `#!/usr/bin/env sh
-
-# dizz global router hook
-# This hook runs on every commit in every repo on this machine.
-# It checks if the current repo has dizz hooks and delegates to them.
-
-DIZZ_HOOKS=".dizz/hooks/post-commit"
-
-if [ -f "$DIZZ_HOOKS" ] && [ -x "$DIZZ_HOOKS" ]; then
-    # Configure local hooks path so future commits bypass the router
-    git config core.hooksPath ".dizz/hooks" 2>/dev/null || true
-    exec "$DIZZ_HOOKS"
-	fi
-`
-}

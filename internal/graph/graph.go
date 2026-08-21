@@ -60,26 +60,10 @@ func (g *Graph) Node(id string) *Node {
 	return g.nodes[id]
 }
 
-// HasNode reports whether a node with the given ID exists.
-func (g *Graph) HasNode(id string) bool {
-	_, ok := g.nodes[id]
-	return ok
-}
-
 // Nodes returns all nodes, ordered by ID for determinism.
 func (g *Graph) Nodes() []*Node {
 	out := make([]*Node, 0, len(g.nodes))
 	for _, n := range g.nodes {
-		out = append(out, n)
-	}
-	sort.Slice(out, func(i, j int) bool { return out[i].ID < out[j].ID })
-	return out
-}
-
-// NodesByType returns all nodes of a given type, ordered by ID.
-func (g *Graph) NodesByType(t NodeType) []*Node {
-	out := make([]*Node, 0, len(g.byType[t]))
-	for _, n := range g.byType[t] {
 		out = append(out, n)
 	}
 	sort.Slice(out, func(i, j int) bool { return out[i].ID < out[j].ID })
@@ -117,6 +101,7 @@ func (g *Graph) AddEdge(e *Edge) *Edge {
 	return e
 }
 
+// @dizz-ignore-abandoned
 // Edge returns the edge with the given ID, or nil.
 func (g *Graph) Edge(id string) *Edge {
 	return g.edges[id]
@@ -132,6 +117,7 @@ func (g *Graph) Edges() []*Edge {
 	return out
 }
 
+// @dizz-ignore-abandoned
 // EdgesOfType returns all edges of a given type, ordered by key.
 func (g *Graph) EdgesOfType(t EdgeType) []*Edge {
 	out := make([]*Edge, 0, len(g.edges))

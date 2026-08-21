@@ -1135,6 +1135,7 @@ func (m *ConfigsModel) renderInputLine(c *render.Canvas, x, y, maxW int, prompt 
 	}
 }
 
+// @dizz-ignore-abandoned
 func (m *ConfigsModel) View() string { return "" }
 
 func (m *ConfigsModel) InputMode() bool { return m.editing }

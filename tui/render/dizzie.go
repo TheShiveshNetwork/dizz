@@ -138,10 +138,6 @@ func generateTypingFrames(base []string) [][]string {
 	return frames
 }
 
-func DizzArtFrameCount() int {
-	return len(dizzArtFrames)
-}
-
 func DizzArtDimensions() (width, height int) {
 	art := dizzArtFrames[0]
 	height = len(art)

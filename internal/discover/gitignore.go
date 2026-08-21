@@ -119,6 +119,7 @@ func convertNestedGitignorePattern(dirRel, pattern string) string {
 	return dirRel + "/" + pattern
 }
 
+// @dizz-ignore-unused
 func convertGitignorePattern(pattern string) string {
 	pattern = strings.TrimRight(pattern, " \t")
 	if pattern == "" {

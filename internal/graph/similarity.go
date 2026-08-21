@@ -77,6 +77,7 @@ func stem(tok string) string {
 // b. Tokens are lowercased, stopword-filtered, and stemmed; all tokens are
 // weighted equally (no corpus statistics). A score of 1 means identical token
 // sets; 0 means none are shared. It returns 0 when either text has no tokens.
+// @dizz-ignore-abandoned
 func Similarity(a, b string) float64 {
 	ta := tokenize(a)
 	tb := tokenize(b)

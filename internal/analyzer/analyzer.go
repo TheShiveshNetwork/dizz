@@ -183,6 +183,7 @@ func filterIgnoredFiles(files []string) []string {
 }
 
 // AnalyzeFiles runs appropriate analyzers on all files
+// @dizz-ignore-abandoned
 func (r *Registry) AnalyzeFiles(files []string) (*signals.SignalSet, error) {
 	if len(files) == 0 {
 		return &signals.SignalSet{}, nil

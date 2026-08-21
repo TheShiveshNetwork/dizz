@@ -4,7 +4,7 @@ description: This project's persistent memory - intents, conventions, guardrails
 license: MIT
 metadata:
   scope: project
-  version: "1.1.0"
+  version: "1.2.0"
 ---
 
 # Project memory
@@ -20,6 +20,17 @@ dizz context
 ```
 
 Run this once at the start of a session and hold the result for the rest of it. Do not re-run `dizz context` or list commands again mid-session unless the project state has actually changed (new commits, new files, a resolved intent) or a fresh session has started. Re-querying unchanged state wastes tokens for no new information.
+
+## First move: live state before code
+
+For abandoned/unused/dead code, TODOs, code health, or "what needs attention": the FIRST step is `dizz log` with a filter, not a grep/build sweep.
+
+```bash
+dizz log --filter=abandoned --all
+dizz log --all
+```
+
+`--filter` is repeatable; `-a/--all` lifts the per-file limit. Treat the list as candidates and verify each with `grep`/`dizz graph` before editing - a flagged symbol may still be wired via cobra `RunE`, used in tests, or called cross-module.
 
 ## Guardrails (enforce this on every run)
 
