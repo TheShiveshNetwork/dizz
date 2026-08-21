@@ -63,7 +63,7 @@ func runUpgrade() error {
 		return err
 	}
 
-	fmt.Println("✅ dizz upgraded successfully")
+	fmt.Println("✓ dizz upgraded successfully")
 	return nil
 }
 
