@@ -9,7 +9,6 @@ import (
 	"path/filepath"
 	"sort"
 	"strings"
-	"sync"
 	"time"
 
 	"github.com/TheShiveshNetwork/dizz/config"
@@ -23,34 +22,8 @@ import (
 	"github.com/TheShiveshNetwork/dizz/internal/store"
 )
 
-var (
-	gitignoreCache      []string
-	gitignoreCacheMtx   sync.Mutex
-	gitignoreCacheMtime time.Time
-)
-
 func cachedGitignore(projectRoot string) ([]string, error) {
-	path := filepath.Join(projectRoot, ".gitignore")
-	info, err := os.Stat(path)
-	if err != nil {
-		return nil, err
-	}
-
-	gitignoreCacheMtx.Lock()
-	defer gitignoreCacheMtx.Unlock()
-
-	if info.ModTime().Equal(gitignoreCacheMtime) && gitignoreCache != nil {
-		return gitignoreCache, nil
-	}
-
-	patterns, err := discover.ParseGitignore(projectRoot)
-	if err != nil {
-		return nil, err
-	}
-
-	gitignoreCache = patterns
-	gitignoreCacheMtime = info.ModTime()
-	return patterns, nil
+	return discover.ParseGitignoreTree(projectRoot)
 }
 
 // AnalysisOptions controls what to include/exclude from analysis

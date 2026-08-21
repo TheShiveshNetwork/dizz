@@ -14,6 +14,7 @@
 #            [--no-global-cleanup] [--selfcheck] [--list-tasks]
 #            [--runs-dir DIR]
 #            [--sequence] [--sequence-list 01_deadcode,02_bugfix]
+#            [--embed-context]
 #
 # Results land in results/ (gitignored); per-run projects land in
 # ~/Desktop/projects/dizz-bench-agent-runs/ by default (override with
@@ -50,6 +51,7 @@ LIST_TASKS=0
 RUNS_DIR=""
 SEQUENCE=0
 SEQUENCE_LIST=""
+EMBED_CONTEXT=0
 
 usage() {
   sed -n '2,19p' "$0" | sed 's/^# \{0,1\}//'
@@ -67,6 +69,7 @@ while [ "$#" -gt 0 ]; do
     --runs-dir)      RUNS_DIR="$2"; shift 2 ;;
     --sequence)      SEQUENCE=1; shift ;;
     --sequence-list) SEQUENCE_LIST="$2"; shift 2 ;;
+    --embed-context) EMBED_CONTEXT=1; shift ;;
     --fresh)         FRESH=1; shift ;;
     --continue-on-error) CONTINUE_ON_ERROR=1; shift ;;
     --keep-events)   KEEP_EVENTS=1; shift ;;
@@ -168,19 +171,17 @@ run_one() {
   fi
 
   ctx_bytes=0
-  if [ "$cond" = "with_dizz" ]; then
+  ctx_for_prompt=""
+  if [ "$cond" = "with_dizz" ] && [ "$EMBED_CONTEXT" -eq 1 ]; then
     ( cd "$run_dir" && dizz context > "$out_dir/run_${run}.context.ton" 2>/dev/null ) || true
     ctx_bytes="$(wc -c < "$out_dir/run_${run}.context.ton" 2>/dev/null || echo 0)"
+    ctx_for_prompt="$out_dir/run_${run}.context.ton"
   fi
 
   local events_file="$out_dir/run_${run}.events.json"
   local log_file="$out_dir/run_${run}.log"
   local prompt_file="$TASKS_DIR/$task/prompt.md"
   local built_prompt="$out_dir/run_${run}.prompt.md"
-  local ctx_for_prompt=""
-  if [ "$cond" = "with_dizz" ]; then
-    ctx_for_prompt="$out_dir/run_${run}.context.ton"
-  fi
   build_prompt "$task" "$prompt_file" "$ctx_for_prompt" "$built_prompt"
 
   started="$(date +%s)"
@@ -227,6 +228,7 @@ run_one() {
   "rc": $rc,
   "verify_rc": $verify_rc,
   "export_file": "$export_file",
+  "context_mode": "$([ "$EMBED_CONTEXT" -eq 1 ] && printf embed || printf skill)",
   "dizz_context_bytes": $ctx_bytes
 }
 EOF
@@ -238,9 +240,11 @@ EOF
   log "  $key -> status=$RUN_STATUS success=$success duration=${duration_s}s rc=$rc session=$session_id"
 }
 
-# Build the prompt file given to opencode. with_dizz prompts append the
-# current `dizz context` TON dump so the agent sees compact project state
-# instead of having to re-read the whole tree.
+# Build the prompt file given to opencode. By default the task prompt is passed
+# verbatim and the agent discovers dizz through the project skill (real-world
+# usage: it runs `dizz context` once to orient, then targeted commands as
+# needed). Only with --embed-context does the with_dizz prompt append a full
+# `dizz context` TON dump.
 build_prompt() {
   local task="$1" prompt_file="$2" context_file="$3" out_prompt="$4"
   if [ -n "$context_file" ] && [ -s "$context_file" ]; then
@@ -325,7 +329,8 @@ run_sequence_cell() {
     local started duration_s session_id export_file rc verify_rc
 
     log "== running $key (attempt $attempts) task=$task =="
-    if [ "$cond" = "with_dizz" ]; then
+    ctx_file="" ctx_bytes=0
+    if [ "$cond" = "with_dizz" ] && [ "$EMBED_CONTEXT" -eq 1 ]; then
       ctx_file="$out_dir/${prefix}.context.ton"
       ( cd "$run_dir" && dizz context > "$ctx_file" 2>/dev/null ) || true
       ctx_bytes="$(wc -c < "$ctx_file" 2>/dev/null || echo 0)"
@@ -377,6 +382,7 @@ run_sequence_cell() {
   "rc": $rc,
   "verify_rc": $verify_rc,
   "export_file": "$export_file",
+  "context_mode": "$([ "$EMBED_CONTEXT" -eq 1 ] && printf embed || printf skill)",
   "dizz_context_bytes": $ctx_bytes
 }
 EOF
@@ -437,6 +443,7 @@ fi
 log "dizz e2e benchmark starting"
 log "  model=$MODEL runs=$RUNS timeout=${RUN_TIMEOUT}s max_attempts=$MAX_ATTEMPTS"
 log "  task=$TASK_FILTER condition=$COND_FILTER continue_on_error=$CONTINUE_ON_ERROR"
+log "  context_mode=$([ "$EMBED_CONTEXT" -eq 1 ] && printf 'embed' || printf 'skill (agent follows skill.md)')"
 log "  runs_dir=$TESTS_DIR"
 
 move_global_dizz_skills

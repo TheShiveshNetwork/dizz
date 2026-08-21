@@ -11,7 +11,9 @@
 
 > **Give your codebase a brain.**
 
-`dizz` analyzes your source code, scores it using Git history, and remembers what a static file can't: TODOs, half-finished work, things changing too often, and what's already been resolved. It takes immutable snapshots so nothing gets forgotten — not by you, and not by whatever agent picks up the project next. Point an AI coding agent at it and it gets a live, current model of your project instead of a markdown file someone wrote three months ago.
+Every AI coding agent starts cold. It can't tell abandoned experiments from production code, misses TODOs scattered across your files, and trusts `AGENTS.md` files that went stale the day after they were written.
+
+`dizz` gives agents a live model of your project instead. It re-derives context directly from your codebase and Git history on every run - surfacing abandoned code, unstable areas, intents, and open TODOs - and distills 141KB of raw state into a 1.8KB read. Your agent gets current, signal-rich orientation in ~450 tokens, so it spends its budget on the task, not on re-discovering a codebase from scratch.
 
 One-command setup. Git compatible. No internet. Won't touch your code.
 

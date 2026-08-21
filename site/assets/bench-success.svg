@@ -1,0 +1,42 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="675" viewBox="0 0 1200 675">
+  <defs>
+    <linearGradient id="good" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0" stop-color="#10B981"/>
+      <stop offset="1" stop-color="#059669"/>
+    </linearGradient>
+  </defs>
+
+  <rect width="1200" height="675" fill="#0B1220"/>
+  <rect width="1200" height="6" fill="#8B5CF6"/>
+
+  <!-- header -->
+  <rect x="48" y="48" width="44" height="44" rx="10" fill="#8B5CF6"/>
+  <text x="70" y="77" text-anchor="middle" fill="#ffffff" font-size="26" font-weight="800" font-family="Inter, -apple-system, 'Segoe UI', Helvetica, Arial, sans-serif">d</text>
+  <text x="108" y="77" fill="#E2E8F0" font-size="26" font-weight="700" font-family="Inter, -apple-system, 'Segoe UI', Helvetica, Arial, sans-serif">dizz</text>
+  <text x="1152" y="76" text-anchor="end" fill="#64748B" font-size="15" font-family="Inter, -apple-system, 'Segoe UI', Helvetica, Arial, sans-serif">measured, not promised</text>
+
+  <!-- title -->
+  <text x="48" y="152" fill="#F8FAFC" font-size="40" font-weight="800" font-family="Inter, -apple-system, 'Segoe UI', Helvetica, Arial, sans-serif">dizz improves task success</text>
+  <text x="48" y="188" fill="#94A3B8" font-size="19" font-family="Inter, -apple-system, 'Segoe UI', Helvetica, Arial, sans-serif">One e2e benchmark: the same five tasks, with and without dizz</text>
+
+  <!-- left card: with dizz -->
+  <rect x="48" y="230" width="520" height="260" rx="16" fill="#111A2E" stroke="#1E293B" stroke-width="1.5"/>
+  <rect x="380" y="258" width="160" height="34" rx="17" fill="url(#good)"/>
+  <text x="460" y="281" text-anchor="middle" fill="#ffffff" font-size="16" font-weight="700" font-family="Inter, -apple-system, 'Segoe UI', Helvetica, Arial, sans-serif">+8 points</text>
+  <text x="76" y="352" fill="#34D399" font-size="80" font-weight="800" font-family="Inter, -apple-system, 'Segoe UI', Helvetica, Arial, sans-serif">96%</text>
+  <text x="76" y="392" fill="#E2E8F0" font-size="20" font-weight="700" font-family="Inter, -apple-system, 'Segoe UI', Helvetica, Arial, sans-serif">tasks passed</text>
+  <text x="76" y="420" fill="#64748B" font-size="15" font-family="Inter, -apple-system, 'Segoe UI', Helvetica, Arial, sans-serif">with dizz - 24 of 25 runs</text>
+
+  <!-- right card: without dizz -->
+  <rect x="592" y="230" width="520" height="260" rx="16" fill="#111A2E" stroke="#1E293B" stroke-width="1.5"/>
+  <text x="620" y="352" fill="#94A3B8" font-size="80" font-weight="800" font-family="Inter, -apple-system, 'Segoe UI', Helvetica, Arial, sans-serif">88%</text>
+  <text x="620" y="392" fill="#E2E8F0" font-size="20" font-weight="700" font-family="Inter, -apple-system, 'Segoe UI', Helvetica, Arial, sans-serif">tasks passed</text>
+  <text x="620" y="420" fill="#64748B" font-size="15" font-family="Inter, -apple-system, 'Segoe UI', Helvetica, Arial, sans-serif">without dizz - 22 of 25 runs</text>
+
+  <!-- consistency note -->
+  <text x="600" y="530" text-anchor="middle" fill="#CBD5E1" font-size="18" font-family="Inter, -apple-system, 'Segoe UI', Helvetica, Arial, sans-serif">Sequence benchmark (skill mode): 5/5 with and without dizz - dizz never reduces success</text>
+
+  <!-- footer -->
+  <text x="48" y="600" fill="#64748B" font-size="14" font-family="Inter, -apple-system, 'Segoe UI', Helvetica, Arial, sans-serif">Source: dizz e2e benchmark - opencode on the taskforge seed project, single-task mode, 25 runs per condition.</text>
+  <text x="48" y="624" fill="#64748B" font-size="14" font-family="Inter, -apple-system, 'Segoe UI', Helvetica, Arial, sans-serif">Sequence mode: 5 runs per condition. Success = task verify.sh passing on the finished project.</text>
+</svg>

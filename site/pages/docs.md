@@ -2,7 +2,9 @@
 
 > **Give your codebase a brain.**
 
-`dizz` reads your Git history, looks at your code, and tells you what needs doing. TODOs, half-finished work, things changing too often - it tracks all of it. Takes snapshots so you never lose context. Agents love it because it speaks their language.
+Every AI coding agent starts cold. It can't tell abandoned experiments from production code, misses TODOs scattered across your files, and trusts docs that went stale the day after they were written.
+
+`dizz` gives agents a live model of your project instead. It re-derives context directly from your codebase and Git history on every run - surfacing abandoned code, unstable areas, intents, and open TODOs - and distills 141KB of raw state into a 1.8KB read. Your agent gets current, signal-rich orientation in ~450 tokens, so it spends its budget on the task, not on re-discovering the codebase.
 
 No setup. No internet. Won't touch your code.
 
