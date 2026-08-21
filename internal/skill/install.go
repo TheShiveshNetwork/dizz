@@ -184,7 +184,7 @@ func InstallToAll(content []byte) []InstallResult {
 
 // FetchGlobalSkillURL returns the GitHub raw URL for the global SKILL.md.
 func FetchGlobalSkillURL() string {
-	return "https://raw.githubusercontent.com/TheShiveshNetwork/dizz/main/agent-skills/dizz-global/SKILL.md"
+	return "https://raw.githubusercontent.com/TheShiveshNetwork/dizz/main/internal/defaults/agent-skills/dizz-global/SKILL.md"
 }
 
 // @dizz-ignore-unused

@@ -244,8 +244,17 @@ func runCurrentAnalysisAtRoot(projectRoot string, options *AnalysisOptions) (*st
 	intentStore := store.NewIntentStore(trackDir)
 	intentState, _ := intentStore.LoadIntentState()
 
+	// ── Phase 3: Git data (last-touched, churn) computed BEFORE scoring ──
+	// so classification is identical on every run and does not depend on
+	// whether this data was populated by a previous run.
+	changedSet := make(map[string]struct{}, len(changedFiles))
+	for _, f := range changedFiles {
+		changedSet[f] = struct{}{}
+	}
+	gitMeta := buildGitMeta(mergedSigSet, prevState, changedSet)
+
 	scorer := state.NewScorer()
-	projectState := scorer.InterpretSignalsWithIntent(mergedSigSet, intentState, prevState)
+	projectState := scorer.InterpretSignalsWithIntent(mergedSigSet, intentState, prevState, gitMeta)
 
 	// Store signal hash in metadata for future comparison
 	if projectState.Metadata == nil {
@@ -274,76 +283,10 @@ func runCurrentAnalysisAtRoot(projectRoot string, options *AnalysisOptions) (*st
 		projectState.Symbols = filteredSymbols
 	}
 
-	// ── Phase 3: Git data carry-forward + analysis ──
+	// ── Phase 6: Record current commit for state metadata ──
 	if (options == nil || !options.SkipGit) && integrations.IsRepo() {
 		if commit, err := integrations.GetCurrentCommitWithMessage(); err == nil {
 			projectState.GitCommit = &commit
-		}
-
-		// Build previous symbol index for git data carry-forward
-		prevIndex := make(map[string]int)
-		if prevState != nil {
-			for i, sym := range prevState.Symbols {
-				prevIndex[sym.File+"::"+sym.Name] = i
-			}
-		}
-
-		// Build changed-files set for O(1) lookup
-		changedSet := make(map[string]struct{})
-		for _, f := range changedFiles {
-			changedSet[f] = struct{}{}
-		}
-
-		// Carry forward git data for unchanged symbols;
-		// collect changed symbols for batch git analysis.
-		changedSymbolIdx := make([]int, 0, len(projectState.Symbols))
-		for i := range projectState.Symbols {
-			sym := &projectState.Symbols[i]
-			if _, isChanged := changedSet[sym.File]; !isChanged {
-				if prevIdx, ok := prevIndex[sym.File+"::"+sym.Name]; ok {
-					sym.ChurnCount = prevState.Symbols[prevIdx].ChurnCount
-					sym.LastTouched = prevState.Symbols[prevIdx].LastTouched
-				}
-			} else {
-				changedSymbolIdx = append(changedSymbolIdx, i)
-			}
-		}
-
-		// Run batch git analysis only for changed/new symbols
-		if len(changedSymbolIdx) > 0 {
-			symbolData := make([]integrations.SymbolRange, len(changedSymbolIdx))
-			for j, idx := range changedSymbolIdx {
-				sym := projectState.Symbols[idx]
-				symbolData[j] = integrations.SymbolRange{
-					File:    sym.File,
-					Name:    sym.Name,
-					Line:    sym.Line,
-					EndLine: sym.EndLine,
-				}
-			}
-
-			if gitResult, err := integrations.BatchGitAnalysis(symbolData); err == nil {
-				for _, idx := range changedSymbolIdx {
-					sym := &projectState.Symbols[idx]
-					if lastMod, exists := gitResult.FileLastModified[sym.File]; exists {
-						sym.LastTouched = &lastMod
-					}
-					rangeKey := fmt.Sprintf("%s:%d:%d", sym.File, sym.Line, sym.EndLine)
-					if churn, exists := gitResult.FunctionChurn[rangeKey]; exists {
-						sym.ChurnCount = churn
-					}
-				}
-			} else {
-				for _, idx := range changedSymbolIdx {
-					sym := &projectState.Symbols[idx]
-					if churn, err := integrations.GetFunctionChurn(sym.File, sym.Name, sym.Line, sym.EndLine, 20); err == nil {
-						sym.ChurnCount = churn
-					}
-					if lastMod, err := integrations.GetFileLastModified(sym.File); err == nil {
-						sym.LastTouched = &lastMod
-					}
-				}
-			}
 		}
 	}
 
@@ -412,6 +355,90 @@ func writeStateTON(trackDir string, ps *state.ProjectState, is *state.IntentStat
 		return
 	}
 	os.Rename(tmpPath, contextTONPath)
+}
+
+// buildGitMeta computes the git-derived LastTouched/ChurnCount for every
+// function symbol in the signal set, BEFORE classification. Unchanged symbols
+// (file not re-analyzed) carry these values forward from prevState so the
+// Abandoned decision is stable; changed/new symbols are resolved via a single
+// batched git call. Supplying this before scoring removes the run-order
+// dependency that previously made classification non-deterministic.
+func buildGitMeta(mergedSigSet *signals.SignalSet, prevState *state.ProjectState, changedSet map[string]struct{}) map[string]*state.GitMeta {
+	meta := make(map[string]*state.GitMeta)
+
+	if !integrations.IsRepo() {
+		return meta
+	}
+
+	fns := mergedSigSet.ByType(signals.FunctionDefined)
+	if len(fns) == 0 {
+		return meta
+	}
+
+	prevIndex := make(map[string]*state.Symbol)
+	if prevState != nil {
+		for i := range prevState.Symbols {
+			sym := &prevState.Symbols[i]
+			prevIndex[sym.File+"::"+sym.Name] = sym
+		}
+	}
+
+	changedRanges := make([]integrations.SymbolRange, 0, len(fns))
+	changedKeys := make([]string, 0, len(fns))
+	for _, sig := range fns {
+		key := sig.File + "::" + sig.Name
+		if _, isChanged := changedSet[sig.File]; !isChanged {
+			if prev, ok := prevIndex[key]; ok {
+				meta[key] = &state.GitMeta{
+					LastTouched: prev.LastTouched,
+					ChurnCount:  prev.ChurnCount,
+				}
+				continue
+			}
+		}
+		changedRanges = append(changedRanges, integrations.SymbolRange{
+			File:    sig.File,
+			Name:    sig.Name,
+			Line:    sig.Line,
+			EndLine: sig.EndLine,
+		})
+		changedKeys = append(changedKeys, key)
+	}
+
+	if len(changedRanges) == 0 {
+		return meta
+	}
+
+	if gitResult, err := integrations.BatchGitAnalysis(changedRanges); err == nil {
+		for j, key := range changedKeys {
+			sym := changedRanges[j]
+			gm := &state.GitMeta{}
+			if lastMod, exists := gitResult.FileLastModified[sym.File]; exists {
+				t := lastMod
+				gm.LastTouched = &t
+			}
+			rangeKey := fmt.Sprintf("%s:%d:%d", sym.File, sym.Line, sym.EndLine)
+			if churn, exists := gitResult.FunctionChurn[rangeKey]; exists {
+				gm.ChurnCount = churn
+			}
+			meta[key] = gm
+		}
+		return meta
+	}
+
+	for j, key := range changedKeys {
+		sym := changedRanges[j]
+		gm := &state.GitMeta{}
+		if churn, err := integrations.GetFunctionChurn(sym.File, sym.Name, sym.Line, sym.EndLine, 20); err == nil {
+			gm.ChurnCount = churn
+		}
+		if lastMod, err := integrations.GetFileLastModified(sym.File); err == nil {
+			t := lastMod
+			gm.LastTouched = &t
+		}
+		meta[key] = gm
+	}
+	return meta
 }
 
 // FindProjectRoot searches up the directory tree for a valid .dizz project:

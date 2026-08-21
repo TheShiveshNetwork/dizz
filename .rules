@@ -1,0 +1,45 @@
+# Go Coding Guidelines
+* Prioritize idiomatic Go. Refer to "Effective Go" and "Go Code Review Comments" whenever in doubt.
+* Simplicity over cleverness. If a solution is hard to explain, it is hard to maintain.
+* Avoid premature optimization. Write clean, readable code first; optimize only when profiling reveals a bottleneck.
+* Comments should explain "why" the code exists, not "what" it is doing (unless the logic is non-obvious).
+* Variable names should be short and descriptive (e.g., `user` instead of `u`, `request` instead of `req` unless the scope is very small).
+* Use `camelCase` for internal variables and `PascalCase` for exported identifiers.
+
+# Error Handling
+* Never ignore errors. Always check `if err != nil`.
+* Use `errors.Is` and `errors.As` for error comparisons rather than comparing raw error strings.
+* When wrapping errors, use `fmt.Errorf("context: %w", err)` to provide stack-like context while preserving the original error for inspection.
+* Avoid returning generic errors. Use custom error types or sentinel errors when the caller needs to distinguish between error causes.
+
+# Concurrency
+* Prefer channels for communication, but do not overuse them. Mutexes are often simpler and more performant for basic shared state protection.
+* Always pass `context.Context` as the first argument to functions that perform I/O or blocking operations.
+* When spawning goroutines, ensure they have a clear termination path or are managed via `errgroup.Group` to prevent leaks.
+* Avoid "fire and forget" goroutines without monitoring or cancellation.
+
+# Project Structure
+* Keep the `internal/` directory strictly for code that should not be imported by other projects.
+* Use `pkg/` only if you intend for the code to be used as a library by external projects.
+* Keep `main.go` files slim; move logic into separate packages/files to facilitate testing.
+* Prefer interface design based on what the consumer needs, rather than what the implementation provides (accept interfaces, return structs).
+
+# Testing
+* Tests should be located in the same package (e.g., `package_test` for black-box testing, `package` for white-box testing).
+* Use table-driven tests for functions with multiple inputs and expected outputs.
+* Mock external dependencies (DBs, APIs) using interfaces, not concrete types.
+* Prefer standard library `testing` package. Only add external test libraries (e.g., `testify`) if they provide significant productivity gains that outweigh the dependency.
+
+# Pull Request Hygiene
+* PR titles must be imperative (e.g., `Add user authentication` instead of `Added user authentication`).
+* Avoid conventional commit prefixes in PR titles (`fix:`, `feat:`) unless enforced by the build system.
+* Include a `Release Notes:` section as the final section in the PR body.
+    - Use `- Added ...`, `- Fixed ...`, or `- Improved ...` for user-facing changes.
+    - Use `- N/A` for internal refactors or documentation updates.
+
+# Rules Hygiene
+These `.rules` files are read by every agent session. Keep them high-signal.
+* New rules must be:
+    1. **Non-obvious** — a seasoned Go developer might still trip over it.
+    2. **Repeatedly encountered** — this rule solves a recurring pain point.
+    3. **Specific** — a concrete instruction, not a vague principle.

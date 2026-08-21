@@ -43,7 +43,7 @@ internal/
   state/          # Project state model, scorer, snapshots, TON
   store/          # Persistence (intent store, cache, TON codec)
   ui/             # Terminal output formatting
-agent-skills/     # Canonical SKILL.md for AI agent discovery
+internal/defaults/agent-skills/  # Canonical SKILL.md, embedded into the binary
 scripts/          # Install scripts and site build
 site/             # WASM documentation site
 tests/            # Integration and conformance tests
@@ -94,7 +94,7 @@ tests/            # Integration and conformance tests
 
 - **`dizz context`** is the single entry point for agents — keep it lean (~2 KB).
 - All agent data uses TON format (pipe-delimited, line-oriented, no JSON overhead).
-- Agent skills follow the [Agent Skills Specification](https://agentskills.io). The canonical skill is at `agent-skills/dizz/SKILL.md`.
+- Agent skills follow the [Agent Skills Specification](https://agentskills.io). The canonical skill is at `internal/defaults/agent-skills/dizz/SKILL.md`.
 - When adding new analysis signals, update `AGENTS.md` so agents know about them.
 
 See [`AGENTS.md`](AGENTS.md) for the full agent protocol and workflow documentation.
@@ -103,7 +103,7 @@ See [`AGENTS.md`](AGENTS.md) for the full agent protocol and workflow documentat
 
 The WASM documentation site at `site/` is built by `scripts/build-site.sh`. Source content that needs to appear in the built site lives at the project root, not in `site/` subdirectories:
 - Install scripts: `scripts/install.sh`, `scripts/install.ps1`
-- Agent skills: `agent-skills/`
+- Agent skills: `internal/defaults/agent-skills/`
 - Assets: `site/assets/` (only exception — kept with the site)
 
 Never put source content directly in `site/public/` or create new source directories under `site/`. Update `scripts/build-site.sh` to copy from the root-level location instead.

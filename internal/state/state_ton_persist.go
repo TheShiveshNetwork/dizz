@@ -90,7 +90,7 @@ func (ps *ProjectState) MarshalTON() ([]byte, error) {
 				sym.Type, sym.Language,
 				string(sym.State), strconv.FormatFloat(sym.Confidence, 'f', 2, 64),
 				strconv.FormatBool(sym.IsDefined), strconv.FormatBool(sym.IsCalled), strconv.FormatBool(sym.HasTodo),
-				strconv.Itoa(sym.ChurnCount), strconv.FormatFloat(sym.InstabilityScore, 'f', 4, 64),
+				strconv.Itoa(sym.ChurnCount), strconv.FormatFloat(sym.InstabilityScore, 'f', -1, 64),
 				sym.IntentMarker, sym.SignalSource,
 				lastTouched,
 			)
@@ -460,7 +460,7 @@ func MarshalStateTON(ps *ProjectState, is *IntentState, snapshotHashes []string)
 				sym.Type, sym.Language,
 				string(sym.State), strconv.FormatFloat(sym.Confidence, 'f', 2, 64),
 				strconv.FormatBool(sym.IsDefined), strconv.FormatBool(sym.IsCalled), strconv.FormatBool(sym.HasTodo),
-				strconv.Itoa(sym.ChurnCount), strconv.FormatFloat(sym.InstabilityScore, 'f', 4, 64),
+				strconv.Itoa(sym.ChurnCount), strconv.FormatFloat(sym.InstabilityScore, 'f', -1, 64),
 				sym.IntentMarker, sym.SignalSource,
 				lastTouched,
 			})
