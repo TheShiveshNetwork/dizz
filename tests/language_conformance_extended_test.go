@@ -523,20 +523,6 @@ public class TempHelper {
 	}
 }
 
-func TestIntentMarkerJava(t *testing.T) {
-	src := `
-// @dizz:state planned
-public class FeatureX {
-	public void run() {}
-}
-`
-	sigSet := analyzeContent(t, ".java", src)
-	markers := sigSet.ByType(signals.IntentMarker)
-	if len(markers) == 0 {
-		t.Error("expected @dizz:state marker in Java source")
-	}
-}
-
 func TestIgnoreMarkerShellHash(t *testing.T) {
 	src := `#!/bin/bash
 # @ignore-unused
@@ -548,20 +534,6 @@ helper() {
 	sigs := extractIgnoreSignals(path)
 	if len(sigs) == 0 {
 		t.Error("expected at least one @ignore-unused signal for Shell #")
-	}
-}
-
-func TestIntentMarkerSwift(t *testing.T) {
-	src := `
-// @dizz:state unstable
-func fragile() {
-	fatalError("not ready")
-}
-`
-	sigSet := analyzeContent(t, ".swift", src)
-	markers := sigSet.ByType(signals.IntentMarker)
-	if len(markers) == 0 {
-		t.Error("expected @dizz:state marker in Swift source")
 	}
 }
 

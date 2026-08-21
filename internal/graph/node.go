@@ -6,7 +6,6 @@
 package graph
 
 import (
-	"fmt"
 	"strconv"
 )
 
@@ -91,11 +90,6 @@ func SnapshotID(hash string) string {
 	return "snapshot:" + hash
 }
 
-// CommitID builds the ID of a commit node from its hash.
-func CommitID(hash string) string {
-	return "commit:" + hash
-}
-
 // GuardrailID builds the ID of a guardrail node.
 func GuardrailID(id string) string {
 	return "guardrail:" + id
@@ -109,28 +103,4 @@ func TodoID(relFile string, line int) string {
 // ModuleID builds the ID of a module node from its module path.
 func ModuleID(path string) string {
 	return "module:" + path
-}
-
-// formatRationale renders a rationale as a compact human/agent readable string.
-func formatRationale(r Rationale) string {
-	parts := ""
-	if r.SourceTier != "" {
-		parts += r.SourceTier
-	}
-	if r.LineRange != "" {
-		if parts != "" {
-			parts += " "
-		}
-		parts += "lines " + r.LineRange
-	}
-	if r.Evidence != "" {
-		if parts != "" {
-			parts += ", "
-		}
-		parts += r.Evidence
-	}
-	if parts != "" {
-		return fmt.Sprintf("(%.2f %s)", r.Confidence, parts)
-	}
-	return fmt.Sprintf("(%.2f)", r.Confidence)
 }

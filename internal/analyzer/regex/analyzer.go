@@ -21,8 +21,6 @@ type compiledLanguage struct {
 	typePatterns []*regexp.Regexp
 	callPatterns []*regexp.Regexp
 	todoPattern  *regexp.Regexp
-	intentState  *regexp.Regexp
-	intentFeat   *regexp.Regexp
 }
 
 // Analyzer uses the language registry to extract signals from any supported
@@ -65,8 +63,6 @@ func compile(lc language.LanguageConfig) *compiledLanguage {
 
 	// Build a TODO pattern that matches any of the language's comment prefixes.
 	cl.todoPattern = buildTodoPattern(lc)
-	cl.intentState = regexp.MustCompile(`@dizz:state\s+(\w+)`)
-	cl.intentFeat = regexp.MustCompile(`@dizz:feature\s+(\w+)`)
 	return cl
 }
 
@@ -309,22 +305,6 @@ func (a *Analyzer) extractAnnotations(
 		}
 	}
 
-	if m := cl.intentState.FindStringSubmatch(line); m != nil && len(m) > 1 {
-		sig := signals.NewSignal(signals.IntentMarker, filePath).
-			WithLine(lineNum).
-			WithLanguage(langID).
-			WithMeta("marker_type", "state").
-			WithMeta("value", m[1])
-		sigSet.Add(*sig)
-	}
-	if m := cl.intentFeat.FindStringSubmatch(line); m != nil && len(m) > 1 {
-		sig := signals.NewSignal(signals.IntentMarker, filePath).
-			WithLine(lineNum).
-			WithLanguage(langID).
-			WithMeta("marker_type", "feature").
-			WithMeta("value", m[1])
-		sigSet.Add(*sig)
-	}
 }
 
 // ──────────────────────────────────────────────────────────────────────────────

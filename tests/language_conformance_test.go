@@ -636,52 +636,6 @@ func extractIgnoreSignals(path string) []signals.Signal {
 // @dizz intent marker extraction
 // ──────────────────────────────────────────────────────────────────────────────
 
-func TestIntentMarkerPython(t *testing.T) {
-	src := `
-# @dizz:state planned
-def planned_feature():
-    pass
-`
-	sigSet := analyzeContent(t, ".py", src)
-	markers := sigSet.ByType(signals.IntentMarker)
-	if len(markers) == 0 {
-		t.Error("expected @dizz:state marker in Python source")
-	}
-	for _, m := range markers {
-		if v, _ := m.Metadata["value"].(string); v != "planned" {
-			t.Errorf("expected value=planned, got %q", v)
-		}
-	}
-}
-
-func TestIntentMarkerRust(t *testing.T) {
-	src := `
-// @dizz:state unstable
-fn fragile_function() {
-    unimplemented!()
-}
-`
-	sigSet := analyzeContent(t, ".rs", src)
-	markers := sigSet.ByType(signals.IntentMarker)
-	if len(markers) == 0 {
-		t.Error("expected @dizz:state marker in Rust source")
-	}
-}
-
-func TestIntentMarkerLua(t *testing.T) {
-	src := `
--- @dizz:feature auth
-local function login(user, pass)
-    return true
-end
-`
-	sigSet := analyzeContent(t, ".lua", src)
-	markers := sigSet.ByType(signals.IntentMarker)
-	if len(markers) == 0 {
-		t.Error("expected @dizz:feature marker in Lua source")
-	}
-}
-
 // ──────────────────────────────────────────────────────────────────────────────
 // Discover: dynamic extension list
 // ──────────────────────────────────────────────────────────────────────────────

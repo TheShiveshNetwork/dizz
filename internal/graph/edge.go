@@ -1,7 +1,5 @@
 package graph
 
-import "fmt"
-
 // EdgeType enumerates the relationships stored in the graph.
 type EdgeType string
 
@@ -50,9 +48,4 @@ func EdgeKey(t EdgeType, from, to string) string {
 
 func (e *Edge) key() string {
 	return EdgeKey(e.Type, e.From, e.To)
-}
-
-// Describe renders a compact human/agent readable description of the edge.
-func (e *Edge) Describe() string {
-	return fmt.Sprintf("%s %s -> %s %s", e.Type, e.From, e.To, formatRationale(e.Rationale))
 }

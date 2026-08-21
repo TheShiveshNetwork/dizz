@@ -47,7 +47,6 @@ func (a *Analyzer) Analyze(files []string) (*signals.SignalSet, error) {
 		// These are relatively fast as they iterate over fixed lists
 		a.extractImports(file, filePath, fset, sigSet)
 		a.extractTodos(file, filePath, fset, sigSet)
-		a.extractIntents(file, filePath, sigSet)
 	}
 
 	return sigSet, nil
@@ -75,7 +74,6 @@ func (a *Analyzer) AnalyzeFileContent(file string, content []byte) ([]signals.Si
 	a.inspectFile(f, file, fset, sigSet)
 	a.extractImports(f, file, fset, sigSet)
 	a.extractTodos(f, file, fset, sigSet)
-	a.extractIntents(f, file, sigSet)
 
 	return sigSet.Signals, nil
 }
@@ -178,50 +176,6 @@ func (a *Analyzer) extractTodos(file *ast.File, filePath string, fset *token.Fil
 			}
 		}
 	}
-}
-
-// extractIntents finds @dizz intent markers
-func (a *Analyzer) extractIntents(file *ast.File, filePath string, sigSet *signals.SignalSet) {
-	for _, commentGroup := range file.Comments {
-		for _, comment := range commentGroup.List {
-			text := comment.Text
-
-			// Look for @dizz:state or @dizz:feature markers
-			if strings.Contains(text, "@dizz:state") {
-				state := extractMarkerValue(text, "@dizz:state")
-				sig := signals.NewSignal(signals.IntentMarker, filePath).
-					WithLanguage(a.Language()).
-					WithMeta("marker_type", "state").
-					WithMeta("value", state)
-				sigSet.Add(*sig)
-			}
-
-			if strings.Contains(text, "@dizz:feature") {
-				feature := extractMarkerValue(text, "@dizz:feature")
-				sig := signals.NewSignal(signals.IntentMarker, filePath).
-					WithLanguage(a.Language()).
-					WithMeta("marker_type", "feature").
-					WithMeta("value", feature)
-				sigSet.Add(*sig)
-			}
-		}
-	}
-}
-
-// extractMarkerValue extracts the value from a marker comment
-// e.g., "// @dizz:state planned" -> "planned"
-func extractMarkerValue(text, marker string) string {
-	idx := strings.Index(text, marker)
-	if idx == -1 {
-		return ""
-	}
-
-	after := strings.TrimSpace(text[idx+len(marker):])
-	parts := strings.Fields(after)
-	if len(parts) > 0 {
-		return parts[0]
-	}
-	return ""
 }
 
 // IsGoFile checks if a path is a Go source file

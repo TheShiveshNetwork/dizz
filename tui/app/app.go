@@ -226,6 +226,7 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	return m, nil
 }
 
+// @dizz-ignore-abandoned
 func (m *Model) View() string {
 	c := render.NewCanvas(m.width, m.height)
 

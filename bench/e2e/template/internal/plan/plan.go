@@ -9,18 +9,13 @@ import (
 	"taskforge/internal/store"
 )
 
-// TODO: due-date sorting is not wired into Sort yet.
-// TODO: implement Remind, which returns tasks due on or before now.
-// FIXME: priority sorting ranks "high" tasks the same as "medium".
-
 // Sort orders tasks by the given key ("priority" or "due").
 func Sort(ts []store.Task, by string) ([]store.Task, error) {
 	switch by {
 	case "priority":
 		return sortByPriority(ts), nil
 	case "due":
-		// TODO: implement due-date sorting here.
-		return nil, errors.New("due sorting not implemented")
+		return sortByDue(ts, time.Now()), nil
 	default:
 		return nil, errors.New("unknown sort order: " + by)
 	}
@@ -38,8 +33,7 @@ func sortByPriority(ts []store.Task) []store.Task {
 func priorityRank(p string) int {
 	switch strings.ToLower(p) {
 	case "high":
-		// FIXME: "high" ranks the same as "medium" here.
-		return 1
+		return 2
 	case "medium":
 		return 1
 	default:
@@ -49,8 +43,17 @@ func priorityRank(p string) int {
 
 // Remind returns tasks due on or before now.
 func Remind(ts []store.Task, now time.Time) ([]store.Task, error) {
-	// TODO: implement.
-	return nil, errors.New("not implemented")
+	var due []store.Task
+	for _, t := range ts {
+		d, err := time.Parse("2006-01-02", t.Due)
+		if err != nil {
+			continue
+		}
+		if !d.After(now) {
+			due = append(due, t)
+		}
+	}
+	return sortByDue(due, now), nil
 }
 
 func sortByDue(ts []store.Task, now time.Time) []store.Task {

@@ -115,6 +115,7 @@ func init() {
 	configAddGuardrailCmd.Flags().StringVar(&configAddGuardrailReason, "reason", "", "Reason for the guardrail")
 }
 
+// @dizz-ignore-abandoned
 func runConfigShow(cmd *cobra.Command, args []string) error {
 	_, cfg, err := loadProjectConfig()
 	if err != nil {
@@ -179,6 +180,7 @@ func getActiveFilters() []string {
 	return filters
 }
 
+// @dizz-ignore-abandoned
 func runConfigAddInstruction(cmd *cobra.Command, args []string) error {
 	if configAddInstructionRule == "" {
 		return fmt.Errorf("--rule must be provided")
@@ -199,6 +201,7 @@ func runConfigAddInstruction(cmd *cobra.Command, args []string) error {
 	return configStore.SaveConfig(cfg)
 }
 
+// @dizz-ignore-abandoned
 func runConfigAddGuardrail(cmd *cobra.Command, args []string) error {
 	if configAddGuardrailAction == "" {
 		return fmt.Errorf("--action is required (read_only | require_review | warn | skip | forbid)")
@@ -230,6 +233,7 @@ func runConfigAddGuardrail(cmd *cobra.Command, args []string) error {
 	return configStore.SaveConfig(cfg)
 }
 
+// @dizz-ignore-abandoned
 func runConfigSetDescription(cmd *cobra.Command, args []string) error {
 	configStore, cfg, err := loadProjectConfig()
 	if err != nil {
@@ -281,6 +285,7 @@ func appendUniqueGuardrail(guardrails []config.Guardrail, g config.Guardrail) []
 	return append(guardrails, g)
 }
 
+// @dizz-ignore-abandoned
 func resetAllShowFlags() {
 	configShowJSON = false
 	configShowNameOnly = false

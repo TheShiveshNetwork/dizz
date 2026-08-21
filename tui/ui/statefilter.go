@@ -43,7 +43,3 @@ func (f *StateFilter) Value() string {
 func (f *StateFilter) Reset() {
 	f.current = ""
 }
-
-func (f *StateFilter) SetValue(v string) {
-	f.current = v
-}
