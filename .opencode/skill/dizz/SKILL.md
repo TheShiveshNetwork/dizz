@@ -1,0 +1,1 @@
+../../../internal/defaults/agent-skills/dizz/SKILL.md
