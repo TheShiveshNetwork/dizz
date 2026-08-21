@@ -92,7 +92,7 @@ func analyzeFilesToProjectState(t *testing.T, files []string) *state.ProjectStat
 	}
 
 	scorer := state.NewScorer()
-	return scorer.InterpretSignalsWithIntent(sigSet, nil, nil)
+	return scorer.InterpretSignalsWithIntent(sigSet, nil, nil, nil)
 }
 
 func mapSymbolsByName(symbols []state.Symbol) map[string]state.Symbol {

@@ -17,7 +17,7 @@ func BenchmarkScorerInterpretation(b *testing.B) {
 
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
-		ps := scorer.InterpretSignalsWithIntent(sigSet, nil, nil)
+		ps := scorer.InterpretSignalsWithIntent(sigSet, nil, nil, nil)
 		if len(ps.Symbols) == 0 {
 			b.Fatal("no symbols interpreted")
 		}
@@ -31,7 +31,7 @@ func BenchmarkScorerWithIntentState(b *testing.B) {
 
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
-		ps := scorer.InterpretSignalsWithIntent(sigSet, intentState, nil)
+		ps := scorer.InterpretSignalsWithIntent(sigSet, intentState, nil, nil)
 		if len(ps.Symbols) == 0 {
 			b.Fatal("no symbols interpreted")
 		}
@@ -41,7 +41,7 @@ func BenchmarkScorerWithIntentState(b *testing.B) {
 func BenchmarkScorerSummary(b *testing.B) {
 	sigSet := buildBenchmarkSignalSet(500, 2000)
 	scorer := state.NewScorer()
-	ps := scorer.InterpretSignalsWithIntent(sigSet, nil, nil)
+	ps := scorer.InterpretSignalsWithIntent(sigSet, nil, nil, nil)
 
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
@@ -56,7 +56,7 @@ func BenchmarkScorerSummary(b *testing.B) {
 func BenchmarkGetSymbolsByState(b *testing.B) {
 	sigSet := buildBenchmarkSignalSet(500, 2000)
 	scorer := state.NewScorer()
-	ps := scorer.InterpretSignalsWithIntent(sigSet, nil, nil)
+	ps := scorer.InterpretSignalsWithIntent(sigSet, nil, nil, nil)
 
 	sizes := []int{10, 100, 500}
 	for _, n := range sizes {
@@ -85,7 +85,7 @@ func BenchmarkGetSymbolsByState(b *testing.B) {
 func BenchmarkSuggestNextAction(b *testing.B) {
 	sigSet := buildBenchmarkSignalSet(500, 2000)
 	scorer := state.NewScorer()
-	ps := scorer.InterpretSignalsWithIntent(sigSet, nil, nil)
+	ps := scorer.InterpretSignalsWithIntent(sigSet, nil, nil, nil)
 
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {

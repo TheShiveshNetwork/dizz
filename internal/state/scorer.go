@@ -9,6 +9,15 @@ import (
 	"github.com/TheShiveshNetwork/dizz/internal/signals"
 )
 
+// GitMeta carries the git-derived inputs required for classification
+// (last-touched time and churn count). Supplying these before scoring
+// guarantees the Abandoned/Unstable decisions are identical on every run
+// rather than depending on whether they were filled by a previous run.
+type GitMeta struct {
+	LastTouched *time.Time
+	ChurnCount  int
+}
+
 // Scorer interprets signals into state
 type Scorer struct {
 	// Mathematical instability scoring parameters
@@ -333,8 +342,11 @@ func (s *Scorer) abandonedConfidence(sym *Symbol) float64 {
 // InterpretSignalsWithIntent converts signals with intent enhancement.
 // When prevState is non-nil, InstabilityScore is carried forward for symbols
 // whose name and location are unchanged, avoiding redundant git calls.
+// gitMeta supplies the git-derived LastTouched/ChurnCount for every symbol and
+// must be computed before classification so state assignment is deterministic
+// across runs (see runCurrentAnalysisAtRoot).
 // @dizz-ignore-unused used in tests
-func (s *Scorer) InterpretSignalsWithIntent(sigSet *signals.SignalSet, intentState *IntentState, prevState *ProjectState) *ProjectState {
+func (s *Scorer) InterpretSignalsWithIntent(sigSet *signals.SignalSet, intentState *IntentState, prevState *ProjectState, gitMeta map[string]*GitMeta) *ProjectState {
 	ps := NewProjectState()
 
 	// Build previous symbol index for git-data carry-forward
@@ -480,16 +492,22 @@ func (s *Scorer) InterpretSignalsWithIntent(sigSet *signals.SignalSet, intentSta
 		}
 	}
 
-	// Score all symbols (basic scoring), carrying forward previous InstabilityScore
-	// for unchanged symbols to avoid redundant git calls.
+	// Score all symbols (basic scoring). InstabilityScore is carried forward
+	// from prevState for unchanged symbols to avoid redundant git calls; for
+	// new/changed symbols it is computed fresh. LastTouched and ChurnCount are
+	// taken from gitMeta (computed before classification) so that the Abandoned
+	// decision does not depend on run order.
 	for _, symbol := range symbolIndex {
 		if prev, ok := prevIndex[symbol.File+"::"+symbol.Name]; ok &&
 			prev.Line == symbol.Line && prev.EndLine == symbol.EndLine {
 			symbol.InstabilityScore = prev.InstabilityScore
-			symbol.ChurnCount = prev.ChurnCount
-			symbol.LastTouched = prev.LastTouched
 		} else {
 			s.Score(symbol)
+		}
+
+		if gm, ok := gitMeta[symbol.File+"::"+symbol.Name]; ok {
+			symbol.LastTouched = gm.LastTouched
+			symbol.ChurnCount = gm.ChurnCount
 		}
 	}
 
