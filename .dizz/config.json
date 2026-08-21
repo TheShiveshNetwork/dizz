@@ -1,13 +1,38 @@
 {
   "version": "1.0.0",
   "project_name": "dizz",
-  "description": "State-aware assistant for humans and AI agents. Tracks intents, code health, and symbol states across sessions.",
+  "description": "The memory layer for your projects - so you and your agents never forget. dizz remembers intent, conventions, guardrails, and code health, and serves it up through the CLI instead of a context file that went stale the day after you wrote it.",
   "instructions": [
-    "No comments in production code. Intent is captured via dizz intent or AGENTS.md, not inline.",
-    "Return errors to the caller; log only at the CLI layer (cmd/). Internal packages never call log.Fatal or os.Exit.",
-    "No external dependencies beyond stdlib + cobra."
+    "Treat `dizz context` and `dizz config show` output as ground truth over what you infer from reading code. Query state through the CLI instead of reading files or code cold.",
+    "Never read or write `.dizz/` files directly - always go through the dizz CLI. If a command fails, surface the failure instead of falling back to reading the files.",
+    "Capture durable project knowledge (conventions, decisions, guardrails) via `dizz config add-instruction`/`add-guardrail` and open work via `dizz intent add`. Long-lived intent belongs in intents, not inline TODO/FIXME comments.",
+    "Every write-back command (config/intent/guardrail add or resolve) requires explicit user approval before running, regardless of how small the change seems.",
+    "Before a large change, run `dizz snapshot --auto` and check the blast radius with `dizz graph query <entity> --depth 3`.",
+    "Write clean, idiomatic Go. Comments explain why, not what (non-obvious logic excepted). Prefer simplicity over cleverness.",
+    "Never ignore errors. Use `errors.Is`/`errors.As`; wrap with `fmt.Errorf(\"context: %w\", err)`. Internal packages never call `log.Fatal` or `os.Exit` - return errors up to the cmd/ CLI layer.",
+    "No external dependencies beyond stdlib + cobra. A new dependency needs explicit justification.",
+    "Prefer interface design based on consumer needs (accept interfaces, return structs). Keep `main.go` and the cmd/ layer thin; put logic in internal packages.",
+    "Always pass `context.Context` first to I/O/blocking functions; manage goroutines via `errgroup.Group` with a clear termination path."
   ],
   "guardrails": [
+    {
+      "id": "gr-state-store",
+      "paths": [".dizz/objects/**", ".dizz/refs/**", ".dizz/cache/**"],
+      "action": "read_only",
+      "reason": "Immutable content-addressed state store; never hand-edit, mutate only via dizz CLI"
+    },
+    {
+      "id": "gr-skill-defs",
+      "paths": ["internal/defaults/agent-skills/**", ".agents/skills/**"],
+      "action": "require_review",
+      "reason": "Agent skill definitions are carefully maintained; changes ship via dizz releases"
+    },
+    {
+      "id": "gr-deps",
+      "paths": ["go.mod", "go.sum"],
+      "action": "require_review",
+      "reason": "Dependency changes must be explicitly approved; dizz is intentionally stdlib + cobra only"
+    },
     {
       "id": "gr-generated",
       "paths": ["**/*.pb.go", "**/*.generated.go"],

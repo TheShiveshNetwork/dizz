@@ -14,13 +14,12 @@
   #hud .stats { font-size: 12px; color: #8b949e; }
   #hud .stats b { color: #e6edf3; font-weight: 600; }
   #legend { position: fixed; left: 16px; bottom: 16px; z-index: 10; background: rgba(22,27,34,0.92); border: 1px solid #30363d; border-radius: 8px; padding: 10px 14px; font-size: 11px; line-height: 1.9; max-height: 60vh; overflow-y: auto; }
-  #legend .dot { display: inline-block; width: 10px; height: 10px; border-radius: 50%; margin-right: 7px; vertical-align: middle; }
-  #legend .edge-dot { display: inline-block; width: 14px; height: 3px; border-radius: 2px; margin-right: 7px; vertical-align: middle; }
-  #legend .row { display: flex; align-items: center; cursor: pointer; user-select: none; border-radius: 4px; padding: 0 4px; }
+  #legend .dot { flex: 0 0 auto; width: 10px; height: 10px; border-radius: 50%; margin-right: 8px; }
+  #legend .edge-dot { flex: 0 0 auto; width: 10px; height: 3px; border-radius: 2px; margin-right: 8px; }
+  #legend .row { display: flex; align-items: center; min-height: 22px; padding: 3px 6px; cursor: pointer; user-select: none; border-radius: 4px; }
   #legend .row:hover { background: rgba(88,166,255,0.12); }
-  #legend .row span { color: #8b949e; }
-  #legend .row.on span { color: #e6edf3; }
-  #legend .row.off { opacity: 0.35; }
+  #legend .row span { color: #c9d1d9; }
+  #legend .row.off { opacity: 0.4; }
   #legend .row.off .dot, #legend .row.off .edge-dot { filter: grayscale(1); }
   #legend .row.links-row { cursor: default; }
   #legend .row.links-row:hover { background: transparent; }
@@ -37,7 +36,7 @@
   #detail li { font-size: 12px; padding: 6px 9px; border-radius: 6px; background: #161b22; margin-bottom: 5px; word-break: break-word; }
   #detail li .sim { color: #8b949e; font-size: 10px; }
   #detail li b { color: #e6edf3; font-weight: 500; }
-  #hint { position: fixed; top: 52px; left: 16px; z-index: 10; font-size: 11px; color: #8b949e; line-height: 1.8; pointer-events: none; background: rgba(22,27,34,0.7); border-radius: 8px; padding: 8px 12px; }
+  #hint { position: fixed; top: 52px; left: 16px; z-index: 10; font-size: 11px; color: #8b949e; line-height: 1.8; pointer-events: none; background: rgba(22,27,34,0.92); border: 1px solid #30363d; border-radius: 8px; padding: 8px 12px; }
   #hint b { color: #e6edf3; }
   #err { position: fixed; inset: 0; display: none; align-items: center; justify-content: center; z-index: 20; background: #0d1117; text-align: center; padding: 24px; }
   #err .card { max-width: 560px; }
@@ -73,23 +72,23 @@
 (function () {
   'use strict';
   var stateColors = {
-    active: '#50c878',
-    planned: '#dcc83c',
-    unstable: '#dc5050',
-    unused: '#50b4dc',
-    abandoned: '#6e7681'
+    active: '#3cb44b',
+    planned: '#ffe119',
+    unstable: '#e6194b',
+    unused: '#46f0f0',
+    abandoned: '#808080'
   };
   var typeColors = {
-    file: '#6e7681',
-    symbol: '#58a6ff',
-    intent: '#d2a8ff',
-    snapshot: '#8b949e',
-    dep: '#d2a8ff',
-    module: '#e3b341',
-    guardrail: '#f0883e',
-    todo: '#f85149',
-    test: '#3fb950',
-    commit: '#8b949e'
+    file: '#f032e6',
+    symbol: '#4363d8',
+    intent: '#911eb4',
+    snapshot: '#9a6324',
+    dep: '#f58231',
+    module: '#bcf60c',
+    guardrail: '#800000',
+    todo: '#fabebe',
+    test: '#008080',
+    commit: '#aaffc3'
   };
   var linkColors = {
     CALLS: 'rgba(63,185,80,0.35)',
@@ -117,6 +116,7 @@
 
   function escapeHtml(s) {
     return String(s == null ? '' : s)
+      .replace(/[—–]/g, '-')
       .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
       .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
   }
@@ -129,21 +129,20 @@
   var graph = null;
 
   var filters = [
-    { key: 'state:active', label: 'active', color: '#50c878' },
-    { key: 'state:planned', label: 'planned', color: '#dcc83c' },
-    { key: 'state:unstable', label: 'unstable', color: '#dc5050' },
-    { key: 'state:unused', label: 'unused', color: '#50b4dc' },
-    { key: 'state:abandoned', label: 'abandoned', color: '#6e7681' },
-    { key: 'type:file', label: 'file', color: '#6e7681' },
-    { key: 'type:symbol', label: 'symbol', color: '#58a6ff' },
-    { key: 'type:intent', label: 'intent', color: '#d2a8ff' },
-    { key: 'type:todo', label: 'todo', color: '#f85149' },
-    { key: 'type:test', label: 'test', color: '#3fb950' },
-    { key: 'type:dep', label: 'dependency', color: '#d2a8ff' },
-    { key: 'type:module', label: 'module', color: '#e3b341' },
-    { key: 'type:guardrail', label: 'guardrail', color: '#f0883e' },
-    { key: 'type:snapshot', label: 'snapshot', color: '#8b949e' },
-    { key: 'type:commit', label: 'commit', color: '#8b949e' }
+    { key: 'state:active', label: 'active', color: '#3cb44b' },
+    { key: 'state:planned', label: 'planned', color: '#ffe119' },
+    { key: 'state:unstable', label: 'unstable', color: '#e6194b' },
+    { key: 'state:unused', label: 'unused', color: '#46f0f0' },
+    { key: 'state:abandoned', label: 'abandoned', color: '#808080' },
+    { key: 'type:file', label: 'file', color: '#f032e6' },
+    { key: 'type:intent', label: 'intent', color: '#911eb4' },
+    { key: 'type:todo', label: 'todo', color: '#fabebe' },
+    { key: 'type:test', label: 'test', color: '#008080' },
+    { key: 'type:dep', label: 'dependency', color: '#f58231' },
+    { key: 'type:module', label: 'module', color: '#bcf60c' },
+    { key: 'type:guardrail', label: 'guardrail', color: '#800000' },
+    { key: 'type:snapshot', label: 'snapshot', color: '#9a6324' },
+    { key: 'type:commit', label: 'commit', color: '#aaffc3' }
   ];
 
   function filterKey(n) {
@@ -373,7 +372,7 @@
       .nodeLabel(function (n) {
         var file = n.file ? ' <i>' + n.file + '</i>' : '';
         var state = n.state ? ' [<b>' + n.state + '</b>]' : '';
-        return '<b>' + n.label + '</b> (' + n.type + ')' + state + file + '<br>degree: ' + n.degree;
+        return '<b>' + escapeHtml(n.label) + '</b> (' + n.type + ')' + state + file + '<br>degree: ' + n.degree;
       })
       .nodeColor(nodeColor)
       .nodeRelSize(4)
