@@ -1,70 +1,49 @@
 ---
 name: dizz-global
-description: Detects whether dizz is initialized in the current project and, if so, enforces its guardrails via CLI. Detection runs once per session. Defers instructions, intent workflow, and full context handling to the project-level dizz skill. Install system-wide via `dizz install-skill`.
+description: Detects whether dizz is set up for the current project and enforces its guardrails via CLI if so. Detection runs once per session. Everything beyond detection and guardrails (context, instructions, intents, writes) belongs to the project-level dizz skill, not this one. Install system-wide via `dizz install-skill`.
 license: MIT
 metadata:
   scope: global
-  version: "1.0.0"
+  version: "2.1.0"
 ---
 
-# dizz Global Skill
+# dizz global
 
-dizz is a project's persistent memory — intents, code health, symbol states — built up across sessions instead of a static file that goes stale. If a project has dizz initialized, treat its state as that project's primary source of truth over your own assumptions.
+One job: detect whether this project uses dizz, and enforce its guardrails if it does. Context, instructions, intents, and writes all belong to the project-level `dizz` skill, not here, if that skill is present.
 
-This skill has exactly one job: detect dizz, and enforce its guardrails. Everything else — loading context, querying instructions, managing intents, the self-growing memory loop — lives in the project-level dizz skill, if the skill is not there but dizz is initialized, ask the user to create the skill [read Links#3]. Keep the two separate; don't duplicate work across them.
-
-## Detection — once per session
-
-At the start of a session, check once:
+## Detect (once per session)
 
 ```bash
 dizz --help
 ```
 
-If the command isn't found, dizz isn't installed. Skip it for the rest of this session and don't check again — don't re-run this on every message.
+Not found: dizz isn't installed. Don't install it yourself; if it seems useful for this project, point the user to https://dizz.shitworks.co. Skip the rest of this skill for the session and don't re-check.
 
-If dizz is available but `.dizz/` doesn't exist in this project, it hasn't been initialized here. Ask the user before running:
+Found, but no `.dizz/` in this project: not initialized here. Ask the user before running `dizz init` (one-time setup, never run unannounced).
 
-```bash
-dizz init
-```
+`.dizz/` exists: dizz is live for this project. Load guardrails below before touching any files, then defer to the project-level dizz skill for everything else.
 
-Never initialize without asking first — it's a one-time setup.
-
-If `.dizz/` exists, dizz is live for this project. Load its guardrails before making any file changes.
-
-## Guardrails — this skill's only responsibility once dizz is detected
+## Guardrails (the only thing this skill enforces)
 
 ```bash
 dizz config show --guardrails
 ```
 
-Guardrails are non-negotiable and override your own defaults. Each guardrail has: `id|scope|action|reason`.
+Run once per session and hold the result; don't re-fetch mid-session.
 
-- **id** — stable identifier (e.g. `gr-generated-code`)
-- **scope** — `global` (repo-wide), `file` (single path/glob), or `group` (set of paths)
-- **action** — what you must do:
-  - `read_only` — never modify files matching this path
-  - `require_review` — changes need explicit user approval
-  - `warn` — proceed, but flag it
-  - `skip` — ignore this path entirely in analysis
-  - `forbid` — hard block (e.g. deletions)
-- **reason** — why this guardrail exists
+Each guardrail is `id|scope|action|reason`. Scope is `global`, `file`, or `group`. Action:
 
-Optional fields: `paths` (globs), `match` (any|all for groups), `ops` (restrict to write/delete), `severity` (0-3), `exceptions` (exempt globs).
+- `read_only` - never modify matching files
+- `require_review` - needs explicit user approval before changing
+- `warn` - proceed, but flag it
+- `skip` - ignore in analysis
+- `forbid` - hard block
 
-Check every file you're about to touch against the loaded guardrails before making changes.
+Check every file you're about to touch against the loaded guardrails first. Guardrails override your own defaults, no exceptions.
 
-## Rules
+## Gotchas
 
-1. **Never read `.dizz/` files directly** — always go through CLI commands.
-2. **Never write to `.dizz/` yourself** — it's dizz's internal state; the project-level skill owns the ask-before-write workflow for intents.
-3. **Never initialize dizz without asking the user first.**
-4. **Enforce guardrails strictly**, every time, before any file change.
-5. **If a project-level dizz skill is also present, leave everything beyond detection and guardrails to it** — don't re-explain instructions, commands, or the intent workflow here.
-
-## Links
-
-1. https://github.com/TheShiveshNetwork/dizz
-2. https://github.com/TheShiveshNetwork/dizz/tree/main/agent-skills
-3. https://github.com/TheShiveshNetwork/dizz/tree/main/agent-skills/SKILL.md
+- Don't re-run `dizz --help` or `dizz config show --guardrails` more than once per session.
+- Never read or write `.dizz/` files directly, always through the CLI.
+- Never run `dizz init` without asking first.
+- If the project-level dizz skill is also active, this skill stops at guardrails. Let that skill own context loading, instructions, and the write/intent loop, don't duplicate it here.
