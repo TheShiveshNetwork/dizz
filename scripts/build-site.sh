@@ -87,6 +87,15 @@ if [ -d "$ASSETS_DIR" ]; then
 fi
 
 # -----------------------
+# Copy agent skills (canonical source: internal/defaults/agent-skills)
+# -----------------------
+SKILLS_DIR="$ROOT_DIR/internal/defaults/agent-skills"
+if [ -d "$SKILLS_DIR" ]; then
+  cp -r "$SKILLS_DIR" "$PUBLIC_DIR/agent-skills"
+  echo -e "${GREEN}✓ Agent skills copied to public directory${NC}"
+fi
+
+# -----------------------
 # Copy install scripts (from root scripts/)
 # -----------------------
 if [ -d "$SCRIPTS_DIR" ]; then

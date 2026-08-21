@@ -14,7 +14,7 @@ TEMPLATE_DIR="$BENCH_DIR/template"
 TASKS_DIR="$BENCH_DIR/tasks"
 GLOBAL_BACKUP_DIR="$RESULTS_DIR/.global_skills_backup"
 GLOBAL_BACKUP_MANIFEST="$GLOBAL_BACKUP_DIR/manifest.tsv"
-SKILL_SRC="$BENCH_DIR/../agent-skills/dizz/SKILL.md"
+SKILL_SRC="$BENCH_DIR/../internal/defaults/agent-skills/dizz/SKILL.md"
 
 DEFAULT_MODEL="opencode/deepseek-v4-flash-free"
 DEFAULT_RUNS=5

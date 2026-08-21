@@ -183,7 +183,7 @@ dizz install-skill --provider opencode   # install to one agent only
 
 Supported agents: Claude Code, Cursor, Gemini CLI, OpenCode, Codex CLI / Copilot.
 
-The canonical skill definition lives in the repository at `agent-skills/dizz/SKILL.md` and follows the [Agent Skills Specification](https://agentskills.io).
+The canonical skill definition lives in the repository at `internal/defaults/agent-skills/dizz/SKILL.md` and follows the [Agent Skills Specification](https://agentskills.io).
 
 ### `dizz config`
 
